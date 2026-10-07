@@ -1,0 +1,447 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum RoleName {
+  USER
+  ORGANIZER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BANNED
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  COMPLETED
+}
+
+enum SessionStatus {
+  SCHEDULED
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum TicketTypeStatus {
+  ACTIVE
+  INACTIVE
+  SOLD_OUT
+}
+
+enum SeatStatus {
+  AVAILABLE
+  RESERVED
+  BOOKED
+  BLOCKED
+}
+
+enum TicketStatus {
+  AVAILABLE
+  RESERVED
+  ISSUED
+  CHECKED_IN
+  CANCELLED
+  REFUNDED
+  EXPIRED
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  EXPIRED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  MOMO
+  VNPAY
+  ZALOPAY
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum PostStatus {
+  VISIBLE
+  HIDDEN
+  DELETED
+}
+
+enum CommentStatus {
+  VISIBLE
+  HIDDEN
+  DELETED
+}
+
+enum ReactionType {
+  LIKE
+  LOVE
+  HAHA
+  SAD
+  ANGRY
+}
+
+enum ResaleStatus {
+  AVAILABLE
+  RESERVED
+  SOLD
+  CANCELLED
+  EXPIRED
+}
+
+// ==========================================
+// MODELS
+// ==========================================
+
+model Role {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  roleName  RoleName @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users User[]
+
+  @@map("roles")
+}
+
+model User {
+  id         String     @id @default(auto()) @map("_id") @db.ObjectId
+  email      String     @unique
+  password   String
+  roleId     String     @db.ObjectId
+  role       Role       @relation(fields: [roleId], references: [id])
+  status     UserStatus @default(ACTIVE)
+  isVerified Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  profile       UserProfile?
+  events        Event[]
+  orders        Order[]
+  tickets       Ticket[]
+  posts         Post[]
+  comments      Comment[]
+  reactions     Reaction[]
+  soldResales   ReSale[]     @relation("SellerResales")
+  boughtResales ReSale[]     @relation("BuyerResales")
+
+  @@map("users")
+}
+
+model UserProfile {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String    @unique @db.ObjectId
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName  String?
+  phone     String?
+  dob       DateTime?
+  avatar    String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("userProfiles")
+}
+
+model Category {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events Event[]
+
+  @@map("categories")
+}
+
+model Event {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String?
+  bannerUrl   String?
+  organizerId String      @db.ObjectId
+  organizer   User        @relation(fields: [organizerId], references: [id])
+  categoryId  String      @db.ObjectId
+  category    Category    @relation(fields: [categoryId], references: [id])
+  location    String
+  status      EventStatus @default(DRAFT)
+  saleStartAt DateTime?
+  saleEndAt   DateTime?
+  startAt     DateTime
+  endAt       DateTime
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  eventSessions EventSession[]
+  posts         Post[]
+
+  @@index([organizerId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([startAt])
+  @@map("events")
+}
+
+model EventSession {
+  id        String        @id @default(auto()) @map("_id") @db.ObjectId
+  eventId   String        @db.ObjectId
+  event     Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name      String
+  startAt   DateTime
+  endAt     DateTime
+  status    SessionStatus @default(SCHEDULED)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  seatMap     SeatMap?
+  ticketTypes TicketType[]
+  tickets     Ticket[]
+
+  @@index([eventId])
+  @@index([status])
+  @@index([startAt])
+  @@map("eventSessions")
+}
+
+model SeatMap {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  eventSessionId String       @unique @db.ObjectId
+  eventSession   EventSession @relation(fields: [eventSessionId], references: [id], onDelete: Cascade)
+  name           String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  zones Zone[]
+
+  @@map("seatMaps")
+}
+
+model Zone {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  seatMapId String   @db.ObjectId
+  seatMap   SeatMap  @relation(fields: [seatMapId], references: [id], onDelete: Cascade)
+  name      String
+  price     Float
+  capacity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  seats Seat[]
+
+  @@map("zones")
+}
+
+model Seat {
+  id         String     @id @default(auto()) @map("_id") @db.ObjectId
+  zoneId     String     @db.ObjectId
+  zone       Zone       @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  rowLabel   String
+  seatNumber String
+  status     SeatStatus @default(AVAILABLE)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  tickets Ticket[]
+
+  @@unique([zoneId, rowLabel, seatNumber])
+  @@map("seats")
+}
+
+model TicketType {
+  id             String           @id @default(auto()) @map("_id") @db.ObjectId
+  eventSessionId String           @db.ObjectId
+  eventSession   EventSession     @relation(fields: [eventSessionId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  price          Float
+  capacity       Int
+  soldQuantity   Int              @default(0)
+  saleStartAt    DateTime?
+  saleEndAt      DateTime?
+  status         TicketTypeStatus @default(ACTIVE)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  orderItems OrderItem[]
+  tickets    Ticket[]
+
+  @@index([eventSessionId])
+  @@index([status])
+  @@map("ticketTypes")
+}
+
+model Order {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  orderCode   String      @unique
+  userId      String      @db.ObjectId
+  user        User        @relation(fields: [userId], references: [id])
+  totalAmount Float
+  status      OrderStatus @default(PENDING_PAYMENT)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  orderItems OrderItem[]
+  payments   Payment[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  orderId      String     @db.ObjectId
+  order        Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketTypeId String     @db.ObjectId
+  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
+  quantity     Int
+  unitPrice    Float
+  subtotal     Float
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  tickets Ticket[]
+
+  @@map("orderItems")
+}
+
+model Payment {
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  orderId         String        @db.ObjectId
+  order           Order         @relation(fields: [orderId], references: [id])
+  transactionCode String
+  amount          Float
+  method          PaymentMethod
+  status          PaymentStatus @default(PENDING)
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([orderId])
+  @@index([transactionCode])
+  @@map("payments")
+}
+
+model Ticket {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  ticketCode     String       @unique
+  qrToken        String       @unique
+  userId         String       @db.ObjectId
+  user           User         @relation(fields: [userId], references: [id])
+  eventSessionId String       @db.ObjectId
+  eventSession   EventSession @relation(fields: [eventSessionId], references: [id])
+  ticketTypeId   String       @db.ObjectId
+  ticketType     TicketType   @relation(fields: [ticketTypeId], references: [id])
+  orderItemId    String?      @db.ObjectId
+  orderItem      OrderItem?   @relation(fields: [orderItemId], references: [id])
+  seatId         String?      @db.ObjectId
+  seat           Seat?        @relation(fields: [seatId], references: [id])
+  status         TicketStatus @default(ISSUED)
+  issuedAt       DateTime?
+  checkInAt      DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  resale ReSale?
+
+  @@index([userId])
+  @@index([eventSessionId])
+  @@index([ticketTypeId])
+  @@index([status])
+  @@map("tickets")
+}
+
+model ReSale {
+  id        String       @id @default(auto()) @map("_id") @db.ObjectId
+  ticketId  String       @unique @db.ObjectId
+  ticket    Ticket       @relation(fields: [ticketId], references: [id])
+  sellerId  String       @db.ObjectId
+  seller    User         @relation("SellerResales", fields: [sellerId], references: [id])
+  buyerId   String?      @db.ObjectId
+  buyer     User?        @relation("BuyerResales", fields: [buyerId], references: [id])
+  price     Float
+  status    ResaleStatus @default(AVAILABLE)
+  qrCode    String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  expiresAt DateTime?
+
+  @@index([sellerId])
+  @@index([buyerId])
+  @@index([status])
+  @@map("resales")
+}
+
+model Post {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  eventId   String     @db.ObjectId
+  event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  authorId  String     @db.ObjectId
+  author    User       @relation(fields: [authorId], references: [id])
+  title     String
+  content   String
+  status    PostStatus @default(VISIBLE)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  comments  Comment[]
+  reactions Reaction[]
+
+  @@index([eventId])
+  @@index([authorId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("posts")
+}
+
+model Comment {
+  id        String        @id @default(auto()) @map("_id") @db.ObjectId
+  postId    String        @db.ObjectId
+  post      Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String        @db.ObjectId
+  author    User          @relation(fields: [authorId], references: [id])
+  content   String
+  status    CommentStatus @default(VISIBLE)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([postId])
+  @@index([authorId])
+  @@map("comments")
+}
+
+model Reaction {
+  id        String       @id @default(auto()) @map("_id") @db.ObjectId
+  postId    String       @db.ObjectId
+  post      Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String       @db.ObjectId
+  user      User         @relation(fields: [userId], references: [id])
+  type      ReactionType @default(LIKE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([postId, userId])
+  @@map("reactions")
+}
