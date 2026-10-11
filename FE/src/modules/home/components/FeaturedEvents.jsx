@@ -36,16 +36,13 @@ function FeaturedEvents() {
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex items-end justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">
-              Discover
-            </p>
 
             <h2 className="mt-2 text-3xl font-bold text-gray-900">
-              Featured Events
+              Sự kiện nổi bật
             </h2>
 
             <p className="mt-2 text-gray-500">
-              Popular events you might be interested in
+              Sự kiện được yêu thích mà bạn có thể quan tâm
             </p>
           </div>
 
@@ -53,7 +50,7 @@ function FeaturedEvents() {
             href="/events"
             className="hidden text-sm font-semibold text-blue-600 hover:text-blue-700 sm:block"
           >
-            View all →
+            Xem thêm →
           </a>
         </div>
 

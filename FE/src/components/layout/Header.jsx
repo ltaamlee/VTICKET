@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 function Header() {
   return (
-    <header className="border-b bg-white">
+    <header className="bg-blue-100 shadow-sm">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
         <Link to="/" className="text-2xl font-bold text-blue-600">
           VTicket
@@ -20,6 +20,10 @@ function Header() {
           <Link to="/forum" className="text-gray-700 hover:text-blue-600">
             Diễn đàn
           </Link>
+
+            <Link to="/blog" className="text-gray-700 hover:text-blue-600">
+              Blog
+            </Link>
         </nav>
 
         <div className="flex items-center gap-3">

@@ -45,19 +45,19 @@ async function main() {
     {
       email: 'user@vticket.com',
       roleName: 'USER',
-      fullName: 'Standard User Test',
+      username: 'Standard User Test',
       phone: '0901234567',
     },
     {
       email: 'organizer@vticket.com',
       roleName: 'ORGANIZER',
-      fullName: 'Event Organizer Test',
+      username: 'Event Organizer Test',
       phone: '0908765432',
     },
     {
       email: 'admin@vticket.com',
       roleName: 'ADMIN',
-      fullName: 'System Admin Test',
+      username: 'System Admin Test',
       phone: '0999999999',
     },
   ];
@@ -78,7 +78,7 @@ async function main() {
 
       await userProfilesCol.insertOne({
         userId: user._id,
-        fullName: item.fullName,
+        username: item.username,
         phone: item.phone,
         createdAt: new Date(),
         updatedAt: new Date(),

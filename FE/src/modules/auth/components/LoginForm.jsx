@@ -36,8 +36,7 @@ function LoginForm() {
       <div>
         <label
           htmlFor="email"
-          className="mb-2 block text-sm font-medium text-gray-700"
-        >
+          className="mb-2 block text-sm font-medium text-gray-700">
           Email
         </label>
 
@@ -46,7 +45,7 @@ function LoginForm() {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="Enter your email"
+          placeholder="abc@vticket.com"
           className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           required
         />
@@ -97,6 +96,18 @@ function LoginForm() {
         {loading ? "Đang đăng nhập..." : "Đăng nhập"}
       </button>
 
+      <p className="text-center text-sm text-gray-500">
+        hoặc
+      </p>
+      {/* Login with Google */}
+      <div className="mt-5">
+        <button
+          type="button"
+          className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+        >
+          Đăng nhập với Google
+        </button>
+      </div>
     </form>
   );
 }

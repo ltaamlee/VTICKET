@@ -1,7 +1,9 @@
-import HeaderSection from "../components/HeaderSection";
+import HeroSection from "../components/HeroSection";
 import FeaturedEvents from "../components/FeaturedEvents";
 import CategorySection from "../components/CategorySection";
 import Header from "../../../components/layout/Header";
+import Footer from "../../../components/layout/Footer";
+import EventSlider from "../components/EventSlider";
 
 function HomePage() {
   return (
@@ -9,11 +11,12 @@ function HomePage() {
       <Header />
 
       <main>
-        <HeaderSection />
+        <HeroSection />
+        <EventSlider />
         <FeaturedEvents />
         <CategorySection />
       </main>
-
+    <Footer />
     </div>
   );
 }

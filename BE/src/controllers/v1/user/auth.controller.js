@@ -41,6 +41,39 @@ class AuthController {
   });
 
   /**
+   * Handle forgot password request
+   */
+  forgotPassword = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+
+    const result = await this.authService.forgotPassword(email);
+
+    return sendResponse(
+      res,
+      200,
+      'Đã gửi mã OTP đến email của bạn',
+      result
+    );
+  });
+
+  /**
+   * Handle reset password request
+   */
+  verifyResetPassword = asyncHandler(async (req, res) => {
+    const { otp } = req.body;
+
+    const result = await this.authService.verifyResetPassword(otp);
+
+    return sendResponse(
+      res,
+      200,
+      'Xác thực mã OTP thành công. Bạn có thể đặt lại mật khẩu ngay bây giờ',
+      result
+    );
+  });
+
+
+  /**
    * Get authenticated user profile info
    */
   getMe = asyncHandler(async (req, res) => {

@@ -275,6 +275,52 @@ class AuthService {
 
     return UserMapper.toUserProfileResponse(user);
   }
+
+
+  async forgotPassword(email) {
+    if (!email || typeof email !== 'string') {
+      throw new BadRequestException('Vui lòng cung cấp địa chỉ email');
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Kiểm tra email có tồn tại trong database
+    const user = await prisma.user.findUnique({
+      where: {
+        email: normalizedEmail,
+      },
+      include: {
+        profile: true,
+      },
+    });
+
+    // Không tìm thấy email
+    if (!user) {
+      throw new NotFoundException(
+        'Email chưa được đăng ký trong hệ thống'
+      );
+    }
+
+    // Tạo OTP
+    const otp = await otpService.createOtp(normalizedEmail);
+
+    // Lấy tên người dùng
+    const fullName = user.profile
+      ? user.profile.fullName
+      : 'Quý khách';
+
+    // Gửi OTP qua email
+    await emailService.sendOtpEmail(
+      normalizedEmail,
+      otp,
+      fullName
+    );
+
+    return {
+      email: normalizedEmail,
+      message: 'Mã OTP đã được gửi đến email của bạn',
+    };
+  }
 }
 
 module.exports = new AuthService();

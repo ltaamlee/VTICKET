@@ -10,3 +10,33 @@ export function login(email, password) {
   });
 }
 
+export function register({fullName, email, password, confirmPassword}) {
+  return apiRequest("/auth/register", {
+    method: "POST",
+    body: JSON.stringify({
+      fullName,
+      email,
+      password,
+      confirmPassword,
+    }),
+  });
+}
+
+export function forgotPassword(email) {
+  return apiRequest("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({
+      email,
+    }),
+  });
+}
+
+export function verifyOtp(email, otp) {
+  return apiRequest("/auth/verify-otp", {
+    method: "POST",
+    body: JSON.stringify({
+      email,
+      otp,
+    }),
+  });
+}
