@@ -3,9 +3,6 @@ import { Link } from "react-router-dom";
 function HeroSection() {
   return (
     <section className="bg-linear-to-br from-blue-100 to-white px-4 py-16 sm:py-20 lg:py-28">
-
-
-
         <div className="mx-auto max-w-7xl text-center">
 
             <h1 className="mx-auto max-w-4xl text-4xl font-bold leading-tight text-blue-800 sm:text-5xl lg:text-6xl">

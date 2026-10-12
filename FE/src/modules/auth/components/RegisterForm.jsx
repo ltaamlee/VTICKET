@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { register } from "../services/authService";
-import { Link } from "react-router-dom";
+import { Link, useNavigate} from "react-router-dom";
 
 function RegisterForm() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -34,9 +35,11 @@ function RegisterForm() {
 
       // Nếu đăng ký thành công và backend yêu cầu OTP
       // có thể chuyển sang trang verify OTP ở đây
-      // navigate("/verify-otp");
+      navigate("/verify-otp", {
+        state: { email: formData.email.toLocaleLowerCase() },
+      });
     } catch (error) {
-      setError(error.message);
+      setError(error.message || "Đăng ký thất bại. Vui lòng thử lại!");
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,8 @@
 const { MongoClient } = require('mongodb');
 const { BadRequestException } = require('../exceptions');
+const dns = require('node:dns');
+
+dns.setServers(['8.8.8.8']);
 
 class OtpService {
   constructor() {

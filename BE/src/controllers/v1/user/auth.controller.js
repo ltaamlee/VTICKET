@@ -72,6 +72,10 @@ class AuthController {
     );
   });
 
+  googleLogin = asyncHandler(async (req, res) => {
+    const result = await this.authService.googleLogin(req.body.credential);
+    return sendResponse(res, 200, 'Đăng nhập bằng Google thành công', result);
+  });
 
   /**
    * Get authenticated user profile info

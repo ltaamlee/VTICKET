@@ -1,11 +1,17 @@
 import { useState } from "react";
 import { login } from "../services/authService";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../../contexts/AuthContext";
+import GoogleLoginButton from "./GoogleLogin";
+
 function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const navigate = useNavigate();
+  const {login: saveLogin} = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -18,12 +24,27 @@ function LoginForm() {
 
       console.log("Login response:", response);
 
-      // Save token
-      localStorage.setItem("token", response.data.token);
+      // Lưu token
+      const token = response.data.token;
+      localStorage.setItem("token", token);
 
-      console.log("Login successful");
+      const user = response.data.user;
+
+      if (!user) {
+        throw new Error("Không tìm thấy thông tin người dùng.");
+      }
+
+      saveLogin({ token, user });
+
+      if (user.role === "ADMIN") {
+        navigate("/admin/dashboard");
+      } else if (user.role === "ORGANIZER") {
+        navigate("/organizer/dashboard");
+      } else {
+        navigate("/", { replace: true });
+      }
     } catch (error) {
-      setError(error.message);
+      setError(error.message || "Đăng nhập thất bại.");
     } finally {
       setLoading(false);
     }
@@ -31,12 +52,12 @@ function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-
       {/* Email */}
       <div>
         <label
           htmlFor="email"
-          className="mb-2 block text-sm font-medium text-gray-700">
+          className="mb-2 block text-sm font-medium text-gray-700"
+        >
           Email
         </label>
 
@@ -96,18 +117,10 @@ function LoginForm() {
         {loading ? "Đang đăng nhập..." : "Đăng nhập"}
       </button>
 
-      <p className="text-center text-sm text-gray-500">
-        hoặc
-      </p>
+      <p className="text-center text-sm text-gray-500">hoặc</p>
+
       {/* Login with Google */}
-      <div className="mt-5">
-        <button
-          type="button"
-          className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
-        >
-          Đăng nhập với Google
-        </button>
-      </div>
+      <GoogleLoginButton />
     </form>
   );
 }

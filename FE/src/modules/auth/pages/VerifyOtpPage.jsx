@@ -1,8 +1,10 @@
-import { Link } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import VerifyOtp from "../components/VerifyOtp";
 
 function VerifyOtpPage() {
+  const location = useLocation();
+  const email = location.state?.email || "";
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-lg sm:p-8">                <div className="mb-8 text-center">

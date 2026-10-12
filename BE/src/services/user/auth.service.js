@@ -12,6 +12,10 @@ const {
   ConflictException,
 } = require('../../exceptions');
 
+const { OAuth2Client } = require('google-auth-library');
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 class AuthService {
   /**
    * Handle User Registration
@@ -320,6 +324,108 @@ class AuthService {
       email: normalizedEmail,
       message: 'Mã OTP đã được gửi đến email của bạn',
     };
+  }
+
+  async googleLogin(credential) {
+    if (!credential) {
+      throw new BadRequestException(
+        "Không nhận được thông tin xác thực từ Google"
+      );
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+
+    if (!payload || !payload.email || !payload.email_verified) {
+      throw new UnauthorizedException(
+        "Tài khoản Google chưa xác thực email"
+      );
+    }
+
+    const email = payload.email.trim().toLowerCase();
+    const fullName = payload.name || email.split("@")[0];
+
+    let user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        role: true,
+        profile: true,
+      },
+    });
+
+    if (user) {
+      if (user.status === "BANNED") {
+        throw new ForbiddenException(
+          "Tài khoản của bạn đã bị khóa"
+        );
+      }
+
+      if (user.status === "INACTIVE") {
+        throw new ForbiddenException(
+          "Tài khoản hiện không hoạt động"
+        );
+      }
+
+      // Nếu email đã tồn tại nhưng chưa xác thực,
+      // chỉ xác thực khi Google xác nhận email hợp lệ.
+      if (!user.isVerified) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { isVerified: true },
+          include: {
+            role: true,
+            profile: true,
+          },
+        });
+      }
+    } else {
+      let userRole = await prisma.role.findUnique({
+        where: { roleName: "USER" },
+      });
+
+      if (!userRole) {
+        userRole = await prisma.role.create({
+          data: { roleName: "USER" },
+        });
+      }
+
+      user = await prisma.user.create({
+        data: {
+          email,
+          // Tài khoản Google không đăng nhập bằng mật khẩu thường.
+          // Giá trị ngẫu nhiên được hash để phù hợp schema hiện tại.
+          password: await bcrypt.hash(
+            require("crypto").randomBytes(32).toString("hex"),
+            10
+          ),
+          roleId: userRole.id,
+          status: "ACTIVE",
+          isVerified: true,
+          profile: {
+            create: {
+              fullName,
+            },
+          },
+        },
+        include: {
+          role: true,
+          profile: true,
+        },
+      });
+    }
+
+    const token = JwtUtils.generateToken({
+      id: user.id,
+      email: user.email,
+      role: user.role.roleName,
+      status: user.status,
+    });
+
+    return UserMapper.toAuthResponse(user, token);
   }
 }
 

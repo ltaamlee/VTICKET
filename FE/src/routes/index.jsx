@@ -5,6 +5,12 @@ import ForgotPasswordPage from "../modules/auth/pages/ForgotPasswordPage";
 import VerifyOtpPage from "../modules/auth/pages/VerifyOtpPage";
 import HomePage from "../modules/home/pages/HomePage";
 
+import ProtectedRoute from "../routes/ProtectedRoute";
+import Page403 from "../modules/errors/403";
+import Page404 from "../modules/errors/404";
+
+import DashboardPage from "../modules/admin/pages/DashboardPage";
+
 function AppRoutes() {
   return (
     <BrowserRouter>
@@ -14,6 +20,14 @@ function AppRoutes() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/verify-otp" element={<VerifyOtpPage />} />
+
+        <Route path="/403" element={<Page403 />} />
+        <Route path="/404" element={<Page404 />} />
+
+
+        <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
+          <Route path="/admin/dashboard" element={<DashboardPage />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );

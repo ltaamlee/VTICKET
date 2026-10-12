@@ -40,3 +40,19 @@ export function verifyOtp(email, otp) {
     }),
   });
 }
+
+export function resendOtp(email) {
+  return apiRequest("/auth/resend-otp", {
+    method: "POST",
+    body: JSON.stringify({
+      email,
+    }),
+  });
+}
+
+export function googleLogin(credential) {
+  return apiRequest("/auth/google-login", {
+    method: "POST",
+    body: JSON.stringify({ credential }),
+  });
+}
