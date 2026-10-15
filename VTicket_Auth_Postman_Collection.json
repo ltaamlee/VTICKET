@@ -1,0 +1,171 @@
+{
+  "info": {
+    "_postman_id": "vticket-auth-api-collection",
+    "name": "VTicket - Authentication API",
+    "description": "Bộ test API chức năng Đăng ký, Xác thực OTP và Đăng nhập cho VTicket",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "  ",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Đăng ký tài khoản mới (Success)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"Nguyen Van Guest\",\n  \"email\": \"guest.test@gmail.com\",\n  \"password\": \"Password123!\",\n  \"confirmPassword\": \"Password123!\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["register"]
+        },
+        "description": "Đăng ký tài khoản mới. Sau khi gửi, xem mã OTP được in ra tại Terminal của server backend."
+      }
+    },
+    {
+      "name": "2. Xác thực mã OTP (Verify OTP)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"guest.test@gmail.com\",\n  \"otp\": \"123456\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/verify-otp",
+          "host": ["{{baseUrl}}"],
+          "path": ["verify-otp"]
+        },
+        "description": "Nhập email và mã OTP (lấy từ Terminal log của backend) để kích hoạt tài khoản."
+      }
+    },
+    {
+      "name": "3. Gửi lại mã OTP (Resend OTP)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"guest.test@gmail.com\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/resend-otp",
+          "host": ["{{baseUrl}}"],
+          "path": ["resend-otp"]
+        },
+        "description": "Yêu cầu gửi mã OTP mới nếu mã cũ bị hết hạn."
+      }
+    },
+    {
+      "name": "4. Đăng nhập sau khi kích hoạt (Login)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"guest.test@gmail.com\",\n  \"password\": \"Password123!\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["login"]
+        },
+        "description": "Đăng nhập với tài khoản vừa xác thực OTP thành công."
+      }
+    },
+    {
+      "name": "5. [Lỗi 400] Mật khẩu xác nhận không khớp",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"Nguyen Van Guest\",\n  \"email\": \"guest2@gmail.com\",\n  \"password\": \"Password123!\",\n  \"confirmPassword\": \"DifferentPassword123!\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["register"]
+        },
+        "description": "Kiểm tra lỗi khi confirmPassword không khớp với password."
+      }
+    },
+    {
+      "name": "6. [Lỗi 409] Email đã được sử dụng",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"User Already Registered\",\n  \"email\": \"user@vticket.com\",\n  \"password\": \"Password123!\",\n  \"confirmPassword\": \"Password123!\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["register"]
+        },
+        "description": "Kiểm tra lỗi 409 khi đăng ký bằng email đã tồn tại và đã kích hoạt."
+      }
+    },
+    {
+      "name": "7. [Lỗi 400] Nhập sai mã OTP",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"guest.test@gmail.com\",\n  \"otp\": \"000000\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/verify-otp",
+          "host": ["{{baseUrl}}"],
+          "path": ["verify-otp"]
+        },
+        "description": "Kiểm tra thông báo lỗi khi nhập sai mã OTP."
+      }
+    }
+  ]
+}

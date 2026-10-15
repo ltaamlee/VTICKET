@@ -36,6 +36,7 @@ class UserMapper {
       isVerified: user.isVerified,
       fullName: user.profile ? user.profile.fullName : null,
       phone: user.profile ? user.profile.phone : null,
+      dob: user.profile ? user.profile.dob : null,
       avatar: user.profile ? user.profile.avatar : null,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
