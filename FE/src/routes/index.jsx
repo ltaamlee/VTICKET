@@ -10,6 +10,8 @@ import Page403 from "../modules/errors/403";
 import Page404 from "../modules/errors/404";
 
 import DashboardPage from "../modules/admin/pages/DashboardPage";
+import AdminLayout from "../modules/admin/components/AdminLayout";
+import UserPage from "../modules/admin/pages/UserManagementPage";
 
 function AppRoutes() {
   return (
@@ -25,9 +27,14 @@ function AppRoutes() {
         <Route path="/404" element={<Page404 />} />
 
 
-        <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
-          <Route path="/admin/dashboard" element={<DashboardPage />} />
+        <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<DashboardPage />} />
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="users" element={<UserPage />} />
+          </Route>
         </Route>
+
       </Routes>
     </BrowserRouter>
   );
