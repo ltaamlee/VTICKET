@@ -1,5 +1,8 @@
 import { useState } from "react";
 import IconButton from "../../../../components/common/button/IconButton";
+import UserDetailModal from "./modals/UserDetailModal";
+import UserEditModal from "./modals/UserEditModal";
+import UserDeleteModal from "./modals/UserDeleteModal";
 
 function UserTable({ users = [], loading = false, onRefresh }) {
     const [selectedUser, setSelectedUser] = useState(null);

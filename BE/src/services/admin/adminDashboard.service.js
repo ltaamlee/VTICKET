@@ -34,6 +34,10 @@ class DashboardService {
       recentEvents,
     };
   };
+
+  getDashboardData = async () => {
+    return this.getOverview();
+  };
 }
 
 module.exports = new DashboardService();

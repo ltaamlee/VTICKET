@@ -16,6 +16,9 @@ function UserPage() {
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [refreshKey, setRefreshKey] = useState(0);
+
+    const handleRefresh = () => setRefreshKey((prev) => prev + 1);
 
     useEffect(() => {
         let cancelled = false;
@@ -61,7 +64,7 @@ function UserPage() {
         return () => {
             cancelled = true;
         };
-    }, [page, keyword, role]);
+    }, [page, keyword, role, refreshKey]);
 
     const handleKeywordChange = (value) => {
         setKeyword(value);
@@ -121,6 +124,7 @@ function UserPage() {
                 <UserTable
                     users={users}
                     loading={loading}
+                    onRefresh={handleRefresh}
                 />
 
                 {!loading && !error && (
