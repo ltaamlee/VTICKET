@@ -28,8 +28,9 @@ function GoogleLoginButton() {
     } catch (error) {
       console.error("Google login error:", error);
       alert(
+        error.message ||
         error.response?.data?.message ||
-          "Đăng nhập bằng Google thất bại."
+        "Đăng nhập bằng Google thất bại."
       );
     }
   };

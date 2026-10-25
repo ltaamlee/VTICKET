@@ -313,8 +313,8 @@ class AuthService {
             ? user.profile.fullName
             : 'Quý khách';
 
-        // Gửi OTP qua email
-        await emailService.sendOtpEmail(
+        // Gửi OTP qua email đặt lại mật khẩu riêng biệt
+        await emailService.sendForgotPasswordEmail(
             normalizedEmail,
             otp,
             fullName
@@ -323,6 +323,58 @@ class AuthService {
         return {
             email: normalizedEmail,
             message: 'Mã OTP đã được gửi đến email của bạn',
+        };
+    }
+
+    /**
+     * Handle Reset Password with OTP
+     * @param {Object} param - { email, otp, password, confirmPassword }
+     */
+    async resetPassword({ email, otp, password, confirmPassword }) {
+        if (!email || typeof email !== 'string') {
+            throw new BadRequestException('Vui lòng cung cấp địa chỉ email');
+        }
+
+        if (!otp || typeof otp !== 'string') {
+            throw new BadRequestException('Vui lòng cung cấp mã OTP');
+        }
+
+        if (!password || typeof password !== 'string' || password.length < 6) {
+            throw new BadRequestException('Mật khẩu mới phải có tối thiểu 6 ký tự');
+        }
+
+        if (password !== confirmPassword) {
+            throw new BadRequestException('Mật khẩu và xác nhận mật khẩu không khớp');
+        }
+
+        const normalizedEmail = email.trim().toLowerCase();
+
+        // 1. Kiểm tra tài khoản tồn tại
+        const user = await prisma.user.findUnique({
+            where: { email: normalizedEmail },
+        });
+
+        if (!user) {
+            throw new NotFoundException('Tài khoản không tồn tại trong hệ thống');
+        }
+
+        // 2. Xác thực OTP
+        await otpService.verifyOtp(normalizedEmail, otp);
+
+        // 3. Hash mật khẩu mới và cập nhật
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        await prisma.user.update({
+            where: { email: normalizedEmail },
+            data: {
+                password: hashedPassword,
+                isVerified: true,
+            },
+        });
+
+        return {
+            email: normalizedEmail,
+            message: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập bằng mật khẩu mới',
         };
     }
 

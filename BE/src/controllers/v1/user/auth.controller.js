@@ -59,15 +59,20 @@ class AuthController {
   /**
    * Handle reset password request
    */
-  verifyResetPassword = asyncHandler(async (req, res) => {
-    const { otp } = req.body;
+  resetPassword = asyncHandler(async (req, res) => {
+    const { email, otp, password, confirmPassword } = req.body;
 
-    const result = await this.authService.verifyResetPassword(otp);
+    const result = await this.authService.resetPassword({
+      email,
+      otp,
+      password,
+      confirmPassword,
+    });
 
     return sendResponse(
       res,
       200,
-      'Xác thực mã OTP thành công. Bạn có thể đặt lại mật khẩu ngay bây giờ',
+      'Đặt lại mật khẩu thành công. Bạn có thể đăng nhập ngay bây giờ',
       result
     );
   });
