@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { AlertTriangle, X } from "lucide-react";
+import { X, AlertTriangle} from "lucide-react";
 
-function UserDeleteModal({ user, onClose, onSuccess }) {
+import { deleteUser } from "../../../services/userService";
+
+function UserDeleteModal({ user, onClose, onSuccess, onAlert }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
@@ -12,11 +14,11 @@ function UserDeleteModal({ user, onClose, onSuccess }) {
         setError("");
 
         try {
-            // Note: Xóa người dùng
-            // Khi BE triển khai route DELETE /admin/users/:id, gọi API tại đây.
-            onSuccess?.();
+            await deleteUser(user.id)
+            onSuccess?.("Xóa tài khoản thành công!")
         } catch (err) {
             setError(err.message || "Xóa tài khoản thất bại");
+            onAlert?.("error", message);
         } finally {
             setLoading(false);
         }
@@ -25,7 +27,6 @@ function UserDeleteModal({ user, onClose, onSuccess }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
-                {/* Header */}
                 <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
                     <h3 className="text-lg font-semibold text-gray-900">
                         Xác nhận xóa tài khoản
@@ -39,7 +40,6 @@ function UserDeleteModal({ user, onClose, onSuccess }) {
                     </button>
                 </div>
 
-                {/* Body */}
                 <div className="space-y-4 px-6 py-5 text-sm">
                     {error && (
                         <div className="rounded-lg bg-red-50 p-3 text-xs text-red-600">
@@ -62,7 +62,6 @@ function UserDeleteModal({ user, onClose, onSuccess }) {
                     </div>
                 </div>
 
-                {/* Footer */}
                 <div className="flex justify-end gap-3 border-t border-gray-100 px-6 py-4">
                     <button
                         type="button"

@@ -14,6 +14,9 @@ router.use(authorize("ADMIN"));
 router.get("/dashboard", adminDashboardController.getDashboardData);
 router.get("/users", adminUserController.getUsers)
 router.get("/user-stats", adminUserController.getUserStats);
+router.put("/users/:id", adminUserController.updateUser);
+router.delete("/users/:id", adminUserController.deleteUser);
+
 
 
 module.exports = router;

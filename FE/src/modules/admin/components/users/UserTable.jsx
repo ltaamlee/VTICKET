@@ -4,7 +4,7 @@ import UserDetailModal from "./modals/UserDetailModal";
 import UserEditModal from "./modals/UserEditModal";
 import UserDeleteModal from "./modals/UserDeleteModal";
 
-function UserTable({ users = [], loading = false, onRefresh }) {
+function UserTable({ users = [], loading = false, onRefresh, onAlert }) {
     const [selectedUser, setSelectedUser] = useState(null);
     const [modalType, setModalType] = useState(null);
 
@@ -28,9 +28,10 @@ function UserTable({ users = [], loading = false, onRefresh }) {
         setModalType(null);
     };
 
-    const handleSuccess = () => {
+    const handleSuccess = (message) => {
         handleCloseModal();
         onRefresh?.();
+        onAlert?.("success", message)
     };
 
     const getRoleName = (roleName) => {
@@ -200,6 +201,7 @@ function UserTable({ users = [], loading = false, onRefresh }) {
                 <UserDetailModal
                     user={selectedUser}
                     onClose={handleCloseModal}
+                    onSuccess={handleSuccess}
                 />
             )}
 
@@ -216,6 +218,7 @@ function UserTable({ users = [], loading = false, onRefresh }) {
                     user={selectedUser}
                     onClose={handleCloseModal}
                     onSuccess={handleSuccess}
+                    onAlert={onAlert}
                 />
             )}
         </>

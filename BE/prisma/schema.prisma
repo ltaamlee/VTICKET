@@ -446,3 +446,13 @@ model Reaction {
   @@unique([postId, userId])
   @@map("reactions")
 }
+
+model SystemSetting {
+  id        String      @id @default(auto()) @map("_id") @db.ObjectId
+  key       String      @unique
+  value     Json
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@map("SystemSettings")
+}

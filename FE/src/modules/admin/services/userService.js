@@ -24,3 +24,16 @@ export function getUserById(id){
         method: "GET",
     });
 }
+
+export function updateUser(id, data){
+    return apiRequest(`/admin/users/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+    });
+}
+
+export function deleteUser(id){
+    return apiRequest(`/admin/users/${id}`, {
+        method: "DELETE",
+    })
+}
