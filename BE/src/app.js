@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
+require('dotenv').config({ override: true });
+
 
 const setupRoutes = require('./routes');
 const errorHandler = require('./middlewares/error.middleware');

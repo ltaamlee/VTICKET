@@ -1,1 +1,8 @@
 @import "tailwindcss";
+
+/* Ẩn con mắt xem mật khẩu mặc định của trình duyệt*/
+
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
