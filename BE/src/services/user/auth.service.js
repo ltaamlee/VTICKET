@@ -339,8 +339,20 @@ class AuthService {
             throw new BadRequestException('Vui lòng cung cấp mã OTP');
         }
 
-        if (!password || typeof password !== 'string' || password.length < 6) {
-            throw new BadRequestException('Mật khẩu mới phải có tối thiểu 6 ký tự');
+        if (!password || typeof password !== 'string' || password.length < 8) {
+            throw new BadRequestException('Mật khẩu mới phải có tối thiểu 8 ký tự');
+        }
+
+        if (!/[A-Z]/.test(password)) {
+            throw new BadRequestException('Mật khẩu mới phải chứa ít nhất 1 chữ cái in hoa');
+        }
+
+        if (!/[0-9]/.test(password)) {
+            throw new BadRequestException('Mật khẩu mới phải chứa ít nhất 1 chữ số');
+        }
+
+        if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+            throw new BadRequestException('Mật khẩu mới phải chứa ít nhất 1 ký tự đặc biệt (!@#$%^&*...)');
         }
 
         if (password !== confirmPassword) {

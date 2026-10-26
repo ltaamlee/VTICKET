@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../../controllers/v1/user/user.controller');
 const { authenticate } = require('../../middlewares/auth.middleware');
+const upload = require('../../middlewares/upload.middleware');
 
 // All profile endpoints require authentication
 router.use(authenticate);
@@ -12,5 +13,11 @@ router.get('/profile', userController.getProfile);
 // Update user profile information (fullName, phone, dob, avatar)
 router.put('/profile', userController.updateProfile);
 router.patch('/profile', userController.updateProfile);
+
+// Change password for logged-in user
+router.put('/change-password', userController.changePassword);
+
+// Upload user avatar directly to Cloudinary
+router.post('/avatar', upload.single('avatar'), userController.uploadAvatar);
 
 module.exports = router;
