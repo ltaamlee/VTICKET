@@ -14,6 +14,8 @@ import AdminLayout from "../modules/admin/components/AdminLayout";
 import UserPage from "../modules/admin/pages/UserManagementPage";
 import CategoryPage from "../modules/admin/pages/CategoryManagementPage";
 
+import ProfilePage from "../modules/profile/pages/ProfilePage";
+
 function AppRoutes() {
   return (
     <BrowserRouter>
@@ -27,6 +29,10 @@ function AppRoutes() {
         <Route path="/403" element={<Page403 />} />
         <Route path="/404" element={<Page404 />} />
 
+        {/* Profile Route for all logged in users */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/profile" element={<ProfilePage />} />
+        </Route>
 
         <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
           <Route path="/admin" element={<AdminLayout />}>
