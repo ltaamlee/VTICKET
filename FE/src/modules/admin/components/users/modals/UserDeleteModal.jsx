@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X, AlertTriangle} from "lucide-react";
 
 import { deleteUser } from "../../../services/userService";
+import Button from "../../../../../components/common/button/Button";
 
 function UserDeleteModal({ user, onClose, onSuccess, onAlert }) {
     const [loading, setLoading] = useState(false);
@@ -63,22 +64,20 @@ function UserDeleteModal({ user, onClose, onSuccess, onAlert }) {
                 </div>
 
                 <div className="flex justify-end gap-3 border-t border-gray-100 px-6 py-4">
-                    <button
-                        type="button"
+                    <Button
+                        variant="secondary"
                         onClick={onClose}
                         disabled={loading}
-                        className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                     >
                         Hủy
-                    </button>
-                    <button
-                        type="button"
+                    </Button>
+                    <Button
+                        variant="danger"
                         onClick={handleDelete}
                         disabled={loading}
-                        className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
                     >
                         {loading ? "Đang xóa..." : "Xác nhận xóa"}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>

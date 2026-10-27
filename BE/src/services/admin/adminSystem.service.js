@@ -1,4 +1,3 @@
-
 const prisma = require("../../config/prisma");
 
 const DEFAULT_SETTINGS = {
