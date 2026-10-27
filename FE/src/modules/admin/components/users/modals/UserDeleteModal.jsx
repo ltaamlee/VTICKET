@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { AlertTriangle, X } from "lucide-react";
+import { X, AlertTriangle} from "lucide-react";
 
-function UserDeleteModal({ user, onClose, onSuccess }) {
+import { deleteUser } from "../../../services/userService";
+import Button from "../../../../../components/common/button/Button";
+
+function UserDeleteModal({ user, onClose, onSuccess, onAlert }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
@@ -12,11 +15,11 @@ function UserDeleteModal({ user, onClose, onSuccess }) {
         setError("");
 
         try {
-            // Note: Xóa người dùng
-            // Khi BE triển khai route DELETE /admin/users/:id, gọi API tại đây.
-            onSuccess?.();
+            await deleteUser(user.id)
+            onSuccess?.("Xóa tài khoản thành công!")
         } catch (err) {
             setError(err.message || "Xóa tài khoản thất bại");
+            onAlert?.("error", message);
         } finally {
             setLoading(false);
         }
@@ -25,7 +28,6 @@ function UserDeleteModal({ user, onClose, onSuccess }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
-                {/* Header */}
                 <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
                     <h3 className="text-lg font-semibold text-gray-900">
                         Xác nhận xóa tài khoản
@@ -39,7 +41,6 @@ function UserDeleteModal({ user, onClose, onSuccess }) {
                     </button>
                 </div>
 
-                {/* Body */}
                 <div className="space-y-4 px-6 py-5 text-sm">
                     {error && (
                         <div className="rounded-lg bg-red-50 p-3 text-xs text-red-600">
@@ -62,24 +63,21 @@ function UserDeleteModal({ user, onClose, onSuccess }) {
                     </div>
                 </div>
 
-                {/* Footer */}
                 <div className="flex justify-end gap-3 border-t border-gray-100 px-6 py-4">
-                    <button
-                        type="button"
+                    <Button
+                        variant="secondary"
                         onClick={onClose}
                         disabled={loading}
-                        className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                     >
                         Hủy
-                    </button>
-                    <button
-                        type="button"
+                    </Button>
+                    <Button
+                        variant="danger"
                         onClick={handleDelete}
                         disabled={loading}
-                        className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
                     >
                         {loading ? "Đang xóa..." : "Xác nhận xóa"}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>
