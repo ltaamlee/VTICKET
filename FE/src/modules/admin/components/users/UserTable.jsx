@@ -4,14 +4,7 @@ import UserDetailModal from "./modals/UserDetailModal";
 import UserEditModal from "./modals/UserEditModal";
 import UserDeleteModal from "./modals/UserDeleteModal";
 
-function UserTable({
-    users = [],
-    loading = false,
-    currentPage = 1,
-    pageSize = 10,
-    onRefresh,
-    onAlert,
-}) {
+function UserTable({ users = [], loading = false, onRefresh }) {
     const [selectedUser, setSelectedUser] = useState(null);
     const [modalType, setModalType] = useState(null);
 
@@ -35,10 +28,9 @@ function UserTable({
         setModalType(null);
     };
 
-    const handleSuccess = (message) => {
+    const handleSuccess = () => {
         handleCloseModal();
         onRefresh?.();
-        onAlert?.("success", message);
     };
 
     const getRoleName = (roleName) => {
@@ -99,12 +91,11 @@ function UserTable({
                 <table className="w-full text-left text-sm text-gray-600">
                     <thead className="bg-gray-50 text-xs uppercase text-gray-500">
                         <tr>
-                            <th className="px-5 py-4">STT</th>
                             <th className="px-5 py-4">Tài khoản</th>
                             <th className="px-5 py-4">Email</th>
                             <th className="px-5 py-4">Vai trò</th>
                             <th className="px-5 py-4">Trạng thái</th>
-                            <th className="w-[220px] px-5 py-4 text-center">
+                            <th className="px-5 py-4 text-right">
                                 Thao tác
                             </th>
                         </tr>
@@ -114,7 +105,7 @@ function UserTable({
                         {loading ? (
                             <tr>
                                 <td
-                                    colSpan={6}
+                                    colSpan={5}
                                     className="px-5 py-12 text-center"
                                 >
                                     Đang tải danh sách tài khoản...
@@ -123,7 +114,7 @@ function UserTable({
                         ) : users.length === 0 ? (
                             <tr>
                                 <td
-                                    colSpan={6}
+                                    colSpan={5}
                                     className="px-5 py-12 text-center"
                                 >
                                     <p className="mb-2 font-medium text-gray-600">
@@ -135,7 +126,7 @@ function UserTable({
                                 </td>
                             </tr>
                         ) : (
-                            users.map((user, index) => {
+                            users.map((user) => {
                                 const roleName = user.role?.roleName;
 
                                 return (
@@ -143,10 +134,6 @@ function UserTable({
                                         key={user.id}
                                         className="hover:bg-gray-50"
                                     >
-                                        <td className="px-5 py-4">
-                                            {(currentPage - 1) * pageSize + index + 1}
-                                        </td>
-
                                         <td className="px-5 py-4">
                                             <div className="font-medium text-gray-900">
                                                 {user.username || "Chưa cập nhật"}
@@ -178,13 +165,14 @@ function UserTable({
 
                                         <td className="px-5 py-4 text-right">
                                             <div className="flex items-center justify-end gap-3">
+                                                
                                                 <IconButton
                                                     icon="view"
                                                     variant="view"
                                                     title="Xem chi tiết"
                                                     onClick={() => handleView(user)}
                                                 />
-
+                                                
                                                 <IconButton
                                                     icon="edit"
                                                     variant="edit"
@@ -212,7 +200,6 @@ function UserTable({
                 <UserDetailModal
                     user={selectedUser}
                     onClose={handleCloseModal}
-                    onSuccess={handleSuccess}
                 />
             )}
 
@@ -229,7 +216,6 @@ function UserTable({
                     user={selectedUser}
                     onClose={handleCloseModal}
                     onSuccess={handleSuccess}
-                    onAlert={onAlert}
                 />
             )}
         </>

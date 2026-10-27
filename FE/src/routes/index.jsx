@@ -12,7 +12,6 @@ import Page404 from "../modules/errors/404";
 import DashboardPage from "../modules/admin/pages/DashboardPage";
 import AdminLayout from "../modules/admin/components/AdminLayout";
 import UserPage from "../modules/admin/pages/UserManagementPage";
-import CategoryPage from "../modules/admin/pages/CategoryManagementPage";
 
 function AppRoutes() {
   return (
@@ -33,7 +32,6 @@ function AppRoutes() {
             <Route index element={<DashboardPage />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="users" element={<UserPage />} />
-            <Route path="categories" element={<CategoryPage/>} />
           </Route>
         </Route>
 

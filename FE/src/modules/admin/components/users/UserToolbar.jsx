@@ -1,12 +1,12 @@
-import SearchInput from "../../../../components/common/toolbar/SearchInput";
-
 function UserToolbar({ keyword, setKeyword, role, setRole, onReset }) {
   return (
     <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
-        <SearchInput
+        <input
+            type="text"
             value={keyword}
-            onChange={setKeyword}
+            onChange={(e) => setKeyword(e.target.value)}
             placeholder="Tìm theo email hoặc tên tài khoản..."
+            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 sm:max-w-md"
         />
 
         <select

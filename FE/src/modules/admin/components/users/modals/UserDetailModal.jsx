@@ -1,5 +1,4 @@
 import { X, User, Mail, Shield, CheckCircle, Clock } from "lucide-react";
-import Button from "../../../../../components/common/button/Button";
 
 function UserDetailModal({ user, onClose }) {
     if (!user) return null;
@@ -135,13 +134,13 @@ function UserDetailModal({ user, onClose }) {
 
                 {/* Footer */}
                 <div className="flex justify-end border-t border-gray-100 px-6 py-4">
-                    <Button
+                    <button
                         type="button"
-                        variant="secondary"
                         onClick={onClose}
+                        className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                     >
                         Đóng
-                    </Button>
+                    </button>
                 </div>
             </div>
         </div>
