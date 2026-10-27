@@ -10,5 +10,6 @@ router.use('/auth', authRoutes);
 router.use('/admin', adminRoutes);
 router.use('/users', userRoutes);
 router.use('/upload', uploadRoutes);
+// router.use('/organizer', organizerRoutes);
 
 module.exports = router;

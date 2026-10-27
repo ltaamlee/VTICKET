@@ -1379,8 +1379,6 @@ VTicket/
 └── README.md
 ```
 
-Nếu project của bạn đã có cấu trúc khác thì **không cần ép project phải đổi theo cấu trúc này**. Đây chỉ là cấu trúc tham khảo.
-
 ---
 
 # 16. Quy tắc phát triển
@@ -1438,6 +1436,367 @@ Chịu trách nhiệm:
 
 * Định nghĩa Schema.
 * Tương tác với MongoDB.
+
+---
+
+# 17. Thứ tự ưu tiên triển khai
+
+Nên triển khai theo thứ tự phụ thuộc nghiệp vụ:
+
+### Giai đoạn 1 — Khởi tạo
+
+```text
+MERN
+ ↓
+Frontend
+ ↓
+Backend
+ ↓
+MongoDB
+```
+
+### Giai đoạn 2 — Authentication
+
+```text
+User
+Role
+UserProfile
+Register
+Login
+Logout
+Forgot Password
+Authorization
+```
+
+### Giai đoạn 3 — Event
+
+```text
+Category
+Event
+EventSession
+```
+
+### Giai đoạn 4 — Seat
+
+```text
+SeatMap
+Zone
+Seat
+```
+
+### Giai đoạn 5 — Ticket
+
+```text
+TicketType
+Ticket
+```
+
+### Giai đoạn 6 — Order
+
+```text
+Order
+OrderItem
+Reservation
+```
+
+### Giai đoạn 7 — Payment
+
+```text
+Payment
+Payment Verification
+Order Status
+```
+
+### Giai đoạn 8 — E-ticket
+
+```text
+E-ticket
+QR
+Check-in
+```
+
+### Giai đoạn 9 — Resale
+
+```text
+ResaleListing
+ResaleTransaction
+Ownership Transfer
+QR Regeneration
+```
+
+### Giai đoạn 10 — Forum
+
+```text
+Post
+Comment
+Reaction
+Report
+```
+
+### Giai đoạn 11 — Notification
+
+```text
+Notification
+Read / Unread
+```
+
+### Giai đoạn 12 — Organizer Dashboard
+
+```text
+Ticket Statistics
+Revenue
+Check-in
+Occupancy
+```
+
+### Giai đoạn 13 — Admin
+
+```text
+User Management
+Organizer Management
+Event Management
+Forum Moderation
+```
+
+---
+
+# 18. Prompt cho AI Coding Assistant
+
+Có thể dùng phần dưới đây làm **prompt nền** khi yêu cầu AI hỗ trợ code cho VTicket.
+
+---
+
+## Bối cảnh dự án
+
+Tôi đang phát triển **VTicket**, một hệ thống quản lý sự kiện và phân phối vé điện tử tích hợp diễn đàn trực tuyến.
+
+Hệ thống có 4 tác nhân:
+
+```text
+Guest
+User
+Organizer
+Admin
+```
+
+Các module chính:
+
+```text
+Authentication
+Event Management
+Event Session
+Seat Map
+Zone
+Seat
+Ticket Type
+Ticket
+Order
+Order Item
+Payment
+E-ticket
+QR Check-in
+Resale Marketplace
+Forum
+Notification
+Admin Management
+Organizer Statistics
+```
+
+---
+
+## Công nghệ
+
+### Front-end
+
+```text
+ReactJS
+React Router
+Axios
+Tailwind CSS
+```
+
+### Back-end
+
+```text
+NodeJS
+ExpressJS
+Mongoose
+```
+
+### Database
+
+```text
+MongoDB
+```
+
+### Quan trọng
+
+**Chưa xác định sử dụng Redux.**
+
+Không tự ý cài đặt hoặc sử dụng:
+
+```text
+Redux
+Redux Toolkit
+Redux-Saga
+```
+
+trừ khi:
+
+* Tôi yêu cầu trực tiếp; hoặc
+* Kiểm tra project hiện tại và thấy chúng đã được sử dụng.
+
+---
+
+## Kiến trúc
+
+```text
+ReactJS
+   ↓
+Axios
+   ↓
+REST API
+   ↓
+ExpressJS
+   ↓
+Middleware
+   ↓
+Controller
+   ↓
+Service
+   ↓
+Mongoose
+   ↓
+MongoDB
+```
+
+Không đưa Business Logic quan trọng vào Front-end.
+
+---
+
+## Các quy tắc nghiệp vụ quan trọng
+
+### Ticket
+
+```text
+AVAILABLE
+    ↓
+RESERVED
+    ↓
+PAID
+    ↓
+ISSUED
+    ↓
+CHECKED_IN
+```
+
+Các trạng thái bổ sung có thể gồm:
+
+```text
+EXPIRED
+CANCELLED
+REFUNDED
+RESALE
+```
+
+### Order
+
+Order thuộc về một User và có thể chứa nhiều OrderItem.
+
+Tổng tiền cuối cùng phải được tính/kiểm tra ở Backend.
+
+### Payment
+
+Chỉ khi thanh toán được xác thực thành công mới được phát hành E-ticket.
+
+Không cho Front-end tự quyết định:
+
+```text
+paymentStatus = PAID
+```
+
+### Seat
+
+Một Seat không được bán cho nhiều User cùng lúc.
+
+Backend phải kiểm tra tình trạng Seat trước khi xác nhận.
+
+### QR
+
+QR phải được kiểm tra với dữ liệu Ticket trong Database.
+
+Không chỉ dựa vào dữ liệu được mã hóa trong QR.
+
+### Resale
+
+Chỉ chủ sở hữu hiện tại mới được đăng bán Ticket.
+
+Ticket đã check-in hoặc hết hạn không được Resale.
+
+Khi Resale thành công:
+
+```text
+Chủ cũ
+  ↓
+Chuyển quyền sở hữu
+  ↓
+Chủ mới
+  ↓
+Vô hiệu QR cũ
+  ↓
+Tạo QR mới
+```
+
+---
+
+## Quy trình khi viết code
+
+Trước khi triển khai một chức năng:
+
+1. Kiểm tra cấu trúc project hiện tại.
+2. Kiểm tra Model liên quan.
+3. Kiểm tra Route hiện tại.
+4. Kiểm tra Controller.
+5. Kiểm tra Service.
+6. Kiểm tra Authentication/Authorization.
+7. Xác định Business Rules.
+8. Chỉ thay đổi những file cần thiết.
+9. Kiểm tra cả trường hợp thành công và thất bại.
+
+Khi trả lời một yêu cầu code mới, hãy trình bày:
+
+```text
+1. Mục đích chức năng
+2. Quy tắc nghiệp vụ
+3. Các file cần thay đổi
+4. Thay đổi Database
+5. Thay đổi API
+6. Thay đổi Front-end
+7. Yêu cầu Authorization
+8. Các trường hợp cần kiểm thử
+```
+
+---
+
+## Không được tự ý
+
+* Thêm Redux.
+* Thêm framework không cần thiết.
+* Viết lại toàn bộ project.
+* Thay đổi kiến trúc hiện tại nếu không cần.
+* Lặp lại Business Logic.
+* Tin tưởng giá tiền từ Front-end.
+* Tin tưởng Role từ Front-end.
+* Tin tưởng Payment Status từ Front-end.
+* Cho User sửa dữ liệu của User khác.
+* Cho Organizer sửa Event của Organizer khác.
+* Cho vé đã check-in được Resale.
+* Cho một vé check-in nhiều lần.
+* Phát hành E-ticket trước khi thanh toán được xác thực.
+
+Nếu yêu cầu chưa rõ, trước tiên hãy kiểm tra code và tài liệu hiện có. **Không tự suy đoán và thêm một nghiệp vụ mới nếu chưa được xác định.**
+
+---
 
 ## Luồng tổng thể của VTicket
 

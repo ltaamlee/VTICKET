@@ -6,6 +6,9 @@ import UserToolbar from "../components/users/UserToolbar";
 import UserTable from "../components/users/UserTable";
 import Pagination from "../../../components/common/Pagination";
 
+import { Alert } from "../../../components/common/Arlet";
+import { CheckCircle, XCircle } from "lucide-react";
+
 function UserPage() {
     const [keyword, setKeyword] = useState("");
     const [role, setRole] = useState("");
@@ -18,7 +21,44 @@ function UserPage() {
     const [error, setError] = useState("");
     const [refreshKey, setRefreshKey] = useState(0);
 
+    const [alert, setAlert] = useState(null);
+
     const handleRefresh = () => setRefreshKey((prev) => prev + 1);
+
+    const handleKeywordChange = (value) => {
+        setKeyword(value);
+        setPage(1);
+    };
+
+    const handleRoleChange = (value) => {
+        setRole(value);
+        setPage(1);
+    };
+
+    const handleReset = () => {
+        setKeyword("");
+        setRole("");
+        setPage(1);
+    };
+
+    const handlePageChange = (newPage) => {
+        if (
+            newPage >= 1 &&
+            newPage <= totalPages &&
+            newPage !== page
+        ) {
+            setPage(newPage);
+        }
+    };
+
+    const handleAlert = (type, message) => {
+        setAlert({
+            variant: type === "success" ? "success" : "error",
+            title: type === "success" ? "Thành công" : "Thất bại",
+            message,
+            icon: type === "success" ? CheckCircle : XCircle,
+        });
+    };
 
     useEffect(() => {
         let cancelled = false;
@@ -66,34 +106,24 @@ function UserPage() {
         };
     }, [page, keyword, role, refreshKey]);
 
-    const handleKeywordChange = (value) => {
-        setKeyword(value);
-        setPage(1);
-    };
-
-    const handleRoleChange = (value) => {
-        setRole(value);
-        setPage(1);
-    };
-
-    const handleReset = () => {
-        setKeyword("");
-        setRole("");
-        setPage(1);
-    };
-
-    const handlePageChange = (newPage) => {
-        if (
-            newPage >= 1 &&
-            newPage <= totalPages &&
-            newPage !== page
-        ) {
-            setPage(newPage);
-        }
-    };
-
     return (
         <div className="space-y-6">
+
+            {alert && (
+                <div className="fixed right-5 top-5 z-9999 w-full max-w-sm">
+                    <Alert
+                        variant={alert.variant}
+                        title={alert.title}
+                        icon={alert.icon}
+                        duration={alert.variant === "success" ? 3000 : 5000}
+                        onClose={() => setAlert(null)}
+                        className="shadow-lg"
+                    >
+                        {alert.message}
+                    </Alert>
+                </div>
+            )}
+
             <div>
                 <h1 className="text-2xl font-bold text-gray-900">
                     Quản lý người dùng
@@ -121,10 +151,12 @@ function UserPage() {
                     </p>
                 )}
 
+
                 <UserTable
                     users={users}
                     loading={loading}
                     onRefresh={handleRefresh}
+                    onAlert={handleAlert}
                 />
 
                 {!loading && !error && (
@@ -132,6 +164,7 @@ function UserPage() {
                         page={page}
                         totalPages={totalPages}
                         onPageChange={handlePageChange}
+                        onAlert={handleAlert}
                     />
                 )}
             </div>

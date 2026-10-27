@@ -43,6 +43,31 @@ const menuItems = [
             </svg>
         ),
     },
+
+    {
+        label: "Quản lý danh mục",
+        path: "/admin/categories",
+        icon: (
+            <svg
+                className="h-5 w-5"
+                aria-hidden="true"
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                fill="none"
+                viewBox="0 0 24 24"
+            >
+                <path
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M20.59 13.41 11 3.83H4v7l9.59 9.58a2 2 0 0 0 2.82 0l4.18-4.18a2 2 0 0 0 0-2.82ZM7.5 7.5h.01"
+                />
+            </svg>
+        ),
+    },
+
     {
         label: "Quản lý sự kiện",
         path: "/admin/events",

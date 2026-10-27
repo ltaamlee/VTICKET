@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
+
+import { updateUser } from "../../../services/userService";
+import Button from "../../../../../components/common/button/Button";
 
 function UserEditModal({ user, onClose, onSuccess }) {
     const [username, setUsername] = useState(user?.username || "");
@@ -7,6 +10,15 @@ function UserEditModal({ user, onClose, onSuccess }) {
     const [status, setStatus] = useState(user?.status || "ACTIVE");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+
+        useEffect(() => {
+        if (!user) return;
+
+        setUsername(user.username || "");
+        setRole(user.role?.roleName || "USER");
+        setStatus(user.status || "ACTIVE");
+        setError("");
+    }, [user]);
 
     if (!user) return null;
 
@@ -16,14 +28,14 @@ function UserEditModal({ user, onClose, onSuccess }) {
         setError("");
 
         try {
-            // Note: Cập nhật thông tin người dùng
-            // Khi BE triển khai route PATCH /admin/users/:id, gọi API tại đây.
-            onSuccess?.({
-                ...user,
-                username,
-                role: { ...user.role, roleName: role },
+            await updateUser(user.id, {
+                username: username.trim(),
+                email: user.email,
+                role,
                 status,
-            });
+            })
+            onSuccess?.("Cập nhật thông tin người dùng thành công!");
+            onClose();
         } catch (err) {
             setError(err.message || "Cập nhật người dùng thất bại");
         } finally {
@@ -114,20 +126,19 @@ function UserEditModal({ user, onClose, onSuccess }) {
 
                     {/* Footer */}
                     <div className="flex justify-end gap-3 border-t border-gray-100 px-6 py-4">
-                        <button
-                            type="button"
+                        <Button
+                            variant="secondary"
                             onClick={onClose}
-                            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                         >
                             Hủy
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                             type="submit"
+                            variant="primary"
                             disabled={loading}
-                            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                         >
                             {loading ? "Đang lưu..." : "Lưu thay đổi"}
-                        </button>
+                        </Button>
                     </div>
                 </form>
             </div>
