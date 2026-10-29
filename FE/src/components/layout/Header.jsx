@@ -8,6 +8,11 @@ import {
   LogOut,
   ChevronDown,
   Shield,
+  Ticket,
+  Gem,
+  Plus,
+  Building2,
+  Sparkles,
 } from "lucide-react";
 
 function Header() {
@@ -97,17 +102,16 @@ function Header() {
                 </div>
 
                 <ChevronDown
-                  className={`h-4 w-4 text-gray-600 transition-transform duration-200 ${
-                    showMenu ? "rotate-180" : ""
-                  }`}
+                  className={`h-4 w-4 text-gray-600 transition-transform duration-200 ${showMenu ? "rotate-180" : ""
+                    }`}
                 />
               </button>
 
               {/* Menu xổ xuống */}
               {showMenu && (
-                <div className="absolute right-0 z-50 mt-2 w-64 origin-top-right rounded-2xl border border-gray-100 bg-white p-2 shadow-xl ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-150">
+                <div className="absolute right-0 z-50 mt-2 w-72 origin-top-right rounded-2xl border border-gray-100 bg-white p-3 shadow-2xl ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-150">
                   {/* Header thẻ user trong dropdown */}
-                  <div className="flex items-center gap-3 rounded-xl bg-gray-50/80 p-3">
+                  <div className="flex items-center gap-3 rounded-xl bg-gray-50/90 p-2.5 mb-2.5">
                     {user?.avatar ? (
                       <img
                         src={user.avatar}
@@ -115,12 +119,12 @@ function Header() {
                         className="h-10 w-10 rounded-full object-cover ring-2 ring-blue-500/20"
                       />
                     ) : (
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 font-bold text-white">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 font-bold text-white shadow-sm">
                         {(user?.fullName || user?.email || "U").charAt(0).toUpperCase()}
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-gray-900">
+                      <p className="truncate text-sm font-bold text-gray-900">
                         {user?.fullName || "Người dùng"}
                       </p>
                       <p className="truncate text-xs text-gray-500">
@@ -133,48 +137,111 @@ function Header() {
                     </div>
                   </div>
 
-                  <div className="my-2 border-t border-gray-100" />
 
-                  {/* Các lựa chọn menu */}
-                  <div className="space-y-1">
-                    <Link
-                      to="/profile"
-                      onClick={() => setShowMenu(false)}
-                      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-blue-50 hover:text-blue-600"
-                    >
-                      <User className="h-4 w-4 text-blue-500" />
-                      <span>Trang cá nhân</span>
-                    </Link>
+                  {/* CÁC LỰA CHỌN MENU */}
+                  <div className="space-y-1 text-sm font-medium text-gray-700">
+                    {user?.role === "ADMIN" ? (
+                      <>
+                        {/* Trang quản trị */}
+                        <Link
+                          to="/admin/dashboard"
+                          onClick={() => setShowMenu(false)}
+                          className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-purple-50 hover:text-purple-600"
+                        >
+                          <LayoutDashboard className="h-4 w-4 text-purple-500" />
+                          <span>Trang quản trị</span>
+                        </Link>
 
-                    {user?.role === "ADMIN" && (
-                      <Link
-                        to="/admin/dashboard"
-                        onClick={() => setShowMenu(false)}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-purple-50 hover:text-purple-600"
-                      >
-                        <LayoutDashboard className="h-4 w-4 text-purple-500" />
-                        <span>Trang quản trị</span>
-                      </Link>
-                    )}
+                        {/* Trang cá nhân */}
+                        <Link
+                          to="/profile"
+                          onClick={() => setShowMenu(false)}
+                          className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-gray-100 hover:text-gray-900"
+                        >
+                          <User className="h-4 w-4 text-gray-500" />
+                          <span>Trang cá nhân</span>
+                        </Link>
+                      </>
+                    ) : (
+                      <>
+                        {/* Nút Tạo sự kiện (Dành riêng cho Ban Tổ Chức - ORGANIZER) */}
+                        {user?.role === "ORGANIZER" && (
+                          <div className="mb-2">
+                            <Link
+                              to="/organizer/dashboard"
+                              onClick={() => setShowMenu(false)}
+                              className="flex w-full items-center justify-center gap-2 rounded-full bg-black py-2.5 px-4 text-sm font-bold text-white shadow-md transition hover:bg-gray-800"
+                            >
+                              <Plus className="h-4 w-4" />
+                              <span>Tạo sự kiện</span>
+                            </Link>
+                          </div>
+                        )}
 
-                    {user?.role === "ORGANIZER" && (
-                      <Link
-                        to="/organizer/dashboard"
-                        onClick={() => setShowMenu(false)}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-amber-50 hover:text-amber-600"
-                      >
-                        <Calendar className="h-4 w-4 text-amber-500" />
-                        <span>Quản lý sự kiện</span>
-                      </Link>
+                        {/* Vé đã mua */}
+                        <Link
+                          to="/my-tickets"
+                          onClick={() => setShowMenu(false)}
+                          className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-gray-100 hover:text-gray-900"
+                        >
+                          <Ticket className="h-4 w-4 text-gray-500" />
+                          <span>Vé đã mua</span>
+                        </Link>
+
+                        {/* Thẻ thành viên */}
+                        <Link
+                          to="/membership"
+                          onClick={() => setShowMenu(false)}
+                          className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-gray-100 hover:text-gray-900"
+                        >
+                          <Gem className="h-4 w-4 text-gray-500" />
+                          <span>Thẻ thành viên</span>
+                        </Link>
+
+                        {/* Sự kiện của tôi */}
+                        <Link
+                          to="/my-events"
+                          onClick={() => setShowMenu(false)}
+                          className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-gray-100 hover:text-gray-900"
+                        >
+                          <Calendar className="h-4 w-4 text-gray-500" />
+                          <span>Sự kiện của tôi</span>
+                        </Link>
+
+                        {/* Trang cá nhân */}
+                        <Link
+                          to="/profile"
+                          onClick={() => setShowMenu(false)}
+                          className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-gray-100 hover:text-gray-900"
+                        >
+                          <User className="h-4 w-4 text-gray-500" />
+                          <span>Trang cá nhân</span>
+                        </Link>
+
+                        {/* Đăng ký làm Ban Tổ Chức (Chỉ hiện khi role là USER) */}
+                        {user?.role === "USER" && (
+                          <Link
+                            to="/organizer/register"
+                            onClick={() => setShowMenu(false)}
+                            className="flex items-center justify-between rounded-xl px-3 py-2 text-blue-600 font-semibold transition hover:bg-blue-50"
+                          >
+                            <div className="flex items-center gap-3">
+                              <Building2 className="h-4 w-4 text-blue-600" />
+                              <span>Đăng ký làm BTC</span>
+                            </div>
+                          </Link>
+                        )}
+                      </>
                     )}
                   </div>
 
                   <div className="my-2 border-t border-gray-100" />
 
+                  {/* Đăng xuất */}
                   <button
                     type="button"
                     onClick={handleLogout}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
                   >
                     <LogOut className="h-4 w-4 text-red-500" />
                     <span>Đăng xuất</span>

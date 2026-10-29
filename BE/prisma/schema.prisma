@@ -111,6 +111,18 @@ enum ResaleStatus {
   EXPIRED
 }
 
+enum OrganizerRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum OrganizerType {
+  INDIVIDUAL
+  BUSINESS
+}
+
 // ==========================================
 // MODELS
 // ==========================================
@@ -138,15 +150,17 @@ model User {
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
 
-  profile       UserProfile?
-  events        Event[]
-  orders        Order[]
-  tickets       Ticket[]
-  posts         Post[]
-  comments      Comment[]
-  reactions     Reaction[]
-  soldResales   ReSale[]     @relation("SellerResales")
-  boughtResales ReSale[]     @relation("BuyerResales")
+  profile           UserProfile?
+  organizerProfile  OrganizerProfile?
+  organizerRequests OrganizerRequest[]
+  events            Event[]
+  orders            Order[]
+  tickets           Ticket[]
+  posts             Post[]
+  comments          Comment[]
+  reactions         Reaction[]
+  soldResales       ReSale[]     @relation("SellerResales")
+  boughtResales     ReSale[]     @relation("BuyerResales")
 
   @@map("users")
 }
@@ -457,3 +471,56 @@ model SystemSetting {
 
   @@map("SystemSettings")
 }
+
+model OrganizerProfile {
+  id               String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String        @unique @db.ObjectId
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizerType    OrganizerType @default(INDIVIDUAL)
+  organizationName String
+  contactEmail     String
+  contactPhone     String
+  address          String?
+  website          String?
+  taxCode          String?
+  idCardNumber     String?
+  businessLicense  String?
+  description      String?
+  logo             String?
+  banner           String?
+  isVerified       Boolean       @default(false)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@map("organizerProfiles")
+}
+
+model OrganizerRequest {
+  id               String                 @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String                 @db.ObjectId
+  user             User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizerType    OrganizerType          @default(INDIVIDUAL)
+  organizationName String
+  contactEmail     String
+  contactPhone     String
+  address          String?
+  website          String?
+  taxCode          String?
+  idCardNumber     String?
+  idFrontImage     String?
+  idBackImage      String?
+  businessLicense  String?
+  description      String?
+  status           OrganizerRequestStatus @default(PENDING)
+  rejectReason     String?
+  reviewedBy       String?                @db.ObjectId
+  reviewedAt       DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("organizerRequests")
+}
+
