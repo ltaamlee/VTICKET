@@ -14,6 +14,7 @@ import OrganizerRequestApproveModal from "../components/organizerRequests/Organi
 import OrganizerRequestRejectModal from "../components/organizerRequests/OrganizerRequestRejectModal";
 import Pagination from "../../../components/common/Pagination";
 import { Alert } from "../../../components/common/Arlet";
+import ImagePreviewModal from "../../../components/common/ImagePreviewModal";
 import { Building2, CheckCircle2, AlertCircle, X } from "lucide-react";
 
 export default function OrganizerRequestsPage() {
@@ -307,29 +308,12 @@ export default function OrganizerRequestsPage() {
         rejecting={rejecting}
       />
 
-      {/* 7. MODAL PHÓNG TO ẢNH TÀI LIỆU */}
-      {zoomedImage && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md cursor-pointer animate-in fade-in"
-          onClick={() => setZoomedImage(null)}
-        >
-          <div className="relative max-w-4xl max-h-[90vh]">
-            <img
-              src={zoomedImage}
-              alt="Phóng to tài liệu"
-              className="max-h-[85vh] max-w-full rounded-2xl object-contain shadow-2xl"
-            />
-            <button
-              type="button"
-              onClick={() => setZoomedImage(null)}
-              className="absolute -top-3 -right-3 rounded-full bg-white p-2 text-gray-800 shadow-xl hover:bg-gray-100 transition"
-              title="Đóng"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-      )}
+      {/* 7. MODAL PHÓNG TO ẢNH TÀI LIỆU (DÙNG CHUNG) */}
+      <ImagePreviewModal
+        src={zoomedImage}
+        title="Tài liệu đính kèm"
+        onClose={() => setZoomedImage(null)}
+      />
     </div>
   );
 }
