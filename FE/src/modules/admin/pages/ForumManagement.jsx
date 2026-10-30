@@ -1,3 +1,7 @@
+/*
+    Duyệt bài viết
+    
+ */
 function ForumPage(){
 
 }

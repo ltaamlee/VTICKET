@@ -13,6 +13,7 @@ import DashboardPage from "../modules/admin/pages/DashboardPage";
 import AdminLayout from "../modules/admin/components/AdminLayout";
 import UserPage from "../modules/admin/pages/UserManagementPage";
 import CategoryPage from "../modules/admin/pages/CategoryManagementPage";
+import SystemPage from "../modules/admin/pages/SystemManagementPage";
 
 function AppRoutes() {
   return (
@@ -34,6 +35,7 @@ function AppRoutes() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="users" element={<UserPage />} />
             <Route path="categories" element={<CategoryPage/>} />
+            <Route path="system" element={<SystemPage/>} />
           </Route>
         </Route>
 

@@ -449,11 +449,14 @@ model Reaction {
 }
 
 model SystemSetting {
-  id        String      @id @default(auto()) @map("_id") @db.ObjectId
-  key       String      @unique
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  key       String   @unique
   value     Json
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  group     String   @default("general")
+  description String?
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@map("SystemSettings")
+  @@map("systemSettings")
 }

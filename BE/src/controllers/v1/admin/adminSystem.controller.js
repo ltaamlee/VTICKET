@@ -13,7 +13,7 @@ class AdminSystemController {
         this.adminSystemService = service;
     }
 
-    getSettings = asyncHandler ( async (req, res) => {
+    getSettings = asyncHandler(async (req, res) => {
         const result = await adminSystemService.getSettings()
 
         return res.status(200).json({
@@ -23,10 +23,11 @@ class AdminSystemController {
         });
     });
 
-    getSetting = asyncHandler (async (req, res) => {
-        const { key } = req.params; 
+    getSetting = asyncHandler(async (req, res) => {
+        const { key } = req.params;
+        const { value } = req.body;
 
-        const result = await adminSystemService.getSetting(key)
+        const result = await adminSystemService.getSetting(key, value)
 
         return res.status(200).json({
             success: true,
@@ -34,4 +35,23 @@ class AdminSystemController {
             data: result,
         });
     });
+
+    async updateSetting(req, res) {
+        const { key } = req.params;
+        const { value } = req.body;
+
+        const setting = await adminSystemService.updateSetting(
+            key,
+            value
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Cập nhật cấu hình thành công.",
+            data: setting.value,
+        });
+    }
+
 }
+
+module.exports = new AdminSystemController();
