@@ -20,8 +20,6 @@ function GoogleLoginButton() {
 
       if (data.user.role === "ADMIN") {
         navigate("/admin/dashboard", { replace: true });
-      } else if (data.user.role === "ORGANIZER") {
-        navigate("/organizer/dashboard", { replace: true });
       } else {
         navigate("/", { replace: true });
       }
