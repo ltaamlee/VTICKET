@@ -33,12 +33,19 @@ export function AuthProvider({ children }) {
         setUser(null);
     };
 
+    const updateUser = (updatedFields) => {
+        const updated = { ...user, ...updatedFields };
+        localStorage.setItem("user", JSON.stringify(updated));
+        setUser(updated);
+    };
+
     const value = {
         user,
         token,
         isAuthenticated: Boolean(token),
         login,
         logout,
+        updateUser,
     };
 
     return (

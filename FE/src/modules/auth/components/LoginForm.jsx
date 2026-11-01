@@ -38,8 +38,6 @@ function LoginForm() {
 
 			if (user.role === "ADMIN") {
 				navigate("/admin/dashboard");
-			} else if (user.role === "ORGANIZER") {
-				navigate("/organizer/dashboard");
 			} else {
 				navigate("/", { replace: true });
 			}

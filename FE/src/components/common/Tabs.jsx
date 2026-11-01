@@ -22,7 +22,7 @@ function Tabs({ tabs, defaultTab, onChange }) {
                             onClick={() => handleChange(tab.id)}
                             className={`flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 text-sm transition-colors ${
                                 active
-                                    ? "border-orange-500 text-orange-600"
+                                    ? "border-blue-500 text-blue-600"
                                     : "border-transparent text-gray-600 hover:text-gray-900"
                             }`}
                         >

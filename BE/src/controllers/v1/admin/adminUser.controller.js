@@ -1,5 +1,6 @@
 const adminUserService = require("../../../services/admin/adminUser.service");
 const asyncHandler = require("../../../utils/asyncHandler");
+const sendResponse = require('../../../utils/sendResponse');
 
 class AdminUserController {
     constructor(service = adminUserService) {
@@ -9,11 +10,7 @@ class AdminUserController {
     getUserStats = asyncHandler(async (req, res) => {
         const result = await this.adminUserService.getUserStats();
 
-        return res.status(200).json({
-            success: true,
-            message: "Thống kê tài khoản thành công",
-            data: result,
-        });
+        return sendResponse(res, 200, "Thống kê tài khoản thành công", result);
     });
 
     getUsers = asyncHandler(async (req, res) => {
@@ -25,10 +22,8 @@ class AdminUserController {
             role,
         });
 
-        return res.status(200).json({
-            success: true,
-            message: "Lấy danh sách người dùng thành công",
-            data: result.users,
+        return sendResponse(res, 200, "Lấy danh sách người dùng thành công", {
+            users: result.users,
             pagination: result.pagination,
         });
     });
@@ -40,11 +35,7 @@ class AdminUserController {
             userId: id,
         });
 
-        return res.status(200).json({
-            success: true,
-            message: "Xem chi tiết tài khoản thành công",
-            data: result,
-        });
+        return sendResponse(res, 200, "Xem chi tiết tài khoản thành công", result);
     });
 
     updateUser = asyncHandler(async (req, res) => {
@@ -55,11 +46,7 @@ class AdminUserController {
             ...req.body,
         });
 
-        return res.status(200).json({
-            success: true,
-            message: "Cập nhật thông tin người dùng thành công",
-            data: result,
-        })
+        return sendResponse(res, 200, "Cập nhật thông tin người dùng thành công", result);
     })
 
     deleteUser = asyncHandler(async (req, res) => {
@@ -69,10 +56,7 @@ class AdminUserController {
             userId: id,
         });
 
-        return res.status(200).json({
-            success: true,
-            message: "Xóa người dùng thành công",
-        });
+        return sendResponse(res, 200, "Xóa người dùng thành công", null);
     });
 }
 

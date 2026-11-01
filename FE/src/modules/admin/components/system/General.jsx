@@ -1,18 +1,21 @@
+
 import { useEffect, useRef, useState } from "react";
 import {
-    Save,
     RotateCcw,
     Image,
     Mail,
     Type,
     LoaderCircle,
-    Percent,
     List,
     Upload,
     UserRound,
     CheckCircle,
-    XCircle
+    Sun,
+    Moon,
+    Monitor,
+    Palette,
 } from "lucide-react";
+
 import Button from "../../../../components/common/button/Button";
 
 import {
@@ -24,19 +27,40 @@ const initialForm = {
     title: "VTicket",
     logoUrl: "",
     supportEmail: "",
-    platformFeeRate: 2,
+    theme: "light",
+    primaryColor: "#2563EB",
     defaultPageSize: 10,
 };
 
 const inputClass =
     "w-full rounded-lg border border-gray-300 px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
 
+const themes = [
+    {
+        value: "light",
+        label: "Sáng",
+        description: "Giao diện nền sáng.",
+        icon: Sun,
+    },
+    {
+        value: "dark",
+        label: "Tối",
+        description: "Giao diện nền tối.",
+        icon: Moon,
+    },
+    {
+        value: "system",
+        label: "Theo hệ thống",
+        description: "Tự động theo thiết bị người dùng.",
+        icon: Monitor,
+    },
+];
+
 function General({ onAlert }) {
     const [form, setForm] = useState(initialForm);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
 
     const logoInputRef = useRef(null);
 
@@ -45,15 +69,22 @@ function General({ onAlert }) {
         try {
             setLoading(true);
             setError("");
-            setSuccess("");
 
             const response = await getSettings();
             const settings = response?.data ?? response;
-            const general = settings?.general ?? settings;
+
+            const general = settings?.general ?? {};
+            const appearance = settings?.appearance ?? {};
 
             setForm({
                 ...initialForm,
+                ...appearance,
                 ...general,
+                theme: general.theme ?? appearance.theme ?? initialForm.theme,
+                primaryColor:
+                    general.primaryColor ??
+                    appearance.primaryColor ??
+                    initialForm.primaryColor,
             });
         } catch (err) {
             setError(
@@ -68,7 +99,7 @@ function General({ onAlert }) {
         loadSettings();
     }, []);
 
-    // Tải ảnh logo từ máy tính
+    // Tải logo từ máy tính
     const handleLogoUpload = (e) => {
         const file = e.target.files?.[0];
 
@@ -82,15 +113,13 @@ function General({ onAlert }) {
         ];
 
         if (!allowedTypes.includes(file.type)) {
-            setError(
-                "Vui lòng chọn ảnh JPG, PNG, GIF hoặc WEBP."
-            );
+            setError("Vui lòng chọn ảnh JPG, PNG, GIF hoặc WEBP.");
             e.target.value = "";
             return;
         }
 
-        if (file.size > 5000 * 1024) {
-            setError("Dung lượng logo tối đa là 800 KB.");
+        if (file.size > 5 * 1024 * 1024) {
+            setError("Dung lượng logo tối đa là 5 MB.");
             e.target.value = "";
             return;
         }
@@ -104,7 +133,6 @@ function General({ onAlert }) {
             }));
 
             setError("");
-            setSuccess("");
         };
 
         reader.onerror = () => {
@@ -126,10 +154,9 @@ function General({ onAlert }) {
         }
 
         setError("");
-        setSuccess("");
     };
 
-    // Xử lý thay đổi dữ liệu
+    // Thay đổi dữ liệu
     const handleChange = (e) => {
         const { name, value } = e.target;
 
@@ -139,20 +166,17 @@ function General({ onAlert }) {
         }));
 
         setError("");
-        setSuccess("");
     };
 
     // Lưu cấu hình
     const handleSave = async (e) => {
         e.preventDefault();
-
         setError("");
-        setSuccess("");
 
         const title = form.title.trim();
         const logoUrl = form.logoUrl.trim();
         const supportEmail = form.supportEmail.trim();
-        const platformFeeRate = Number(form.platformFeeRate);
+        const primaryColor = form.primaryColor.trim();
         const defaultPageSize = Number(form.defaultPageSize);
 
         if (!title) {
@@ -160,17 +184,12 @@ function General({ onAlert }) {
             return;
         }
 
-        // Cho phép URL hoặc ảnh được tải lên dưới dạng Data URL
         const isValidLogo =
             /^https?:\/\/.+/i.test(logoUrl) ||
-            /^data:image\/(png|jpeg|gif|webp);base64,/i.test(
-                logoUrl
-            );
+            /^data:image\/(png|jpeg|gif|webp);base64,/i.test(logoUrl);
 
         if (logoUrl && !isValidLogo) {
-            setError(
-                "Logo phải là đường dẫn ảnh hợp lệ hoặc ảnh được tải lên."
-            );
+            setError("Logo phải là đường dẫn ảnh hợp lệ hoặc ảnh được tải lên.");
             return;
         }
 
@@ -182,15 +201,13 @@ function General({ onAlert }) {
             return;
         }
 
-        if (
-            form.platformFeeRate === "" ||
-            !Number.isFinite(platformFeeRate) ||
-            platformFeeRate < 0 ||
-            platformFeeRate > 100
-        ) {
-            setError(
-                "Phí nền tảng phải nằm trong khoảng 0–100%."
-            );
+        if (!["light", "dark", "system"].includes(form.theme)) {
+            setError("Chế độ giao diện không hợp lệ.");
+            return;
+        }
+
+        if (!/^#[0-9A-Fa-f]{6}$/.test(primaryColor)) {
+            setError("Mã màu chủ đạo không hợp lệ.");
             return;
         }
 
@@ -200,9 +217,7 @@ function General({ onAlert }) {
             defaultPageSize < 1 ||
             defaultPageSize > 100
         ) {
-            setError(
-                "Số dòng mỗi trang phải là số nguyên từ 1 đến 100."
-            );
+            setError("Số dòng mỗi trang phải từ 1 đến 100.");
             return;
         }
 
@@ -213,22 +228,19 @@ function General({ onAlert }) {
                 title,
                 logoUrl,
                 supportEmail,
-                platformFeeRate,
+                theme: form.theme,
+                primaryColor,
                 defaultPageSize,
             });
 
             onAlert?.({
                 variant: "success",
                 title: "Thành công",
-                message: "Cập nhật cấu hình thành công.",
-                icon: "success" ? CheckCircle : XCircle,
-
+                message: "Cập nhật cấu hình chung thành công.",
+                icon: CheckCircle,
             });
-
         } catch (err) {
-            setError(
-                err.message || "Không thể lưu cấu hình."
-            );
+            setError(err.message || "Không thể lưu cấu hình.");
         } finally {
             setSaving(false);
         }
@@ -237,10 +249,7 @@ function General({ onAlert }) {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-16 text-gray-500">
-                <LoaderCircle
-                    size={22}
-                    className="mr-2 animate-spin"
-                />
+                <LoaderCircle size={22} className="mr-2 animate-spin" />
                 Đang tải cấu hình...
             </div>
         );
@@ -248,7 +257,6 @@ function General({ onAlert }) {
 
     return (
         <div className="space-y-6">
-            {/* Thông báo */}
             {error && (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
                     {error}
@@ -256,182 +264,268 @@ function General({ onAlert }) {
             )}
 
             <form onSubmit={handleSave} className="space-y-6">
-                {/* Hai khung nằm cạnh nhau */}
-                <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2">
 
-                    <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                        <div className="mb-6 border-b border-gray-100 pb-4">
-                            <h3 className="text-lg font-semibold text-gray-800">
-                                Website
-                            </h3>
-                        </div>
+                {/* THÔNG TIN WEBSITE */}
+                <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <div className="mb-6 border-b border-gray-100 pb-4">
+                        <h3 className="text-lg font-semibold text-gray-800">
+                            Thông tin website
+                        </h3>
 
-                        <div className="space-y-5">
-                            {/* Tên website */}
-                            <div>
-                                <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
-                                    <Type size={16} />
-                                    Tên website
-                                </label>
+                        <p className="mt-1 text-sm text-gray-500">
+                            Quản lý tên và logo nhận diện của VTICKET.
+                        </p>
+                    </div>
 
-                                <input
-                                    type="text"
-                                    name="title"
-                                    value={form.title}
-                                    onChange={handleChange}
-                                    placeholder="Nhập tên website"
-                                    maxLength={100}
-                                    required
-                                    className={inputClass}
-                                />
-                            </div>
+                    <div className="grid gap-8 md:grid-cols-2">
 
-                            {/* Logo hình tròn */}
-                            <div>
-                                <label className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-700">
-                                    <Image size={16} />
-                                    Logo website
-                                </label>
-
-                                <div className="flex flex-col items-center rounded-lg border border-gray-100 px-4 py-6">
-                                    {/* Ảnh xem trước */}
-                                    <div className="flex h-36 w-36 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-blue-50">
-                                        {form.logoUrl ? (
-                                            <img
-                                                src={form.logoUrl}
-                                                alt="Logo website"
-                                                className="h-full w-full rounded-full object-cover"
-                                            />
-                                        ) : (
-                                            <UserRound
-                                                size={64}
-                                                className="text-blue-300"
-                                            />
-                                        )}
-                                    </div>
-
-                                    {/* Input chọn ảnh */}
-                                    <input
-                                        ref={logoInputRef}
-                                        type="file"
-                                        accept="image/png,image/jpeg,image/gif,image/webp"
-                                        onChange={handleLogoUpload}
-                                        className="hidden"
-                                    />
-
-                                    <div className="mt-5 flex items-center justify-center gap-3">
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                logoInputRef.current?.click()
-                                            }
-                                            className="inline-flex items-center gap-2 rounded-full bg-sky-500 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-sky-600"
-                                        >
-                                            <Upload size={16} />
-                                            Tải ảnh lên
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={handleResetLogo}
-                                            className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-pink-600"
-                                        >
-                                            <RotateCcw size={16} />
-                                            Đặt lại
-                                        </button>
-                                    </div>
-
-                                    <p className="mt-4 text-center text-sm text-gray-500">
-                                        Chấp nhận JPG, GIF, PNG hoặc WEBP.
-                                        <br />
-                                        Dung lượng tối đa 5MB.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* KHUNG 2: CẤU HÌNH EMAIL */}
-                    <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                        <div className="mb-6 border-b border-gray-100 pb-4">
-                            <h3 className="text-lg font-semibold text-gray-800">
-                                Email Support
-                            </h3>
-                        </div>
-
+                        {/* Tên website */}
                         <div>
                             <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
-                                <Mail size={16} />
-                                Email hỗ trợ
+                                <Type size={16} />
+                                Tên website
                             </label>
 
                             <input
-                                type="email"
-                                name="supportEmail"
-                                value={form.supportEmail}
+                                type="text"
+                                name="title"
+                                value={form.title}
                                 onChange={handleChange}
-                                placeholder="support@vticket.com"
+                                placeholder="Nhập tên website"
+                                maxLength={100}
+                                required
                                 className={inputClass}
                             />
                         </div>
 
-                        <div className="mb-6 border-b border-gray-100 pb-4">
-                        </div>
-                        
-                        <div className="grid gap-5 md:grid-cols-2">
-                            {/* Phí nền tảng */}
-                            <div>
-                                <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
-                                    <Percent size={16} />
-                                    Phí nền tảng (%)
-                                </label>
+                        {/* Logo */}
+                        <div>
+                            <label className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-700">
+                                <Image size={16} />
+                                Logo website
+                            </label>
+
+                            <div className="flex flex-col items-center rounded-lg border border-gray-200 px-4 py-6">
+                                <div className="flex h-36 w-36 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-blue-50">
+                                    {form.logoUrl ? (
+                                        <img
+                                            src={form.logoUrl}
+                                            alt="Logo website"
+                                            className="h-full w-full rounded-full object-cover"
+                                        />
+                                    ) : (
+                                        <UserRound
+                                            size={64}
+                                            className="text-blue-300"
+                                        />
+                                    )}
+                                </div>
 
                                 <input
-                                    type="number"
-                                    name="platformFeeRate"
-                                    value={form.platformFeeRate}
-                                    onChange={handleChange}
-                                    min="0"
-                                    max="100"
-                                    step="0.1"
-                                    required
-                                    className={inputClass}
+                                    ref={logoInputRef}
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/gif,image/webp"
+                                    onChange={handleLogoUpload}
+                                    className="hidden"
                                 />
-                            </div>
 
-                            {/* Số dòng mỗi trang */}
-                            <div>
-                                <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
-                                    <List size={16} />
-                                    Số dòng mỗi trang
-                                </label>
+                                <div className="mt-5 flex flex-wrap justify-center gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            logoInputRef.current?.click()
+                                        }
+                                        className="inline-flex items-center gap-2 rounded-full bg-sky-500 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-sky-600"
+                                    >
+                                        <Upload size={16} />
+                                        Tải ảnh lên
+                                    </button>
 
-                                <input
-                                    type="number"
-                                    name="defaultPageSize"
-                                    value={form.defaultPageSize}
-                                    onChange={handleChange}
-                                    min="1"
-                                    max="100"
-                                    step="1"
-                                    required
-                                    className={inputClass}
-                                />
+                                    <button
+                                        type="button"
+                                        onClick={handleResetLogo}
+                                        className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
+                                    >
+                                        <RotateCcw size={16} />
+                                        Đặt lại
+                                    </button>
+                                </div>
+
+                                <p className="mt-4 text-center text-xs text-gray-500">
+                                    JPG, PNG, GIF hoặc WEBP. Tối đa 5 MB.
+                                </p>
                             </div>
                         </div>
-                    </section>
-                </div>
+                    </div>
+                </section>
 
+                {/* THÔNG TIN LIÊN HỆ */}
+                <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <div className="mb-6 border-b border-gray-100 pb-4">
+                        <h3 className="text-lg font-semibold text-gray-800">
+                            Thông tin liên hệ
+                        </h3>
 
+                        <p className="mt-1 text-sm text-gray-500">
+                            Cấu hình địa chỉ email hỗ trợ người dùng.
+                        </p>
+                    </div>
+
+                    <div className="max-w-xl">
+                        <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <Mail size={16} />
+                            Email hỗ trợ
+                        </label>
+
+                        <input
+                            type="email"
+                            name="supportEmail"
+                            value={form.supportEmail}
+                            onChange={handleChange}
+                            placeholder="support@vticket.com"
+                            className={inputClass}
+                        />
+                    </div>
+                </section>
+
+                {/* GIAO DIỆN WEBSITE */}
+                <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <div className="mb-6 border-b border-gray-100 pb-4">
+                        <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800">
+                            <Palette size={20} />
+                            Giao diện website
+                        </h3>
+
+                        <p className="mt-1 text-sm text-gray-500">
+                            Tùy chỉnh chủ đề và màu sắc nhận diện của VTICKET.
+                        </p>
+                    </div>
+
+                    {/* Chế độ giao diện */}
+                    <div className="mb-6">
+                        <label className="mb-3 block text-sm font-medium text-gray-700">
+                            Chế độ giao diện
+                        </label>
+
+                        <div className="grid gap-4 md:grid-cols-3">
+                            {themes.map((item) => {
+                                const Icon = item.icon;
+                                const selected = form.theme === item.value;
+
+                                return (
+                                    <button
+                                        key={item.value}
+                                        type="button"
+                                        onClick={() =>
+                                            setForm((prev) => ({
+                                                ...prev,
+                                                theme: item.value,
+                                            }))
+                                        }
+                                        className={`flex items-start gap-3 rounded-lg border p-4 text-left transition ${selected
+                                                ? "border-blue-500 bg-blue-50"
+                                                : "border-gray-200 hover:border-gray-300"
+                                            }`}
+                                    >
+                                        <Icon
+                                            size={21}
+                                            className={
+                                                selected
+                                                    ? "text-blue-600"
+                                                    : "text-gray-500"
+                                            }
+                                        />
+
+                                        <div>
+                                            <p className="font-medium text-gray-800">
+                                                {item.label}
+                                            </p>
+
+                                            <p className="mt-1 text-xs text-gray-500">
+                                                {item.description}
+                                            </p>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Màu chủ đạo */}
+                    <div className="max-w-xl">
+                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                            Màu chủ đạo
+                        </label>
+
+                        <div className="flex items-center gap-3">
+                            <input
+                                type="color"
+                                value={form.primaryColor}
+                                onChange={(e) =>
+                                    setForm((prev) => ({
+                                        ...prev,
+                                        primaryColor: e.target.value,
+                                    }))
+                                }
+                                className="h-11 w-14 cursor-pointer rounded-lg border border-gray-300 p-1"
+                            />
+
+                            <input
+                                type="text"
+                                name="primaryColor"
+                                value={form.primaryColor}
+                                onChange={handleChange}
+                                maxLength={7}
+                                placeholder="#2563EB"
+                                className={inputClass}
+                            />
+                        </div>
+
+                        <p className="mt-2 text-xs text-gray-500">
+                            Chọn màu hoặc nhập mã HEX, ví dụ #2563EB.
+                        </p>
+                    </div>
+                </section>
+
+                {/* PHÂN TRANG */}
+                <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <div className="mb-6 border-b border-gray-100 pb-4">
+                        <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800">
+                            <List size={20} />
+                            Cấu hình phân trang
+                        </h3>
+
+                        <p className="mt-1 text-sm text-gray-500">
+                            Thiết lập số lượng bản ghi mặc định trên mỗi trang.
+                        </p>
+                    </div>
+
+                    <div className="max-w-xs">
+                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                            Số dòng mỗi trang
+                        </label>
+
+                        <input
+                            type="number"
+                            name="defaultPageSize"
+                            value={form.defaultPageSize}
+                            onChange={handleChange}
+                            min="1"
+                            max="100"
+                            step="1"
+                            required
+                            className={inputClass}
+                        />
+                    </div>
+                </section>
 
                 {/* NÚT THAO TÁC */}
-                <div className="flex flex-wrap justify-end gap-3">
+                <div className="flex justify-end gap-3">
                     <Button
                         type="button"
                         variant="secondary"
                         onClick={loadSettings}
                         disabled={saving}
-                        className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
                     >
                         <RotateCcw size={16} />
                         Tải lại
@@ -441,8 +535,13 @@ function General({ onAlert }) {
                         type="submit"
                         variant="primary"
                         disabled={saving}
-                        className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
+                        {saving ? (
+                            <LoaderCircle
+                                size={16}
+                                className="animate-spin"
+                            />
+                        ) : null}
 
                         {saving ? "Đang lưu..." : "Lưu thay đổi"}
                     </Button>

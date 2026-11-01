@@ -7,6 +7,7 @@
 
 const adminSystemService = require('../../../services/admin/adminSystem.service');
 const asyncHandler = require('../../../utils/asyncHandler');
+const sendResponse = require('../../../utils/sendResponse');
 
 class AdminSystemController {
     constructor(service = adminSystemService) {
@@ -15,12 +16,7 @@ class AdminSystemController {
 
     getSettings = asyncHandler(async (req, res) => {
         const result = await adminSystemService.getSettings()
-
-        return res.status(200).json({
-            success: true,
-            message: "Lấy cấu hình hệ thống thành công",
-            data: result,
-        });
+        return sendResponse(res, 200, "Lấy cấu hình hệ thống thành công", result);
     });
 
     getSetting = asyncHandler(async (req, res) => {
@@ -29,14 +25,10 @@ class AdminSystemController {
 
         const result = await adminSystemService.getSetting(key, value)
 
-        return res.status(200).json({
-            success: true,
-            message: "Cấu hình theo key thành công",
-            data: result,
-        });
+        return sendResponse(res, 200, "Cấu hình theo key thành công", result);
     });
 
-    async updateSetting(req, res) {
+    updateSetting = asyncHandler(async (req, res) => {
         const { key } = req.params;
         const { value } = req.body;
 
@@ -45,13 +37,8 @@ class AdminSystemController {
             value
         );
 
-        return res.status(200).json({
-            success: true,
-            message: "Cập nhật cấu hình thành công.",
-            data: setting.value,
-        });
-    }
-
+        return sendResponse(res, 200, "Cập nhật cấu hình thành công", setting.value);
+    });
 }
 
 module.exports = new AdminSystemController();

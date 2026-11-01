@@ -19,16 +19,16 @@ import { Alert } from "../../../components/common/Arlet";
 import Tabs from "../../../components/common/Tabs";
 
 import General from "../../admin/components/system/General";
-// import Payment from "../../admin/components/system/PaymentSetting";
-// import Security from "../../admin/components/system/Security";
-// import Notifications from "../../admin/components/system/Notifications";
+import Payment from "../../admin/components/system/PaymentSetting";
+import Security from "../../admin/components/system/Security";
+import Notification from "../../admin/components/system/Notification";
 
 const tabs = [
-    { id: "general", label: "General Settings", icon: Settings, content: General },
-    // { id: "payment", label: "Payment", icon: CreditCard, content: Payment },
-    // { id: "security", label: "Security", icon: ShieldCheck, content: Security },
-    // { id: "notifications", label: "Notifications", icon: Bell, content: Notifications },
-    // { id: "system", label: "System", icon: SlidersHorizontal, content: System },
+    { id: "general", label: "Tổng quan", icon: Settings, content: General },
+    { id: "payment", label: "Thanh toán", icon: CreditCard, content: Payment },
+    { id: "security", label: "Bảo mật", icon: ShieldCheck, content: Security },
+    { id: "notification", label: "Thông báo", icon: Bell, content: Notification },
+    // { id: "system", label: "Hệ thống", icon: SlidersHorizontal, content: System },
 ];
 
 function SystemPage() {
