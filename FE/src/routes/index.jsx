@@ -13,8 +13,13 @@ import DashboardPage from "../modules/admin/pages/DashboardPage";
 import AdminLayout from "../modules/admin/components/AdminLayout";
 import UserPage from "../modules/admin/pages/UserManagementPage";
 import CategoryPage from "../modules/admin/pages/CategoryManagementPage";
+import OrganizerRequestsPage from "../modules/admin/pages/OrganizerRequestsPage";
 
 import ProfilePage from "../modules/profile/pages/ProfilePage";
+import OrganizerRegisterPage from "../modules/organizer/pages/OrganizerRegisterPage";
+import MyTicketsPage from "../modules/ticket/pages/MyTicketsPage";
+import MembershipPage from "../modules/membership/pages/MembershipPage";
+import MyEventsPage from "../modules/event/pages/MyEventsPage";
 
 function AppRoutes() {
   return (
@@ -29,9 +34,13 @@ function AppRoutes() {
         <Route path="/403" element={<Page403 />} />
         <Route path="/404" element={<Page404 />} />
 
-        {/* Profile Route for all logged in users */}
+        {/* User Protected Routes: Profile & Feature Pages */}
         <Route element={<ProtectedRoute />}>
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/my-tickets" element={<MyTicketsPage />} />
+          <Route path="/membership" element={<MembershipPage />} />
+          <Route path="/my-events" element={<MyEventsPage />} />
+          <Route path="/organizer/register" element={<OrganizerRegisterPage />} />
         </Route>
 
         <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
@@ -40,6 +49,7 @@ function AppRoutes() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="users" element={<UserPage />} />
             <Route path="categories" element={<CategoryPage/>} />
+            <Route path="organizer-requests" element={<OrganizerRequestsPage />} />
           </Route>
         </Route>
 
