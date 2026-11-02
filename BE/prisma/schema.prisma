@@ -25,8 +25,10 @@ enum UserStatus {
 
 enum EventStatus {
   DRAFT
+  PENDING
   PUBLISHED
   CANCELLED
+  REJECTED
   COMPLETED
 }
 
@@ -194,7 +196,9 @@ model Category {
 model Event {
   id          String      @id @default(auto()) @map("_id") @db.ObjectId
   name        String
+  slug        String      @unique
   description String?
+  thumbnailUrl   String?
   bannerUrl   String?
   organizerId String      @db.ObjectId
   organizer   User        @relation(fields: [organizerId], references: [id])
@@ -469,7 +473,7 @@ model SystemSetting {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
-  @@map("SystemSettings")
+  @@map("systemSettings")
 }
 
 model OrganizerProfile {

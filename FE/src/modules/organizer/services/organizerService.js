@@ -5,19 +5,19 @@ import { apiRequest } from "../../../services/api";
  * @param {Object} data - Thông tin đăng ký
  */
 export function registerOrganizer(data) {
-  return apiRequest("/organizer/register", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
+    return apiRequest("/organizer/register", {
+        method: "POST",
+        body: JSON.stringify(data),
+    });
 }
 
 /**
  * Lấy thông tin đơn đăng ký và hồ sơ BTC hiện tại của tài khoản
  */
 export function getMyOrganizerRequest() {
-  return apiRequest("/organizer/my-request", {
-    method: "GET",
-  });
+    return apiRequest("/organizer/my-request", {
+        method: "GET",
+    });
 }
 
 /**
@@ -26,10 +26,10 @@ export function getMyOrganizerRequest() {
  * @param {Object} data - Dữ liệu cập nhật
  */
 export function updateOrganizerRequest(id, data) {
-  return apiRequest(`/organizer/my-request/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(data),
-  });
+    return apiRequest(`/organizer/my-request/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+    });
 }
 
 /**
@@ -37,9 +37,9 @@ export function updateOrganizerRequest(id, data) {
  * @param {string} id - ID đơn đăng ký
  */
 export function cancelOrganizerRequest(id) {
-  return apiRequest(`/organizer/my-request/${id}`, {
-    method: "DELETE",
-  });
+    return apiRequest(`/organizer/my-request/${id}`, {
+        method: "DELETE",
+    });
 }
 
 /**
@@ -48,12 +48,12 @@ export function cancelOrganizerRequest(id) {
  * @param {string} folder - Thư mục trên Cloudinary
  */
 export function uploadVerificationDocument(file, folder = "vticket/organizer-documents") {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("folder", folder);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("folder", folder);
 
-  return apiRequest("/upload/image", {
-    method: "POST",
-    body: formData,
-  });
+    return apiRequest("/upload/image", {
+        method: "POST",
+        body: formData,
+    });
 }

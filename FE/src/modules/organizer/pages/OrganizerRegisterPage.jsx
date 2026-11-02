@@ -11,11 +11,11 @@ import {
 } from "../services/organizerService";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 
-import OrganizerHeroBanner from "../components/OrganizerHeroBanner";
-import OrganizerStatusCards from "../components/OrganizerStatusCards";
-import OrganizerBasicInfoForm from "../components/OrganizerBasicInfoForm";
-import OrganizerLegalDocuments from "../components/OrganizerLegalDocuments";
-import OrganizerTermsSection from "../components/OrganizerTermsSection";
+import OrganizerHeroBanner from "../components/register/OrganizerHeroBanner";
+import OrganizerStatusCards from "../components/register/OrganizerStatusCards";
+import OrganizerBasicInfoForm from "../components/register/OrganizerBasicInfoForm";
+import OrganizerLegalDocuments from "../components/register/OrganizerLegalDocuments";
+import OrganizerTermsSection from "../components/register/OrganizerTermsSection";
 
 function OrganizerRegisterPage() {
   const { user: authUser } = useAuth();

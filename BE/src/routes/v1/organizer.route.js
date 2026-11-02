@@ -7,6 +7,8 @@ const {
 } = require("../../middlewares/auth.middleware");
 
 const organizerRequestController = require("../../controllers/v1/organizer/organizerRequest.controller");
+const organizerEventController = require("../../controllers/v1/organizer/organizerEvent.controller");
+const organizerCategoryController = require("../../controllers/v1/organizer/organizerCategory.controller");
 
 // ==========================================
 // 1. NHÓM ĐĂNG KÝ LÀM BAN TỔ CHỨC (Cần đăng nhập)
@@ -20,9 +22,16 @@ router.delete("/my-request/:id", authenticate, organizerRequestController.cancel
 // ==========================================
 // 2. NHÓM CHỨC NĂNG DÀNH CHO ORGANIZER (Role: ORGANIZER)
 // ==========================================
-// router.use(authenticate);
-// router.use(authorize("ORGANIZER"));
-// router.get("/dashboard", organizerDashboardController.getDashboardData);
-// router.get("/events", organizerEventController.getEvents);
+router.use(authenticate);
+router.use(authorize("ORGANIZER"));
+router.get("/categories", organizerCategoryController.getCategories);
+
+// Event
+router.get("/events", organizerEventController.getEvents);
+router.get("/events/:id", organizerEventController.getEventDetail);
+router.post("/events", organizerEventController.createEvent);
+router.put("/events/:id", organizerEventController.updateEvent);
+router.delete("/events/:id", organizerEventController.deleteEvent);
+
 
 module.exports = router;

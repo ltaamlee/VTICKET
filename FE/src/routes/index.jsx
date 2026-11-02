@@ -21,6 +21,9 @@ import MyTicketsPage from "../modules/ticket/pages/MyTicketsPage";
 import MembershipPage from "../modules/membership/pages/MembershipPage";
 import MyEventsPage from "../modules/event/pages/MyEventsPage";
 
+import OrganizerLayout from "../modules/organizer/components/OrganizerLayout";
+import EventPage from "../modules/organizer/pages/EventManagementPage";
+
 function AppRoutes() {
   return (
     <BrowserRouter>
@@ -50,6 +53,14 @@ function AppRoutes() {
             <Route path="users" element={<UserPage />} />
             <Route path="categories" element={<CategoryPage/>} />
             <Route path="organizer-requests" element={<OrganizerRequestsPage />} />
+          </Route>
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={["ORGANIZER"]} />}>
+          <Route path="/organizer" element={<OrganizerLayout />}>
+            <Route index element={<DashboardPage />} />
+            {/* <Route path="dashboard" element={<DashboardPage />} /> */}
+            <Route path="events" element={<EventPage />} />
           </Route>
         </Route>
 
