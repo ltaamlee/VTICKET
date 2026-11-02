@@ -10,6 +10,7 @@ const organizerRequestController = require("../../controllers/v1/organizer/organ
 const organizerEventController = require("../../controllers/v1/organizer/organizerEvent.controller");
 const organizerCategoryController = require("../../controllers/v1/organizer/organizerCategory.controller");
 
+
 // ==========================================
 // 1. NHÓM ĐĂNG KÝ LÀM BAN TỔ CHỨC (Cần đăng nhập)
 // ==========================================

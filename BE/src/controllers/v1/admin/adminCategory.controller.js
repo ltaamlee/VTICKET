@@ -1,5 +1,6 @@
 const adminCategoryService = require("../../../services/admin/adminCategory.service")
 const asyncHandler = require("../../../utils/asyncHandler");
+const sendResponse = require('../../../utils/sendResponse');
 
 class AdminCategoryController{
     constructor (service = adminCategoryService){
@@ -14,10 +15,8 @@ class AdminCategoryController{
             keyword,
         });
 
-        return res.status(200).json({
-            success: true,
-            message: "Lấy danh sách danh mục thành công",
-            data: result.categories,
+        return sendResponse(res, 200, "Lấy danh sách danh mục thành công", {
+            categories: result.categories,
             pagination: result.pagination,
         });
     });
@@ -29,11 +28,7 @@ class AdminCategoryController{
             categoryId: id,
         });
 
-        return res.status(200).json({
-            success: true,
-            message: "Xem chi tiết danh mục thành công",
-            data: result,
-        });
+        return sendResponse(res, 200, "Xem chi tiết danh mục thành công", result);
     });
 
     createCategory = asyncHandler(async (req, res) => {
@@ -44,11 +39,7 @@ class AdminCategoryController{
             slug,
         });
 
-        return res.status(201).json({
-            success: true,
-            message: "Tạo danh mục thành công",
-            data: result,
-        });
+        return sendResponse(res, 201, "Tạo danh mục thành công", result);
     });
 
     updateCategory = asyncHandler(async (req, res) => {
@@ -59,11 +50,7 @@ class AdminCategoryController{
             ...req.body,
         });
 
-        return res.status(200).json({
-            success: true,
-            message: "Cập nhật thông tin danh mục thành công",
-            data: result,
-        })
+        return sendResponse(res, 200, "Cập nhật thông tin danh mục thành công", result);
     })
 
     deleteCategory = asyncHandler(async (req, res) => {
@@ -73,10 +60,7 @@ class AdminCategoryController{
             categoryId: id,
         });
 
-        return res.status(200).json({
-            success: true,
-            message: "Xóa danh mục thành công",
-        });
+        return sendResponse(res, 200, "Xóa danh mục thành công", null);
     });
 }
 

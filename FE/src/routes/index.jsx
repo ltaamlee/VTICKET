@@ -13,8 +13,10 @@ import DashboardPage from "../modules/admin/pages/DashboardPage";
 import AdminLayout from "../modules/admin/components/AdminLayout";
 import UserPage from "../modules/admin/pages/UserManagementPage";
 import CategoryPage from "../modules/admin/pages/CategoryManagementPage";
-import OrganizerRequestsPage from "../modules/admin/pages/OrganizerRequestsPage";
+import AdminEventPage from "../modules/admin/pages/EventManagementPage";
+import SystemPage from "../modules/admin/pages/SystemManagementPage";
 
+import OrganizerRequestsPage from "../modules/admin/pages/OrganizerRequestsPage";
 import ProfilePage from "../modules/profile/pages/ProfilePage";
 import OrganizerRegisterPage from "../modules/organizer/pages/OrganizerRegisterPage";
 import MyTicketsPage from "../modules/ticket/pages/MyTicketsPage";
@@ -22,7 +24,7 @@ import MembershipPage from "../modules/membership/pages/MembershipPage";
 import MyEventsPage from "../modules/event/pages/MyEventsPage";
 
 import OrganizerLayout from "../modules/organizer/components/OrganizerLayout";
-import EventPage from "../modules/organizer/pages/EventManagementPage";
+import OrganizerEventPage from "../modules/organizer/pages/EventManagementPage";
 
 function AppRoutes() {
   return (
@@ -52,7 +54,9 @@ function AppRoutes() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="users" element={<UserPage />} />
             <Route path="categories" element={<CategoryPage/>} />
+            <Route path="system" element={<SystemPage/>} />
             <Route path="organizer-requests" element={<OrganizerRequestsPage />} />
+            <Route path="events" element={<AdminEventPage />} />
           </Route>
         </Route>
 
@@ -60,10 +64,9 @@ function AppRoutes() {
           <Route path="/organizer" element={<OrganizerLayout />}>
             <Route index element={<DashboardPage />} />
             {/* <Route path="dashboard" element={<DashboardPage />} /> */}
-            <Route path="events" element={<EventPage />} />
+            <Route path="events" element={<OrganizerEventPage />} />
           </Route>
         </Route>
-
       </Routes>
     </BrowserRouter>
   );

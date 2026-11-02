@@ -27,6 +27,7 @@ class OrganizerRequestController {
     getMyRequest = asyncHandler(async (req, res) => {
         const userId = req.user.id;
         const result = await this.organizerRequestService.getMyRequest(userId);
+
         return sendResponse(res, 200, 'Lấy thông tin đơn đăng ký thành công', result);
     });
 
@@ -37,6 +38,7 @@ class OrganizerRequestController {
         const userId = req.user.id;
         const { id } = req.params;
         const result = await this.organizerRequestService.updateMyRequest(userId, id, req.body);
+
         return sendResponse(res, 200, 'Cập nhật đơn đăng ký thành công', result);
     });
 

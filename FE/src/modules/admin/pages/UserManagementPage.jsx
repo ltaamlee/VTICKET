@@ -79,8 +79,8 @@ function UserPage() {
 
                 if (cancelled) return;
 
-                setUsers(result.data || []);
-                setTotalPages(result.pagination?.totalPages || 1);
+                setUsers(result.data?.users || []);
+                setTotalPages(result.data?.pagination?.totalPages || 1);
             } catch (err) {
                 if (cancelled) return;
 

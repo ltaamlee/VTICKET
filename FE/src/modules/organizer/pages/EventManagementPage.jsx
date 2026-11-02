@@ -12,7 +12,7 @@ import Pagination from "../../../components/common/Pagination";
 import { Alert } from "../../../components/common/Arlet";
 import Button from "../../../components/common/button/Button";
 
-function EventPage() {
+function OrganizerEventPage() {
     const [keyword, setKeyword] = useState("");
     const [status, setStatus] = useState("");
     const [events, setEvents] = useState([]);
@@ -227,4 +227,4 @@ function EventPage() {
     );
 }
 
-export default EventPage;
+export default OrganizerEventPage;

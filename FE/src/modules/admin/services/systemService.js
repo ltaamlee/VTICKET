@@ -12,9 +12,9 @@ export function getSetting(key) {
     });
 }
 
-export function updateSetting(key, data) {
+export function updateSettings(key, value) {
     return apiRequest(`/admin/settings/${encodeURIComponent(key)}`, {
         method: "PUT",
-        body: JSON.stringify(data),
+        body: JSON.stringify({ value }),
     });
 }
