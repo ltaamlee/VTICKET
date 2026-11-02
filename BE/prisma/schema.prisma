@@ -25,9 +25,13 @@ enum UserStatus {
 
 enum EventStatus {
   DRAFT
+  PENDING
+  APPROVED
   PUBLISHED
+  REJECTED
   CANCELLED
   COMPLETED
+  SUSPENDED
 }
 
 enum SessionStatus {
@@ -206,6 +210,8 @@ model Event {
   saleEndAt   DateTime?
   startAt     DateTime
   endAt       DateTime
+  reviewedAt   DateTime?
+  rejectReason String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
@@ -463,14 +469,17 @@ model Reaction {
 }
 
 model SystemSetting {
-  id        String      @id @default(auto()) @map("_id") @db.ObjectId
-  key       String      @unique
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  key       String   @unique
   value     Json
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  description String?
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@map("SystemSettings")
+  @@map("systemSettings")
 }
+
 
 model OrganizerProfile {
   id               String        @id @default(auto()) @map("_id") @db.ObjectId
@@ -523,4 +532,3 @@ model OrganizerRequest {
   @@index([createdAt])
   @@map("organizerRequests")
 }
-

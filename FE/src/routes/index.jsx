@@ -13,8 +13,10 @@ import DashboardPage from "../modules/admin/pages/DashboardPage";
 import AdminLayout from "../modules/admin/components/AdminLayout";
 import UserPage from "../modules/admin/pages/UserManagementPage";
 import CategoryPage from "../modules/admin/pages/CategoryManagementPage";
-import OrganizerRequestsPage from "../modules/admin/pages/OrganizerRequestsPage";
+import EventPage from "../modules/admin/pages/EventManagementPage";
+import SystemPage from "../modules/admin/pages/SystemManagementPage";
 
+import OrganizerRequestsPage from "../modules/admin/pages/OrganizerRequestsPage";
 import ProfilePage from "../modules/profile/pages/ProfilePage";
 import OrganizerRegisterPage from "../modules/organizer/pages/OrganizerRegisterPage";
 import MyTicketsPage from "../modules/ticket/pages/MyTicketsPage";
@@ -49,10 +51,11 @@ function AppRoutes() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="users" element={<UserPage />} />
             <Route path="categories" element={<CategoryPage/>} />
+            <Route path="system" element={<SystemPage/>} />
             <Route path="organizer-requests" element={<OrganizerRequestsPage />} />
+            <Route path="events" element={<EventPage />} />
           </Route>
         </Route>
-
       </Routes>
     </BrowserRouter>
   );

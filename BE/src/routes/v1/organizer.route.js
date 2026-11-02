@@ -7,6 +7,8 @@ const {
 } = require("../../middlewares/auth.middleware");
 
 const organizerRequestController = require("../../controllers/v1/organizer/organizerRequest.controller");
+router.use(authenticate);
+router.use(authorize("ORGANIZER"));
 
 // ==========================================
 // 1. NHÓM ĐĂNG KÝ LÀM BAN TỔ CHỨC (Cần đăng nhập)
