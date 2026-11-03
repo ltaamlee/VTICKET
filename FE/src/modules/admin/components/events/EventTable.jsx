@@ -60,7 +60,7 @@ export default function EventTable({
 }) {
     if (loading) {
         return (
-            <div className="rounded-xl border bg-white p-10 text-center text-gray-500">
+            <div className="rounded-xl bg-white p-10 text-center text-gray-500">
                 Đang tải dữ liệu...
             </div>
         );

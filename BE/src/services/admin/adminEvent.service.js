@@ -1,5 +1,11 @@
 const prisma = require("../../config/prisma");
 
+const notDraft = {
+    status: {
+        not: "DRAFT",
+    },
+};
+
 class AdminEventService {
 
     createError(message, statusCode = 400) {
@@ -66,7 +72,7 @@ class AdminEventService {
                 ? status.trim().toUpperCase()
                 : "";
 
-        const where = {};
+        const where = { ...notDraft };
 
         if (searchKeyword) {
             where.OR = [
@@ -97,7 +103,6 @@ class AdminEventService {
 
         if (searchStatus) {
             const validStatuses = [
-                "DRAFT",
                 "PENDING",
                 "APPROVED",
                 "PUBLISHED",
@@ -200,10 +205,6 @@ class AdminEventService {
             },
         };
     }
-
-    // ==========================================
-    // GET EVENT DETAIL
-    // ==========================================
 
     async getEventDetail({ eventId }) {
         await this.findEvent(eventId);

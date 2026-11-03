@@ -38,7 +38,7 @@ export function deleteEvent(id) {
     });
 }
 
-export function uploadEventImage(file, folder = "vticket") {
+export function uploadEventImage(file, folder = "events") {
     const formData = new FormData();
 
     formData.append("file", file);
@@ -47,5 +47,11 @@ export function uploadEventImage(file, folder = "vticket") {
     return apiRequest("/upload/image", {
         method: "POST",
         body: formData,
+    });
+}
+
+export function submitEvent(id) {
+    return apiRequest(`/organizer/events/${id}/submit`, {
+        method: "PATCH",
     });
 }

@@ -1,7 +1,8 @@
-const asyncHandler = require('../../../utils/asyncHandler');
-const sendResponse = require('../../../utils/sendResponse');
 
-const organizerEventService = require('../../../services/organizer/organizerEvent.service');
+const asyncHandler = require("../../../utils/asyncHandler");
+const sendResponse = require("../../../utils/sendResponse");
+
+const organizerEventService = require("../../../services/organizer/organizerEvent.service");
 
 class OrganizerEventController {
     constructor(service = organizerEventService) {
@@ -17,13 +18,29 @@ class OrganizerEventController {
             keyword,
             status,
         });
-        return sendResponse(res, 200, 'Lấy danh sách sự kiện thành công', result);
+
+        return sendResponse(
+            res,
+            200,
+            "Lấy danh sách sự kiện thành công",
+            result
+        );
     });
 
     getEventDetail = asyncHandler(async (req, res) => {
         const { id } = req.params;
-        const result = await this.organizerEventService.getEventDetail({ eventId: id });
-        return sendResponse(res, 200, 'Xem chi tiết sự kiện thành công', result);
+
+        const result = await this.organizerEventService.getEventDetail({
+            eventId: id,
+            organizerId: req.user.id,
+        });
+
+        return sendResponse(
+            res,
+            200,
+            "Xem chi tiết sự kiện thành công",
+            result
+        );
     });
 
     createEvent = asyncHandler(async (req, res) => {
@@ -32,21 +49,62 @@ class OrganizerEventController {
             organizerId: req.user.id,
         });
 
-        return sendResponse(res, 201, 'Tạo sự kiện thành công', result);
+        return sendResponse(
+            res,
+            201,
+            "Tạo sự kiện thành công",
+            result
+        );
     });
 
     updateEvent = asyncHandler(async (req, res) => {
         const { id } = req.params;
-        const result = await this.organizerEventService.updateEvent({ eventId: id, ...req.body });
-        return sendResponse(res, 200, 'Cập nhật sự kiện thành công', result);
+
+        const result = await this.organizerEventService.updateEvent({
+            ...req.body,
+            eventId: id,
+            organizerId: req.user.id,
+        });
+
+        return sendResponse(
+            res,
+            200,
+            "Cập nhật sự kiện thành công",
+            result
+        );
+    });
+
+    submitEvent = asyncHandler(async (req, res) => {
+        const { id } = req.params;
+
+        const result = await this.organizerEventService.submitEvent({
+            eventId: id,
+            organizerId: req.user.id,
+        });
+
+        return sendResponse(
+            res,
+            200,
+            "Gửi sự kiện đến Admin duyệt thành công",
+            result
+        );
     });
 
     deleteEvent = asyncHandler(async (req, res) => {
         const { id } = req.params;
-        await this.organizerEventService.deleteEvent({ eventId: id });
-        return sendResponse(res, 200, 'Xóa sự kiện thành công');
-    });
 
+        const result = await this.organizerEventService.deleteEvent({
+            eventId: id,
+            organizerId: req.user.id,
+        });
+
+        return sendResponse(
+            res,
+            200,
+            "Xóa sự kiện thành công",
+            result
+        );
+    });
 }
 
 module.exports = new OrganizerEventController();

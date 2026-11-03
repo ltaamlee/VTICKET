@@ -33,6 +33,6 @@ router.get("/events/:id", organizerEventController.getEventDetail);
 router.post("/events", organizerEventController.createEvent);
 router.put("/events/:id", organizerEventController.updateEvent);
 router.delete("/events/:id", organizerEventController.deleteEvent);
-
+router.patch("/events/:id/submit", organizerEventController.submitEvent);
 
 module.exports = router;

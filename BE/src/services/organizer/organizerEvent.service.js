@@ -3,6 +3,81 @@ const prisma = require("../../config/prisma");
 const generateSlug = require("../../utils/generateSlug");
 
 class OrganizerEventService {
+    throwError(message, statusCode = 400) {
+        const error = new Error(message);
+        error.statusCode = statusCode;
+        throw error;
+    }
+
+    handlePrismaError(error) {
+        if (error.code === "P2002") {
+            this.throwError(
+                "Slug này đã tồn tại. Vui lòng chọn slug khác.",
+                409
+            );
+        }
+
+        throw error;
+    }
+
+    validateOrganizer(organizerId) {
+        if (!organizerId) {
+            this.throwError(
+                "Không xác định được tài khoản Ban tổ chức",
+                401
+            );
+        }
+    }
+
+    parseDate(value, fieldName) {
+        const date = new Date(value);
+
+        if (!value || Number.isNaN(date.getTime())) {
+            this.throwError(`${fieldName} không hợp lệ`);
+        }
+
+        return date;
+    }
+
+    async validateCategory(categoryId) {
+        if (!categoryId) {
+            this.throwError("Vui lòng chọn danh mục sự kiện");
+        }
+
+        const category = await prisma.category.findUnique({
+            where: { id: categoryId },
+            select: { id: true },
+        });
+
+        if (!category) {
+            this.throwError("Danh mục không tồn tại", 404);
+        }
+    }
+
+    async validateSlug(slug, excludeEventId = null) {
+        if (typeof slug !== "string" || !slug.trim()) {
+            this.throwError("Slug không được để trống");
+        }
+
+        const existingEvent = await prisma.event.findUnique({
+            where: {
+                slug: slug.trim(),
+            },
+            select: {
+                id: true,
+            },
+        });
+
+        if (
+            existingEvent &&
+            existingEvent.id !== excludeEventId
+        ) {
+            this.throwError(
+                "Slug này đã tồn tại. Vui lòng chọn slug khác.",
+                409
+            );
+        }
+    }
 
     async getEvents({
         organizerId,
@@ -10,6 +85,8 @@ class OrganizerEventService {
         keyword = "",
         status = "",
     }) {
+        this.validateOrganizer(organizerId);
+
         const currentPage = Math.max(1, Number(page) || 1);
         const pageSize = 10;
         const skip = (currentPage - 1) * pageSize;
@@ -17,9 +94,7 @@ class OrganizerEventService {
         const searchKeyword =
             typeof keyword === "string" ? keyword.trim() : "";
 
-        const where = {
-            organizerId,
-        };
+        const where = { organizerId };
 
         if (searchKeyword) {
             where.OR = [
@@ -39,6 +114,20 @@ class OrganizerEventService {
         }
 
         if (status) {
+            const allowedStatuses = [
+                "DRAFT",
+                "PENDING",
+                "PUBLISHED",
+                "REJECTED",
+                "CANCELLED",
+                "COMPLETED",
+                "SUSPENDED",
+            ];
+
+            if (!allowedStatuses.includes(status)) {
+                this.throwError("Trạng thái sự kiện không hợp lệ");
+            }
+
             where.status = status;
         }
 
@@ -76,6 +165,8 @@ class OrganizerEventService {
     }
 
     async getEventDetail({ eventId, organizerId }) {
+        this.validateOrganizer(organizerId);
+
         const event = await prisma.event.findFirst({
             where: {
                 id: eventId,
@@ -94,9 +185,7 @@ class OrganizerEventService {
         });
 
         if (!event) {
-            const error = new Error("Không tìm thấy sự kiện");
-            error.statusCode = 404;
-            throw error;
+            this.throwError("Không tìm thấy sự kiện", 404);
         }
 
         return event;
@@ -105,6 +194,7 @@ class OrganizerEventService {
     async createEvent({
         organizerId,
         name,
+        slug,
         description,
         thumbnailUrl,
         bannerUrl,
@@ -115,85 +205,87 @@ class OrganizerEventService {
         startAt,
         endAt,
     }) {
-        if (!organizerId) {
-            const error = new Error("Không xác định được tài khoản Ban tổ chức");
-            error.statusCode = 401;
-            throw error;
+        this.validateOrganizer(organizerId);
+
+        if (typeof name !== "string" || !name.trim()) {
+            this.throwError("Tên sự kiện không được để trống");
         }
 
-        if (!name || typeof name !== "string" || !name.trim()) {
-            const error = new Error("Tên sự kiện không được để trống");
-            error.statusCode = 400;
-            throw error;
+        if (typeof location !== "string" || !location.trim()) {
+            this.throwError("Địa điểm không được để trống");
         }
 
-        if (!location || typeof location !== "string" || !location.trim()) {
-            const error = new Error("Địa điểm không được để trống");
-            error.statusCode = 400;
-            throw error;
+        await this.validateCategory(categoryId);
+
+        const eventSlug = slug?.trim() || generateSlug(name.trim());
+
+        await this.validateSlug(eventSlug);
+
+        const startDate = this.parseDate(
+            startAt,
+            "Thời gian bắt đầu sự kiện"
+        );
+
+        const endDate = this.parseDate(
+            endAt,
+            "Thời gian kết thúc sự kiện"
+        );
+
+        if (startDate >= endDate) {
+            this.throwError(
+                "Thời gian kết thúc phải sau thời gian bắt đầu"
+            );
         }
 
-        if (!startAt || !endAt) {
-            const error = new Error("Vui lòng nhập thời gian sự kiện");
-            error.statusCode = 400;
-            throw error;
-        }
+        const saleStartDate = saleStartAt
+            ? this.parseDate(saleStartAt, "Thời gian mở bán")
+            : null;
 
-        const startDate = new Date(startAt);
-        const endDate = new Date(endAt);
+        const saleEndDate = saleEndAt
+            ? this.parseDate(saleEndAt, "Thời gian kết thúc bán vé")
+            : null;
 
         if (
-            Number.isNaN(startDate.getTime()) ||
-            Number.isNaN(endDate.getTime()) ||
-            startDate >= endDate
+            saleStartDate &&
+            saleEndDate &&
+            saleStartDate >= saleEndDate
         ) {
-            const error = new Error("Thời gian sự kiện không hợp lệ");
-            error.statusCode = 400;
-            throw error;
+            this.throwError(
+                "Thời gian kết thúc bán vé phải sau thời gian mở bán"
+            );
         }
 
-        if (categoryId) {
-            const category = await prisma.category.findUnique({
-                where: { id: categoryId },
+        try {
+            return await prisma.event.create({
+                data: {
+                    name: name.trim(),
+                    slug: eventSlug,
+                    description,
+                    thumbnailUrl,
+                    bannerUrl,
+                    organizerId,
+                    categoryId,
+                    location: location.trim(),
+                    saleStartAt: saleStartDate,
+                    saleEndAt: saleEndDate,
+                    startAt: startDate,
+                    endAt: endDate,
+                    status: "DRAFT",
+                },
+                include: {
+                    category: true,
+                },
             });
-
-            if (!category) {
-                const error = new Error("Danh mục không tồn tại");
-                error.statusCode = 404;
-                throw error;
-            }
+        } catch (error) {
+            this.handlePrismaError(error);
         }
-
-        const eventSlug = generateSlug(name);
-
-        const event = await prisma.event.create({
-            data: {
-                name: name.trim(),
-                slug: eventSlug,
-                description,
-                thumbnailUrl,
-                bannerUrl,
-                organizerId,
-                categoryId: categoryId || null,
-                location: location.trim(),
-                saleStartAt: saleStartAt ? new Date(saleStartAt) : null,
-                saleEndAt: saleEndAt ? new Date(saleEndAt) : null,
-                startAt: startDate,
-                endAt: endDate,
-                status: "DRAFT",
-            },
-            include: {
-                category: true,
-            },
-        });
-
-        return event;
     }
 
     async updateEvent({
         eventId,
         organizerId,
         name,
+        slug,
         description,
         thumbnailUrl,
         bannerUrl,
@@ -204,6 +296,8 @@ class OrganizerEventService {
         startAt,
         endAt,
     }) {
+        this.validateOrganizer(organizerId);
+
         const existingEvent = await prisma.event.findFirst({
             where: {
                 id: eventId,
@@ -212,93 +306,212 @@ class OrganizerEventService {
         });
 
         if (!existingEvent) {
-            const error = new Error("Không tìm thấy sự kiện");
-            error.statusCode = 404;
-            throw error;
+            this.throwError("Không tìm thấy sự kiện", 404);
         }
 
-        if (existingEvent.status !== "DRAFT") {
-            const error = new Error(
-                "Chỉ có thể chỉnh sửa sự kiện ở trạng thái bản nháp"
+        const editableStatuses = ["DRAFT", "REJECTED"];
+
+        if (!editableStatuses.includes(existingEvent.status)) {
+            this.throwError(
+                "Chỉ có thể chỉnh sửa sự kiện ở trạng thái bản nháp hoặc bị từ chối"
             );
-            error.statusCode = 400;
-            throw error;
         }
 
         const data = {};
 
         if (name !== undefined) {
             if (typeof name !== "string" || !name.trim()) {
-                const error = new Error("Tên sự kiện không được để trống");
-                error.statusCode = 400;
-                throw error;
+                this.throwError("Tên sự kiện không được để trống");
             }
 
             data.name = name.trim();
         }
 
-        if (description !== undefined) data.description = description;
-        if (thumbnailUrl !== undefined) data.thumbnailUrl = thumbnailUrl;
-        if (bannerUrl !== undefined) data.bannerUrl = bannerUrl;
+        if (slug !== undefined) {
+            data.slug = slug.trim();
+        } else if (name !== undefined) {
+            data.slug = generateSlug(name.trim());
+        }
+
+        if (data.slug !== undefined) {
+            await this.validateSlug(data.slug, existingEvent.id);
+        }
+
+        if (description !== undefined) {
+            data.description = description;
+        }
+
+        if (thumbnailUrl !== undefined) {
+            data.thumbnailUrl = thumbnailUrl;
+        }
+
+        if (bannerUrl !== undefined) {
+            data.bannerUrl = bannerUrl;
+        }
+
         if (location !== undefined) {
             if (typeof location !== "string" || !location.trim()) {
-                const error = new Error("Địa điểm không được để trống");
-                error.statusCode = 400;
-                throw error;
+                this.throwError("Địa điểm không được để trống");
             }
 
             data.location = location.trim();
         }
 
         if (categoryId !== undefined) {
-            if (categoryId) {
-                const category = await prisma.category.findUnique({
-                    where: { id: categoryId },
-                });
-
-                if (!category) {
-                    const error = new Error("Danh mục không tồn tại");
-                    error.statusCode = 404;
-                    throw error;
-                }
-            }
-
-            data.categoryId = categoryId || null;
+            await this.validateCategory(categoryId);
+            data.categoryId = categoryId;
         }
 
         if (saleStartAt !== undefined) {
-            data.saleStartAt = saleStartAt ? new Date(saleStartAt) : null;
+            data.saleStartAt = saleStartAt
+                ? this.parseDate(saleStartAt, "Thời gian mở bán")
+                : null;
         }
 
         if (saleEndAt !== undefined) {
-            data.saleEndAt = saleEndAt ? new Date(saleEndAt) : null;
+            data.saleEndAt = saleEndAt
+                ? this.parseDate(
+                    saleEndAt,
+                    "Thời gian kết thúc bán vé"
+                )
+                : null;
         }
 
-        if (startAt !== undefined) data.startAt = new Date(startAt);
-        if (endAt !== undefined) data.endAt = new Date(endAt);
+        if (startAt !== undefined) {
+            data.startAt = this.parseDate(
+                startAt,
+                "Thời gian bắt đầu sự kiện"
+            );
+        }
 
-        const finalStartAt = data.startAt || existingEvent.startAt;
-        const finalEndAt = data.endAt || existingEvent.endAt;
+        if (endAt !== undefined) {
+            data.endAt = this.parseDate(
+                endAt,
+                "Thời gian kết thúc sự kiện"
+            );
+        }
+
+        const finalStartAt = data.startAt ?? existingEvent.startAt;
+        const finalEndAt = data.endAt ?? existingEvent.endAt;
+
+        if (finalStartAt >= finalEndAt) {
+            this.throwError(
+                "Thời gian kết thúc phải sau thời gian bắt đầu"
+            );
+        }
+
+        const finalSaleStartAt =
+            data.saleStartAt !== undefined
+                ? data.saleStartAt
+                : existingEvent.saleStartAt;
+
+        const finalSaleEndAt =
+            data.saleEndAt !== undefined
+                ? data.saleEndAt
+                : existingEvent.saleEndAt;
 
         if (
-            Number.isNaN(finalStartAt.getTime()) ||
-            Number.isNaN(finalEndAt.getTime()) ||
-            finalStartAt >= finalEndAt
+            finalSaleStartAt &&
+            finalSaleEndAt &&
+            finalSaleStartAt >= finalSaleEndAt
         ) {
-            const error = new Error("Thời gian sự kiện không hợp lệ");
-            error.statusCode = 400;
-            throw error;
+            this.throwError(
+                "Thời gian kết thúc bán vé phải sau thời gian mở bán"
+            );
+        }
+
+        try {
+            return await prisma.event.update({
+                where: {
+                    id: existingEvent.id,
+                },
+                data,
+                include: {
+                    category: true,
+                },
+            });
+        } catch (error) {
+            this.handlePrismaError(error);
+        }
+    }
+
+    async submitEvent({ eventId, organizerId }) {
+        this.validateOrganizer(organizerId);
+
+        const event = await prisma.event.findFirst({
+            where: {
+                id: eventId,
+                organizerId,
+            },
+        });
+
+        if (!event) {
+            this.throwError("Không tìm thấy sự kiện", 404);
+        }
+
+        const submitableStatuses = ["DRAFT", "REJECTED"];
+
+        if (!submitableStatuses.includes(event.status)) {
+            this.throwError(
+                "Chỉ có thể gửi duyệt sự kiện ở trạng thái bản nháp hoặc bị từ chối"
+            );
+        }
+
+        if (
+            !event.name ||
+            !event.slug ||
+            !event.location ||
+            !event.categoryId ||
+            !event.startAt ||
+            !event.endAt
+        ) {
+            this.throwError(
+                "Vui lòng hoàn thiện thông tin sự kiện trước khi gửi duyệt"
+            );
+        }
+
+        if (event.startAt >= event.endAt) {
+            this.throwError("Thời gian sự kiện không hợp lệ");
         }
 
         return prisma.event.update({
             where: {
-                id: eventId,
+                id: event.id,
             },
-            data,
+            data: {
+                status: "PENDING",
+                rejectReason: null,
+                reviewedAt: null,
+            },
             include: {
                 category: true,
             },
         });
+    }
+
+    async deleteEvent({ eventId, organizerId }) {
+        this.validateOrganizer(organizerId);
+
+        const result = await prisma.event.deleteMany({
+            where: {
+                id: eventId,
+                organizerId,
+                status: {
+                    in: ["DRAFT", "REJECTED"],
+                },
+            },
+        });
+
+        if (result.count === 0) {
+            this.throwError(
+                "Không tìm thấy sự kiện hoặc bạn không có quyền xóa sự kiện này",
+                404
+            );
+        }
+
+        return {
+            message: "Xóa sự kiện thành công",
+        };
     }
 }
 

@@ -14,7 +14,7 @@ import EventStats from "../components/events/EventStats";
 import EventToolbar from "../components/events/EventToolbar";
 import EventTable from "../components/events/EventTable";
 
-function EventPage() {
+function AdminEventPage() {
     const [stats, setStats] = useState({});
     const [events, setEvents] = useState([]);
 
@@ -372,4 +372,4 @@ function EventPage() {
     );
 }
 
-export default EventPage;
+export default AdminEventPage;

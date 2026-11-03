@@ -9,7 +9,7 @@ import ProtectedRoute from "../routes/ProtectedRoute";
 import Page403 from "../modules/errors/403";
 import Page404 from "../modules/errors/404";
 
-import DashboardPage from "../modules/admin/pages/DashboardPage";
+import AdminDashboardPage from "../modules/admin/pages/DashboardPage";
 import AdminLayout from "../modules/admin/components/AdminLayout";
 import UserPage from "../modules/admin/pages/UserManagementPage";
 import CategoryPage from "../modules/admin/pages/CategoryManagementPage";
@@ -25,6 +25,7 @@ import MyEventsPage from "../modules/event/pages/MyEventsPage";
 
 import OrganizerLayout from "../modules/organizer/components/OrganizerLayout";
 import OrganizerEventPage from "../modules/organizer/pages/EventManagementPage";
+import OrganizerDashboardPage from "../modules/organizer/pages/DashboardPage";
 
 function AppRoutes() {
   return (
@@ -50,8 +51,8 @@ function AppRoutes() {
 
         <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
           <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<DashboardPage />} />
-            <Route path="dashboard" element={<DashboardPage />} />
+            <Route index element={<AdminDashboardPage />} />
+            <Route path="dashboard" element={<AdminDashboardPage />} />
             <Route path="users" element={<UserPage />} />
             <Route path="categories" element={<CategoryPage/>} />
             <Route path="system" element={<SystemPage/>} />
@@ -62,8 +63,8 @@ function AppRoutes() {
 
         <Route element={<ProtectedRoute allowedRoles={["ORGANIZER"]} />}>
           <Route path="/organizer" element={<OrganizerLayout />}>
-            <Route index element={<DashboardPage />} />
-            {/* <Route path="dashboard" element={<DashboardPage />} /> */}
+            <Route index element={<OrganizerDashboardPage />} />
+            <Route path="dashboard" element={<OrganizerDashboardPage />} />
             <Route path="events" element={<OrganizerEventPage />} />
           </Route>
         </Route>

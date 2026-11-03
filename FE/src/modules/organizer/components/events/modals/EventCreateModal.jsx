@@ -1,20 +1,8 @@
-
-import { useEffect, useRef, useState } from "react";
-import {
-    X,
-    ImagePlus,
-    Upload,
-    Trash2,
-    CalendarDays,
-    MapPin,
-    FileText,
-    Send,
-    Save,
-    ClipboardCheck,
-} from "lucide-react";
+import { useRef, useState } from "react";
+import { X, CalendarDays, MapPin, FileText, Send, Save,} from "lucide-react";
 
 import Button from "../../../../../components/common/button/Button";
-import { createEvent, uploadEventImage } from "../../../services/eventService";
+import { createEvent, uploadEventImage, submitEvent, } from "../../../services/eventService";
 import { generateSlug } from "../../../../../utils/generateSlug";
 import ImageUploader from "../ImageUploader";
 
@@ -41,6 +29,7 @@ function EventCreateModal({
     const [bannerFile, setBannerFile] = useState(null);
     const [thumbnailFile, setThumbnailFile] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [slugError, setSlugError] = useState("");
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -51,6 +40,18 @@ function EventCreateModal({
                 name: value,
                 slug: generateSlug(value),
             }));
+
+            setSlugError("");
+            return;
+        }
+
+        if (name === "slug") {
+            setFormData((prev) => ({
+                ...prev,
+                slug: generateSlug(value),
+            }));
+
+            setSlugError("");
             return;
         }
 
@@ -60,8 +61,10 @@ function EventCreateModal({
         }));
     };
 
-    const handleSubmit = async (status) => {
+    const handleSubmit = async (action) => {
         if (loading) return;
+
+        setSlugError("");
 
         if (!formData.name.trim()) {
             return onAlert?.("error", "Vui lòng nhập tên sự kiện.");
@@ -127,6 +130,7 @@ function EventCreateModal({
             let bannerUrl = null;
             let thumbnailUrl = null;
 
+            // Upload ảnh banner
             if (bannerFile) {
                 const response = await uploadEventImage(
                     bannerFile,
@@ -136,6 +140,7 @@ function EventCreateModal({
                 bannerUrl = response.data.url;
             }
 
+            // Upload ảnh thumbnail
             if (thumbnailFile) {
                 const response = await uploadEventImage(
                     thumbnailFile,
@@ -147,8 +152,8 @@ function EventCreateModal({
 
             const payload = {
                 name: formData.name.trim(),
-                categoryId: formData.categoryId,
                 slug: formData.slug.trim(),
+                categoryId: formData.categoryId,
                 location: formData.location.trim(),
                 description: formData.description.trim(),
 
@@ -165,32 +170,64 @@ function EventCreateModal({
 
                 bannerUrl,
                 thumbnailUrl,
-
-                // DRAFT: Lưu nháp
-                // PENDING: Gửi Admin phê duyệt
-                status,
             };
 
-            await createEvent(payload);
+            // Luôn tạo sự kiện ở trạng thái DRAFT
+            const response = await createEvent(payload);
 
-            if (status === "DRAFT") {
+            if (action === "DRAFT") {
                 onSuccess?.("Đã lưu sự kiện dưới dạng bản nháp.");
-            } else {
-                onSuccess?.("Đã gửi sự kiện đến Admin để phê duyệt.");
+                return;
             }
+
+            const eventId =
+                response?.data?.id ||
+                response?.data?.data?.id ||
+                response?.data?.event?.id ||
+                response?.data?.data?.event?.id;
+
+            if (!eventId) {
+                throw new Error(
+                    "Tạo sự kiện thành công nhưng không lấy được ID để gửi duyệt."
+                );
+            }
+
+            // Gửi sự kiện lên Admin duyệt
+            await submitEvent(eventId);
+
+            onSuccess?.("Đã gửi sự kiện đến Admin để phê duyệt.");
         } catch (error) {
-            onAlert?.(
-                "error",
-                error.message || "Không thể tạo sự kiện."
-            );
+            const status =
+                error.response?.status ||
+                error.statusCode ||
+                error.status;
+
+            const message =
+                error.response?.data?.message ||
+                error.response?.data?.error ||
+                error.message ||
+                "Không thể tạo sự kiện.";
+
+            // Duplicate slug error
+            if (
+                status === 409 ||
+                message.toLowerCase().includes("slug")
+            ) {
+                setSlugError(
+                    "Slug đã tồn tại. Vui lòng chọn slug khác."
+                );
+                return;
+            }
+
+            onAlert?.("error", message);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleAction = (status) => {
+    const handleAction = (action) => {
         if (!formRef.current?.reportValidity()) return;
-        handleSubmit(status);
+        handleSubmit(action);
     };
 
     const inputClass =
@@ -239,6 +276,7 @@ function EventCreateModal({
                                 </h3>
                             </div>
 
+                            {/* Tên sự kiện */}
                             <div>
                                 <label className={labelClass}>
                                     Tên sự kiện <span className="text-red-500">*</span>
@@ -254,6 +292,7 @@ function EventCreateModal({
                                 />
                             </div>
 
+                            {/* Slug */}
                             <div>
                                 <label className={labelClass}>
                                     Slug <span className="text-red-500">*</span>
@@ -264,11 +303,21 @@ function EventCreateModal({
                                     value={formData.slug}
                                     onChange={handleChange}
                                     placeholder="Ví dụ: sac-xuan-viet-2026"
-                                    className={inputClass}
+                                    className={`${inputClass} ${slugError
+                                            ? "border-red-500 focus:border-red-500 focus:ring-red-50"
+                                            : ""
+                                        }`}
                                     required
                                 />
+
+                                {slugError && (
+                                    <p className="mt-1.5 text-xs text-red-500">
+                                        {slugError}
+                                    </p>
+                                )}
                             </div>
 
+                            {/* Danh mục */}
                             <div>
                                 <label className={labelClass}>
                                     Danh mục <span className="text-red-500">*</span>
@@ -281,7 +330,9 @@ function EventCreateModal({
                                     className={inputClass}
                                     required
                                 >
-                                    <option value="">Chọn danh mục sự kiện</option>
+                                    <option value="">
+                                        Chọn danh mục sự kiện
+                                    </option>
 
                                     {categories.map((category) => (
                                         <option
@@ -294,6 +345,7 @@ function EventCreateModal({
                                 </select>
                             </div>
 
+                            {/* Địa điểm */}
                             <div>
                                 <label className={labelClass}>
                                     Địa điểm <span className="text-red-500">*</span>
@@ -316,6 +368,7 @@ function EventCreateModal({
                                 </div>
                             </div>
 
+                            {/* Mô tả */}
                             <div>
                                 <label className={labelClass}>
                                     Mô tả sự kiện

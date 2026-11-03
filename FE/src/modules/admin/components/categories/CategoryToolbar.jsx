@@ -4,8 +4,6 @@ import SearchInput from "../../../../components/common/toolbar/SearchInput";
 function EventToolbar({
     keyword,
     setKeyword,
-    status,
-    setStatus,
     onReset,
 }) {
     return (
@@ -14,20 +12,8 @@ function EventToolbar({
                 <SearchInput
                     value={keyword}
                     onChange={setKeyword}
-                    placeholder="Tìm theo tên sự kiện..."
+                    placeholder="Tìm theo tên danh mục"
                 />
-
-                <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                >
-                    <option value="">Tất cả trạng thái</option>
-                    <option value="DRAFT">Bản nháp</option>
-                    <option value="PUBLISHED">Đã xuất bản</option>
-                    <option value="CANCELLED">Đã hủy</option>
-                    <option value="COMPLETED">Đã kết thúc</option>
-                </select>
             </div>
 
             <Button
