@@ -1,16 +1,25 @@
-import { useState, useEffect } from "react";
-import { Plus, CheckCircle, XCircle } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Plus, CheckCircle, XCircle, Armchair, CalendarDays } from "lucide-react";
 
-import { getEvents } from "../services/eventService";
+import { getEvents, getEventStats } from "../services/eventService";
+import { getCategories } from "../services/categoryService";
+import useSeatMaps from "../hooks/useSeatMaps";
 
 import EventToolbar from "../components/events/EventToolbar";
 import EventTable from "../components/events/EventTable";
+import OrganizerEventStats from "../components/events/OrganizerEventStats";
 import EventCreateModal from "../components/events/modals/EventCreateModal";
-import { getCategories } from "../services/categoryService";
+import SeatMapEditor from "../components/seatmaps/SeatMapEditor";
+import SeatMapTable from "../components/seatmaps/SeatMapTable";
 
 import Pagination from "../../../components/common/Pagination";
 import { Alert } from "../../../components/common/Arlet";
+import ConfirmModal from "../../../components/common/ConfirmModal";
 import Button from "../../../components/common/button/Button";
+import Tabs from "../../../components/common/Tabs";
+
+const TAB_EVENTS = "events";
+const TAB_SEAT_MAPS = "seat-maps";
 
 function OrganizerEventPage() {
     const [keyword, setKeyword] = useState("");
@@ -28,7 +37,24 @@ function OrganizerEventPage() {
     const [showCreateModal, setShowCreateModal] = useState(false);
 
     const [categories, setCategories] = useState([]);
+    const [activeTab, setActiveTab] = useState(TAB_EVENTS);
 
+    // Thống kê sự kiện của BTC.
+    const [stats, setStats] = useState({});
+    const [statsLoading, setStatsLoading] = useState(true);
+
+    const [seatMapRefreshKey, setSeatMapRefreshKey] = useState(0);
+
+    const handleAlert = useCallback((type, message) => {
+        setAlert({
+            variant: type === "success" ? "success" : "error",
+            title: type === "success" ? "Thành công" : "Thất bại",
+            message,
+            icon: type === "success" ? CheckCircle : XCircle,
+        });
+    }, []);
+
+    // ===== Danh mục =====
     useEffect(() => {
         const fetchCategories = async () => {
             try {
@@ -41,60 +67,21 @@ function OrganizerEventPage() {
                     setCategories(data.categories);
                 } else {
                     setCategories([]);
-                    console.error("Response không đúng cấu trúc:", result);
                 }
-            } catch (error) {
+            } catch (err) {
                 handleAlert(
                     "error",
-                    error.response?.data?.message ||
-                    error.message ||
+                    err.response?.data?.message ||
+                    err.message ||
                     "Không thể tải danh sách danh mục."
                 );
             }
         };
 
         fetchCategories();
-    }, []);
+    }, [handleAlert]);
 
-    const handleRefresh = () => {
-        setRefreshKey((prev) => prev + 1);
-    };
-
-    const handleKeywordChange = (value) => {
-        setKeyword(value);
-        setPage(1);
-    };
-
-    const handleStatusChange = (value) => {
-        setStatus(value);
-        setPage(1);
-    };
-
-    const handleReset = () => {
-        setKeyword("");
-        setStatus("");
-        setPage(1);
-    };
-
-    const handlePageChange = (newPage) => {
-        if (
-            newPage >= 1 &&
-            newPage <= totalPages &&
-            newPage !== page
-        ) {
-            setPage(newPage);
-        }
-    };
-
-    const handleAlert = (type, message) => {
-        setAlert({
-            variant: type === "success" ? "success" : "error",
-            title: type === "success" ? "Thành công" : "Thất bại",
-            message,
-            icon: type === "success" ? CheckCircle : XCircle,
-        });
-    };
-
+    // ===== Sự kiện =====
     useEffect(() => {
         let cancelled = false;
 
@@ -103,11 +90,7 @@ function OrganizerEventPage() {
             setError("");
 
             try {
-                const result = await getEvents({
-                    page,
-                    keyword,
-                    status,
-                });
+                const result = await getEvents({ page, keyword, status });
 
                 if (cancelled) return;
 
@@ -125,9 +108,7 @@ function OrganizerEventPage() {
                 setEvents([]);
                 setTotalPages(1);
             } finally {
-                if (!cancelled) {
-                    setLoading(false);
-                }
+                if (!cancelled) setLoading(false);
             }
         }
 
@@ -138,11 +119,93 @@ function OrganizerEventPage() {
         };
     }, [page, keyword, status, refreshKey]);
 
-    const handleCreateSuccess = (message) => {
+    const handleSeatMapsChange = useCallback(() => {
+        setSeatMapRefreshKey((v) => v + 1);
+    }, []);
+
+    // ===== Thống kê sự kiện =====
+    useEffect(() => {
+        let cancelled = false;
+
+        async function fetchStats() {
+            try {
+                const result = await getEventStats();
+
+                if (cancelled) return;
+
+                setStats(result?.data || {});
+            } catch (err) {
+                if (cancelled) return;
+
+                // Lỗi thống kê không chặn trang, chỉ bỏ trống số liệu.
+                console.error("Lỗi tải thống kê sự kiện:", err);
+            } finally {
+                if (!cancelled) setStatsLoading(false);
+            }
+        }
+
+        fetchStats();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [refreshKey]);
+
+    // ===== Sơ đồ ghế =====
+    const seatMaps = useSeatMaps({
+        onAlert: handleAlert,
+        refreshKey,
+        onChange: handleSeatMapsChange,
+    });
+
+    const handleRefresh = useCallback(() => {
+        setRefreshKey((prev) => prev + 1);
+    }, []);
+
+    const handleKeywordChange = useCallback((value) => {
+        setKeyword(value);
+        setPage(1);
+    }, []);
+
+    const handleStatusChange = useCallback((value) => {
+        setStatus(value);
+        setPage(1);
+    }, []);
+
+    const handleReset = useCallback(() => {
+        setKeyword("");
+        setStatus("");
+        setPage(1);
+    }, []);
+
+    const handlePageChange = useCallback(
+        (newPage) => {
+            if (newPage >= 1 && newPage <= totalPages && newPage !== page) {
+                setPage(newPage);
+            }
+        },
+        [page, totalPages]
+    );
+
+    const handleCreateSuccess = useCallback(
+        (message) => {
+            setShowCreateModal(false);
+            handleRefresh();
+            handleAlert("success", message);
+        },
+        [handleRefresh, handleAlert]
+    );
+
+
+    const handleManageSeatMaps = useCallback(() => {
         setShowCreateModal(false);
-        handleRefresh();
-        handleAlert("success", message);
-    };
+        setActiveTab(TAB_SEAT_MAPS);
+    }, []);
+
+    const tabs = [
+        { id: TAB_EVENTS, label: "Quản lý sự kiện", icon: CalendarDays },
+        { id: TAB_SEAT_MAPS, label: "Quản lý sơ đồ ghế", icon: Armchair },
+    ];
 
     return (
         <div className="space-y-6">
@@ -161,6 +224,7 @@ function OrganizerEventPage() {
                 </div>
             )}
 
+            {/* HEADER */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">
@@ -172,57 +236,123 @@ function OrganizerEventPage() {
                     </p>
                 </div>
 
-                <Button
-                    variant="primary"
-                    onClick={() => setShowCreateModal(true)}
-                >
-                    <Plus size={18} />
-                    Tạo sự kiện
-                </Button>
+                {activeTab === TAB_EVENTS ? (
+                    <Button
+                        variant="primary"
+                        onClick={() => setShowCreateModal(true)}
+                    >
+                        <Plus size={18} />
+                        Tạo sự kiện
+                    </Button>
+                ) : (
+                    <Button
+                        variant="primary"
+                        onClick={seatMaps.openCreate}
+                    >
+                        <Plus size={18} />
+                        Tạo sơ đồ ghế
+                    </Button>
+                )}
             </div>
 
+            <OrganizerEventStats
+                stats={stats}
+                loading={statsLoading}
+            />
+            {/* TABS */}
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-                <EventToolbar
-                    keyword={keyword}
-                    setKeyword={handleKeywordChange}
-                    status={status}
-                    setStatus={handleStatusChange}
-                    onReset={handleReset}
-                />
+                <div className="px-5 pt-4">
+                    <Tabs
+                        tabs={tabs}
+                        defaultTab={TAB_EVENTS}
+                        onChange={setActiveTab}
+                    />
+                </div>
 
-                {error && (
-                    <p className="px-5 py-4 text-sm text-red-600">
-                        {error}
-                    </p>
-                )}
+                {activeTab === TAB_EVENTS ? (
+                    <>
+                        <EventToolbar
+                            keyword={keyword}
+                            setKeyword={handleKeywordChange}
+                            status={status}
+                            setStatus={handleStatusChange}
+                            onReset={handleReset}
+                        />
 
-                <EventTable
-                    events={events}
-                    loading={loading}
-                    currentPage={page}
-                    pageSize={10}
-                    onRefresh={handleRefresh}
-                    onAlert={handleAlert}
-                />
+                        {error && (
+                            <p className="px-5 py-4 text-sm text-red-600">
+                                {error}
+                            </p>
+                        )}
 
-                {!loading && !error && (
-                    <Pagination
-                        page={page}
-                        totalPages={totalPages}
-                        onPageChange={handlePageChange}
-                        onAlert={handleAlert}
+                        <EventTable
+                            events={events}
+                            loading={loading}
+                            currentPage={page}
+                            pageSize={10}
+                            onRefresh={handleRefresh}
+                            onAlert={handleAlert}
+                            onManageSeatMaps={handleManageSeatMaps}
+                            seatMapRefreshKey={seatMapRefreshKey}
+                        />
+
+                        {!loading && !error && (
+                            <Pagination
+                                page={page}
+                                totalPages={totalPages}
+                                onPageChange={handlePageChange}
+                                onAlert={handleAlert}
+                            />
+                        )}
+                    </>
+                ) : (
+                    <SeatMapTable
+                        seatMaps={seatMaps.seatMaps}
+                        loading={seatMaps.loading}
+                        onEdit={seatMaps.openEdit}
+                        onDuplicate={seatMaps.handleDuplicate}
+                        onDelete={seatMaps.setDeleteTarget}
                     />
                 )}
             </div>
 
+            {/* MODALS */}
             {showCreateModal && (
                 <EventCreateModal
                     categories={categories}
                     onClose={() => setShowCreateModal(false)}
                     onSuccess={handleCreateSuccess}
                     onAlert={handleAlert}
+                    onManageSeatMaps={handleManageSeatMaps}
+                    seatMapRefreshKey={seatMapRefreshKey}
                 />
             )}
+
+            {seatMaps.editorOpen && (
+                <SeatMapEditor
+                    seatMap={seatMaps.editingSeatMap}
+                    saving={seatMaps.saving}
+                    onClose={seatMaps.closeEditor}
+                    onSave={seatMaps.handleSave}
+                    onAlert={handleAlert}
+                />
+            )}
+
+            <ConfirmModal
+                isOpen={Boolean(seatMaps.deleteTarget)}
+                onClose={() => seatMaps.setDeleteTarget(null)}
+                onConfirm={seatMaps.handleDelete}
+                title="Xóa sơ đồ sự kiện"
+                message="Bạn có chắc chắn muốn xóa sơ đồ sự kiện này?"
+                description={
+                    seatMaps.deleteTarget
+                        ? `"${seatMaps.deleteTarget.name}" sẽ bị xóa cùng toàn bộ khu vực và ghế bên trong.`
+                        : ""
+                }
+                variant="danger"
+                confirmText="Xóa sơ đồ"
+                loading={seatMaps.deleting}
+            />
         </div>
     );
 }

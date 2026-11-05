@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
+
 import {
     getEventStats,
     getEvents,
-    getEventDetail,
     approveEvent,
     rejectEvent,
     suspendEvent,
@@ -13,6 +13,40 @@ import {
 import EventStats from "../components/events/EventStats";
 import EventToolbar from "../components/events/EventToolbar";
 import EventTable from "../components/events/EventTable";
+import ConfirmModal from "../../../components/common/ConfirmModal";
+import Pagination from "../../../components/common/Pagination";
+
+const confirmConfig = {
+    approve: {
+        title: "Duyệt sự kiện",
+        message: "Bạn có chắc chắn muốn duyệt sự kiện này?",
+        description: "Sự kiện sẽ được duyệt và hiển thị trên hệ thống.",
+        variant: "success",
+        confirmText: "Duyệt sự kiện",
+        color: "green-600",
+    },
+    suspend: {
+        title: "Khóa sự kiện",
+        message: "Bạn có chắc chắn muốn khóa sự kiện này?",
+        description: "Sự kiện sẽ tạm thời không được hiển thị cho người dùng.",
+        variant: "danger",
+        confirmText: "Khóa sự kiện",
+    },
+    restore: {
+        title: "Mở khóa sự kiện",
+        message: "Bạn có chắc chắn muốn mở khóa sự kiện này?",
+        description: "Sự kiện sẽ được khôi phục và hiển thị lại trên hệ thống.",
+        variant: "success",
+        confirmText: "Mở khóa",
+    },
+    cancel: {
+        title: "Hủy sự kiện",
+        message: "Bạn có chắc chắn muốn hủy sự kiện này?",
+        description: "Thao tác này sẽ thay đổi trạng thái của sự kiện.",
+        variant: "warning",
+        confirmText: "Hủy sự kiện",
+    },
+};
 
 function AdminEventPage() {
     const [stats, setStats] = useState({});
@@ -34,6 +68,7 @@ function AdminEventPage() {
 
     const [refreshKey, setRefreshKey] = useState(0);
 
+    // Load statistics
     const loadStats = useCallback(async () => {
         try {
             const response = await getEventStats();
@@ -43,6 +78,7 @@ function AdminEventPage() {
         }
     }, []);
 
+    // Load events
     const loadEvents = useCallback(async () => {
         setLoading(true);
         setError("");
@@ -57,9 +93,7 @@ function AdminEventPage() {
             setEvents(response.data.events || []);
             setTotalPages(response.data.pagination?.totalPages || 1);
         } catch (error) {
-            setError(
-                error.message || "Không thể tải danh sách sự kiện"
-            );
+            setError(error.message || "Không thể tải danh sách sự kiện");
         } finally {
             setLoading(false);
         }
@@ -73,10 +107,12 @@ function AdminEventPage() {
         loadEvents();
     }, [loadEvents, refreshKey]);
 
+    // Refresh data
     const refreshData = () => {
         setRefreshKey((prev) => prev + 1);
     };
 
+    // Filter events
     const handleReset = () => {
         setKeyword("");
         setStatus("");
@@ -93,30 +129,30 @@ function AdminEventPage() {
         setPage(1);
     };
 
+    // Open action modal
     const openModal = (type, event) => {
         setSelectedEvent(event);
         setModalType(type);
         setRejectReason("");
     };
 
+    // Close modal
     const closeModal = () => {
+        if (processing) return;
+
         setSelectedEvent(null);
         setModalType("");
         setRejectReason("");
     };
 
-    const handleView = async (event) => {
-        try {
-            const response = await getEventDetail(event.id);
-            setSelectedEvent(response.data);
-            setModalType("detail");
-        } catch (error) {
-            alert(error.message || "Không thể tải chi tiết sự kiện");
-        }
-    };
-
+    // Handle event actions
     const handleAction = async () => {
         if (!selectedEvent || processing) return;
+
+        if (modalType === "reject" && !rejectReason.trim()) {
+            alert("Vui lòng nhập lý do từ chối");
+            return;
+        }
 
         setProcessing(true);
 
@@ -129,13 +165,7 @@ function AdminEventPage() {
                     break;
 
                 case "reject":
-                    if (!rejectReason.trim()) {
-                        alert("Vui lòng nhập lý do từ chối");
-                        setProcessing(false);
-                        return;
-                    }
-
-                    await rejectEvent(eventId, rejectReason);
+                    await rejectEvent(eventId, rejectReason.trim());
                     break;
 
                 case "suspend":
@@ -154,7 +184,10 @@ function AdminEventPage() {
                     return;
             }
 
-            closeModal();
+            setSelectedEvent(null);
+            setModalType("");
+            setRejectReason("");
+
             refreshData();
         } catch (error) {
             alert(error.message || "Thao tác thất bại");
@@ -163,15 +196,11 @@ function AdminEventPage() {
         }
     };
 
-    const confirmMessages = {
-        approve: "Bạn có chắc chắn muốn duyệt sự kiện này?",
-        suspend: "Bạn có chắc chắn muốn khóa sự kiện này?",
-        restore: "Bạn có chắc chắn muốn mở khóa sự kiện này?",
-        cancel: "Bạn có chắc chắn muốn hủy sự kiện này?",
-    };
+    const currentConfirm = confirmConfig[modalType];
 
     return (
         <div className="space-y-6">
+            {/* Header */}
             <div>
                 <h1 className="text-2xl font-semibold text-gray-900">
                     Quản lý sự kiện
@@ -182,8 +211,10 @@ function AdminEventPage() {
                 </p>
             </div>
 
+            {/* Statistics */}
             <EventStats stats={stats} />
 
+            {/* Toolbar */}
             <EventToolbar
                 keyword={keyword}
                 status={status}
@@ -192,16 +223,17 @@ function AdminEventPage() {
                 onReset={handleReset}
             />
 
+            {/* Error */}
             {error && (
                 <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">
                     {error}
                 </div>
             )}
 
+            {/* Event table */}
             <EventTable
                 events={events}
                 loading={loading}
-                onView={handleView}
                 onApprove={(event) => openModal("approve", event)}
                 onReject={(event) => openModal("reject", event)}
                 onSuspend={(event) => openModal("suspend", event)}
@@ -209,120 +241,19 @@ function AdminEventPage() {
                 onCancel={(event) => openModal("cancel", event)}
             />
 
-            <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-500">
-                    Trang {page} / {totalPages}
-                </p>
+            {/* Pagination */}
+            <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPageChange={(newPage) => setPage(newPage)}
+            />
 
-                <div className="flex gap-2">
-                    <button
-                        disabled={page <= 1}
-                        onClick={() => setPage((prev) => prev - 1)}
-                        className="rounded-lg border px-4 py-2 text-sm disabled:opacity-40"
-                    >
-                        Trước
-                    </button>
-
-                    <button
-                        disabled={page >= totalPages}
-                        onClick={() => setPage((prev) => prev + 1)}
-                        className="rounded-lg border px-4 py-2 text-sm disabled:opacity-40"
-                    >
-                        Tiếp
-                    </button>
-                </div>
-            </div>
-
-            {/* Detail modal */}
-            {modalType === "detail" && selectedEvent && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6">
-                        <div className="mb-5 flex items-center justify-between">
-                            <h2 className="text-lg font-semibold">
-                                Chi tiết sự kiện
-                            </h2>
-
-                            <button onClick={closeModal}>✕</button>
-                        </div>
-
-                        {selectedEvent.bannerUrl && (
-                            <img
-                                src={selectedEvent.bannerUrl}
-                                alt=""
-                                className="mb-5 h-56 w-full rounded-lg object-cover"
-                            />
-                        )}
-
-                        <div className="space-y-3 text-sm">
-                            <div>
-                                <p className="text-gray-500">Tên sự kiện</p>
-                                <p className="font-medium">
-                                    {selectedEvent.name}
-                                </p>
-                            </div>
-
-                            <div>
-                                <p className="text-gray-500">Địa điểm</p>
-                                <p>{selectedEvent.location}</p>
-                            </div>
-
-                            <div>
-                                <p className="text-gray-500">Danh mục</p>
-                                <p>{selectedEvent.category?.name || "—"}</p>
-                            </div>
-
-                            <div>
-                                <p className="text-gray-500">Ban tổ chức</p>
-                                <p>
-                                    {selectedEvent.organizer?.organizerProfile
-                                        ?.organizationName ||
-                                        selectedEvent.organizer?.profile
-                                            ?.fullName ||
-                                        selectedEvent.organizer?.username ||
-                                        "—"}
-                                </p>
-                            </div>
-
-                            <div>
-                                <p className="text-gray-500">Mô tả</p>
-                                <p className="whitespace-pre-line">
-                                    {selectedEvent.description || "Chưa có mô tả"}
-                                </p>
-                            </div>
-
-                            <div>
-                                <p className="text-gray-500">Lý do từ chối</p>
-                                <p>{selectedEvent.rejectReason || "—"}</p>
-                            </div>
-
-                            <div>
-                                <p className="text-gray-500">Số phiên sự kiện</p>
-                                <p>{selectedEvent.eventSessions?.length || 0}</p>
-                            </div>
-                        </div>
-
-                        <div className="mt-6 flex justify-end">
-                            <button
-                                onClick={closeModal}
-                                className="rounded-lg bg-gray-100 px-5 py-2 text-sm hover:bg-gray-200"
-                            >
-                                Đóng
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Confirmation / rejection modal */}
-            {["approve", "reject", "suspend", "restore", "cancel"].includes(
-                modalType
-            ) && selectedEvent && (
+            {/* Reject modal */}
+            {modalType === "reject" && selectedEvent && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-md rounded-xl bg-white p-6">
-                        <h2 className="text-lg font-semibold">
-                            {modalType === "reject"
-                                ? "Từ chối sự kiện"
-                                : "Xác nhận thao tác"}
+                        <h2 className="text-lg font-semibold text-gray-900">
+                            Từ chối sự kiện
                         </h2>
 
                         <p className="mt-3 text-sm text-gray-600">
@@ -332,41 +263,57 @@ function AdminEventPage() {
                             </span>
                         </p>
 
-                        {modalType === "reject" ? (
-                            <textarea
-                                value={rejectReason}
-                                onChange={(e) =>
-                                    setRejectReason(e.target.value)
-                                }
-                                rows={4}
-                                placeholder="Nhập lý do từ chối..."
-                                className="mt-4 w-full rounded-lg border border-gray-200 p-3 text-sm outline-none focus:border-blue-500"
-                            />
-                        ) : (
-                            <p className="mt-3 text-sm text-gray-600">
-                                {confirmMessages[modalType]}
-                            </p>
-                        )}
+                        <textarea
+                            value={rejectReason}
+                            onChange={(e) => setRejectReason(e.target.value)}
+                            rows={4}
+                            placeholder="Nhập lý do từ chối..."
+                            className="mt-4 w-full rounded-lg border border-gray-200 p-3 text-sm outline-none focus:border-blue-500"
+                        />
 
                         <div className="mt-6 flex justify-end gap-3">
                             <button
+                                type="button"
                                 onClick={closeModal}
                                 disabled={processing}
-                                className="rounded-lg border px-4 py-2 text-sm"
+                                className="rounded-lg border px-4 py-2 text-sm disabled:opacity-50"
                             >
                                 Hủy
                             </button>
 
                             <button
+                                type="button"
                                 onClick={handleAction}
                                 disabled={processing}
-                                className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+                                className="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-50"
                             >
-                                {processing ? "Đang xử lý..." : "Xác nhận"}
+                                {processing ? "Đang xử lý..." : "Từ chối"}
                             </button>
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Confirmation modal */}
+            {currentConfirm && selectedEvent && (
+                <ConfirmModal
+                    isOpen={true}
+                    onClose={closeModal}
+                    onConfirm={handleAction}
+                    title={currentConfirm.title}
+                    message={currentConfirm.message}
+                    description={
+                        <>
+                            {currentConfirm.description}
+                            <span className="mt-2 block font-medium text-gray-700">
+                                Sự kiện: {selectedEvent.name}
+                            </span>
+                        </>
+                    }
+                    variant="success"
+                    confirmText={currentConfirm.confirmText}
+                    loading={processing}
+                />
             )}
         </div>
     );

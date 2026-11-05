@@ -26,7 +26,10 @@ function EventToolbar({
                 >
                     <option value="">Tất cả trạng thái</option>
                     <option value="DRAFT">Bản nháp</option>
-                    <option value="PUBLISHED">Đã xuất bản</option>
+                    <option value="PENDING">Chờ duyệt</option>
+                    <option value="APPROVED">Đã duyệt</option>
+                    <option value="REJECTED">Bị từ chối</option>
+                    <option value="SUSPENDED">Đang bị khóa</option>
                     <option value="CANCELLED">Đã hủy</option>
                     <option value="COMPLETED">Đã kết thúc</option>
                 </select>

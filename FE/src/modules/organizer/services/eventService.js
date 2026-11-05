@@ -12,6 +12,12 @@ export function getEvents({ page = 1, keyword = "", status = "" } = {}) {
     });
 }
 
+export function getEventStats() {
+    return apiRequest("/organizer/events/stats", {
+        method: "GET",
+    });
+}
+
 export function getEventDetail(id) {
     return apiRequest(`/organizer/events/${id}`, {
         method: "GET",

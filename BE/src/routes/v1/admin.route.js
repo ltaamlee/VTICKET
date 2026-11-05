@@ -43,6 +43,9 @@ router.patch("/events/:id/suspend", adminEventController.suspendEvent);
 router.patch("/events/:id/restore", adminEventController.restoreEvent);
 router.patch("/events/:id/cancel", adminEventController.cancelEvent);
 
+// Sơ đồ ghế (Admin xem để duyệt sự kiện)
+router.get("/seat-maps/:id", adminEventController.getSeatMapDetail);
+
 //System
 router.get("/settings", adminSystemController.getSettings);
 router.get("/settings/:key", adminSystemController.getSetting);

@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
     X,
     CalendarDays,
@@ -11,35 +10,163 @@ import {
     Send,
     Image as ImageIcon,
     ClipboardCheck,
+    Armchair,
+    Users,
+    Mail,
+    Phone,
+    ShieldCheck,
+    AlertCircle,
 } from "lucide-react";
 
 import Button from "../../../../../components/common/button/Button";
-import { updateEvent } from "../../../services/eventService";
+import Tabs from "../../../../../components/common/Tabs";
+import {
+    getEventDetail as getOrganizerEventDetail,
+    submitEvent,
+} from "../../../services/eventService";
+import { getSeatMapDetail as getOrganizerSeatMapDetail } from "../../../services/seatMapService";
+import {
+    getEventDetail as getAdminEventDetail,
+    getSeatMapDetail as getAdminSeatMapDetail,
+} from "../../../../admin/services/eventService";
 
+import EventSeatMapTab from "./EventSeatMapTab";
+
+const TAB_INFO = "info";
+const TAB_SEAT_MAP = "seat-map";
+
+/**
+ * @param {"organizer"|"admin"} scope - Ai đang xem modal.
+ *   Admin dùng API riêng (/admin/...) vì không có quyền gọi
+ *   route của Organizer.
+ */
 function EventDetailModal({
     event,
     onClose,
     onSuccess,
     onAlert,
+    onApprove,
+    onReject,
+    showSubmit = true,
+    scope = "organizer",
 }) {
     const [loading, setLoading] = useState(false);
+    const [currentStatus, setCurrentStatus] = useState(event?.status);
+
+    // Danh sách sự kiện chỉ trả về seatMap kèm _count, không có danh sách
+    // khu vực. Vì vậy cần tải chi tiết sự kiện để hiển thị khu vực/ghế.
+    const [detail, setDetail] = useState(null);
+
+    // Sơ đồ ghế đầy đủ (hình dạng, toạ độ, giá) để vẽ xem trước.
+    const [seatMap, setSeatMap] = useState(null);
+    const [activeTab, setActiveTab] = useState(TAB_INFO);
+
+    const isAdmin = scope === "admin";
+
+    const fetchEventDetail = isAdmin
+        ? getAdminEventDetail
+        : getOrganizerEventDetail;
+
+    const fetchSeatMapDetail = isAdmin
+        ? getAdminSeatMapDetail
+        : getOrganizerSeatMapDetail;
+
+    // Đồng bộ trạng thái khi mở sự kiện khác.
+    useEffect(() => {
+        setCurrentStatus(event?.status);
+        setActiveTab(TAB_INFO);
+    }, [event]);
+
+    useEffect(() => {
+        if (!event?.id) {
+            setDetail(null);
+            return;
+        }
+
+        let cancelled = false;
+
+        const loadDetail = async () => {
+            try {
+                const result = await fetchEventDetail(event.id);
+
+                if (cancelled) return;
+
+                setDetail(result?.data || null);
+            } catch (error) {
+                if (cancelled) return;
+
+                onAlert?.(
+                    "error",
+                    error.response?.data?.message ||
+                        error.message ||
+                        "Không thể tải chi tiết sự kiện."
+                );
+            }
+        };
+
+        loadDetail();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [event?.id, fetchEventDetail, onAlert]);
+
+    // Tải sơ đồ ghế đầy đủ (khu vực + hình dạng + toạ độ + giá).
+    useEffect(() => {
+        const seatMapId =
+            detail?.seatMapId || event?.seatMapId || event?.seatMap?.id;
+
+        if (!seatMapId) {
+            setSeatMap(null);
+            return;
+        }
+
+        let cancelled = false;
+
+        const loadSeatMap = async () => {
+            try {
+                const result = await fetchSeatMapDetail(seatMapId);
+
+                if (cancelled) return;
+
+                setSeatMap(result?.data || null);
+            } catch (error) {
+                if (cancelled) return;
+
+                // Fallback: dữ liệu sơ đồ đã kèm trong chi tiết sự kiện
+                // vẫn đủ để vẽ xem trước.
+                setSeatMap(
+                    detail?.seatMap || event?.seatMap || null
+                );
+
+                // Không chặn modal nếu lỗi sơ đồ, chỉ báo nhẹ cho người dùng.
+                onAlert?.(
+                    "error",
+                    error.response?.data?.message ||
+                        error.message ||
+                        "Không thể tải sơ đồ ghế."
+                );
+            }
+        };
+
+        loadSeatMap();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        detail?.seatMapId,
+        event?.seatMapId,
+        event?.seatMap?.id,
+        fetchSeatMapDetail,
+        onAlert,
+    ]);
 
     if (!event) return null;
 
-    const formatDate = (date) => {
-        if (!date) return "Chưa cập nhật";
-
-        const parsedDate = new Date(date);
-
-        if (Number.isNaN(parsedDate.getTime())) {
-            return "Chưa cập nhật";
-        }
-
-        return new Intl.DateTimeFormat("vi-VN", {
-            dateStyle: "medium",
-            timeStyle: "short",
-        }).format(parsedDate);
-    };
+    // Ưu tiên dữ liệu chi tiết, fallback về dữ liệu trong danh sách.
+    const seatMapInfo = detail?.seatMap || event.seatMap;
+    const zones = seatMapInfo?.zones || [];
 
     const statusMap = {
         DRAFT: {
@@ -52,10 +179,10 @@ function EventDetailModal({
             className: "bg-amber-50 text-amber-700",
             dotClass: "bg-amber-500",
         },
-        PUBLISHED: {
-            label: "Đã xuất bản",
-            className: "bg-green-50 text-green-700",
-            dotClass: "bg-green-500",
+        APPROVED: {
+            label: "Đã duyệt",
+            className: "bg-emerald-50 text-emerald-700",
+            dotClass: "bg-emerald-500",
         },
         REJECTED: {
             label: "Bị từ chối",
@@ -72,38 +199,83 @@ function EventDetailModal({
             className: "bg-blue-50 text-blue-700",
             dotClass: "bg-blue-500",
         },
+        SUSPENDED: {
+            label: "Đã tạm ngưng",
+            className: "bg-orange-50 text-orange-700",
+            dotClass: "bg-orange-500",
+        },
     };
 
-    const status = statusMap[event.status] || {
-        label: event.status || "Chưa xác định",
+    const status = statusMap[currentStatus] || {
+        label: currentStatus || "Chưa xác định",
         className: "bg-gray-100 text-gray-600",
         dotClass: "bg-gray-400",
     };
 
-    const canSubmitApproval =
-        event.status === "DRAFT" || event.status === "REJECTED";
+    // Lưu ý: cần ngoặc để tránh operator precedence làm cho
+    // trạng thái REJECTED luôn hiện nút gửi dù showSubmit = false.
+    const canSubmit =
+        showSubmit &&
+        (currentStatus === "DRAFT" || currentStatus === "REJECTED");
 
-    const handleSubmitApproval = async () => {
-        if (loading) return;
+    const isPending = currentStatus === "PENDING";
+
+    // Lý do từ chối (nếu có) để Admin/organizer nắm được.
+    const rejectReason =
+        detail?.rejectReason || event?.rejectReason || "";
+
+    // Ban tổ chức - lấy từ chi tiết trước, fallback về danh sách.
+    const organizer =
+        detail?.organizer || event?.organizer || null;
+
+    const organizerName =
+        organizer?.organizerProfile?.organizationName ||
+        organizer?.profile?.fullName ||
+        organizer?.username ||
+        "—";
+
+    // Định dạng ngày giờ.
+    const formatDate = (date) => {
+        if (!date) return "Chưa cập nhật";
+
+        const parsedDate = new Date(date);
+
+        if (Number.isNaN(parsedDate.getTime())) {
+            return "Chưa cập nhật";
+        }
+
+        return new Intl.DateTimeFormat("vi-VN", {
+            dateStyle: "medium",
+            timeStyle: "short",
+        }).format(parsedDate);
+    };
+
+    // Gửi sự kiện đến Admin phê duyệt.
+    const handleSubmit = async () => {
+        if (loading || !canSubmit) return;
 
         try {
             setLoading(true);
 
-            await updateEvent(event.id, {
-                status: "PENDING",
-            });
+            await submitEvent(event.id);
+
+            setCurrentStatus("PENDING");
 
             onSuccess?.("Đã gửi sự kiện đến Admin để phê duyệt.");
         } catch (error) {
-            onAlert?.(
-                "error",
-                error.message || "Không thể gửi sự kiện để phê duyệt."
-            );
+            const message =
+                error.response?.data?.message ||
+                error.response?.data?.error ||
+                error.message ||
+                "Không thể gửi sự kiện để phê duyệt.";
+
+            onAlert?.("error", message);
         } finally {
             setLoading(false);
         }
     };
 
+    // Thành phần hiển thị thông tin.
     const InfoItem = ({ icon: Icon, label, value }) => (
         <div className="flex min-w-0 items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white">
@@ -119,6 +291,7 @@ function EventDetailModal({
         </div>
     );
 
+    // Tiêu đề từng khu vực.
     const SectionTitle = ({ icon: Icon, children }) => (
         <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
@@ -150,18 +323,41 @@ function EventDetailModal({
                         type="button"
                         onClick={onClose}
                         disabled={loading}
-                        className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+                        className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed"
                     >
                         <X size={21} />
                     </button>
                 </div>
 
-                {/* CONTENT */}
-                <div className="min-h-0 flex-1 space-y-7 overflow-y-auto p-6">
+                {/* TABS */}
+                <div className="shrink-0 border-b border-gray-100 px-6">
+                    <Tabs
+                        tabs={[
+                            {
+                                id: TAB_INFO,
+                                label: "Thông tin sự kiện",
+                                icon: FileText,
+                            },
+                            {
+                                id: TAB_SEAT_MAP,
+                                label: "Sơ đồ ghế",
+                                icon: Armchair,
+                            },
+                        ]}
+                        defaultTab={TAB_INFO}
+                        onChange={setActiveTab}
+                    />
+                </div>
+
+                {/* CONTENT - TAB THÔNG TIN */}
+                <div
+                    className={`min-h-0 flex-1 space-y-7 overflow-y-auto p-6 ${
+                        activeTab === TAB_SEAT_MAP ? "hidden" : ""
+                    }`}
+                >
 
                     {/* EVENT OVERVIEW */}
                     <div className="flex flex-col gap-5 sm:flex-row">
-                        {/* THUMBNAIL */}
                         <div className="h-36 w-36 shrink-0 overflow-hidden rounded-xl bg-gray-100">
                             {event.thumbnailUrl ? (
                                 <img
@@ -179,9 +375,8 @@ function EventDetailModal({
                             )}
                         </div>
 
-                        {/* BASIC INFO */}
                         <div className="flex min-w-0 flex-1 flex-col justify-center gap-3">
-                            <div className="flex flex-wrap items-center gap-2">
+                            <div>
                                 <span
                                     className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${status.className}`}
                                 >
@@ -249,6 +444,69 @@ function EventDetailModal({
                         </div>
                     </div>
 
+                    {/* BAN TỔ CHỨC - Admin cần xem để duyệt */}
+                    {(isAdmin || organizer) && (
+                        <div className="space-y-4">
+                            <SectionTitle icon={Users}>
+                                Ban tổ chức
+                            </SectionTitle>
+
+                            <div className="grid grid-cols-1 gap-5 rounded-xl bg-gray-50/80 p-5 sm:grid-cols-2">
+                                <InfoItem
+                                    icon={Users}
+                                    label="Tên đơn vị / người tổ chức"
+                                    value={organizerName}
+                                />
+
+                                <InfoItem
+                                    icon={Mail}
+                                    label="Email liên hệ"
+                                    value={
+                                        organizer?.email ||
+                                        event?.contactEmail ||
+                                        "—"
+                                    }
+                                />
+
+                                <InfoItem
+                                    icon={Phone}
+                                    label="Số điện thoại"
+                                    value={
+                                        event?.contactPhone ||
+                                        organizer?.phone ||
+                                        "—"
+                                    }
+                                />
+
+                                <InfoItem
+                                    icon={ShieldCheck}
+                                    label="Trạng thái ban tổ chức"
+                                    value={
+                                        organizer?.organizerProfile
+                                            ?.isVerified
+                                            ? "Đã xác minh"
+                                            : "Chưa xác minh"
+                                    }
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* LÝ DO TỪ CHỐI */}
+                    {rejectReason && (
+                        <div className="space-y-4">
+                            <SectionTitle icon={AlertCircle}>
+                                Lý do từ chối
+                            </SectionTitle>
+
+                            <div className="rounded-xl border border-red-100 bg-red-50/70 p-5">
+                                <p className="whitespace-pre-line text-sm leading-6 text-red-700">
+                                    {rejectReason}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
                     {/* EVENT TIME */}
                     <div className="space-y-4">
                         <SectionTitle icon={CalendarDays}>
@@ -305,7 +563,7 @@ function EventDetailModal({
                     </div>
 
                     {/* APPROVAL INFORMATION */}
-                    {event.status === "PENDING" && (
+                    {isPending && (
                         <div className="flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50/70 p-4">
                             <ClipboardCheck
                                 size={20}
@@ -317,22 +575,32 @@ function EventDetailModal({
                                     Sự kiện đang chờ phê duyệt
                                 </p>
                                 <p className="mt-1 text-xs leading-5 text-amber-700">
-                                    Sự kiện đã được gửi đến Admin. Vui lòng
-                                    chờ kết quả xét duyệt.
+                                    {isAdmin
+                                        ? "Hãy kiểm tra thông tin, sơ đồ ghế và giá vé trước khi duyệt hoặc từ chối."
+                                        : "Sự kiện đã được gửi đến Admin. Vui lòng chờ kết quả xét duyệt."}
                                 </p>
                             </div>
                         </div>
                     )}
                 </div>
 
+                {/* TAB: SƠ ĐỒ GHẾ */}
+                {activeTab === TAB_SEAT_MAP && (
+                    <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6">
+                        <EventSeatMapTab seatMap={seatMap} />
+                    </div>
+                )}
+
                 {/* FOOTER */}
                 <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-white px-6 py-4">
-                    <div className="text-xs text-gray-400">
-                        {canSubmitApproval
-                            ? "Sự kiện chưa được gửi phê duyệt."
-                            : event.status === "PENDING"
-                                ? "Đang chờ Admin xét duyệt."
-                                : ""}
+                    <div className="text-xs text-gray-500">
+                        {showSubmit && (
+                            isPending
+                                ? "Sự kiện đã gửi và đang chờ Admin xét duyệt."
+                                : canSubmit
+                                    ? "Sự kiện chưa được gửi phê duyệt."
+                                    : ""
+                        )}
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -345,18 +613,52 @@ function EventDetailModal({
                             Đóng
                         </Button>
 
-                        {canSubmitApproval && (
+                        {canSubmit && (
                             <Button
                                 type="button"
                                 variant="primary"
-                                onClick={handleSubmitApproval}
+                                onClick={handleSubmit}
                                 disabled={loading}
                             >
                                 <Send size={16} />
-                                {loading
-                                    ? "Đang gửi..."
-                                    : "Gửi phê duyệt"}
+                                {loading ? "Đang gửi..." : "Gửi phê duyệt"}
                             </Button>
+                        )}
+
+                        {showSubmit && isPending && (
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                disabled
+                            >
+                                <ClipboardCheck size={16} />
+                                Đã gửi phê duyệt
+                            </Button>
+                        )}
+
+                        {/* ADMIN: duyệt / từ chối ngay trong modal */}
+                        {isAdmin && isPending && (
+                            <>
+                                <Button
+                                    type="button"
+                                    variant="danger"
+                                    onClick={onReject}
+                                    disabled={loading}
+                                >
+                                    <X size={16} />
+                                    Từ chối
+                                </Button>
+
+                                <Button
+                                    type="button"
+                                    variant="success"
+                                    onClick={onApprove}
+                                    disabled={loading}
+                                >
+                                    <ClipboardCheck size={16} />
+                                    Duyệt sự kiện
+                                </Button>
+                            </>
                         )}
                     </div>
                 </div>

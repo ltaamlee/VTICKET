@@ -20,7 +20,6 @@ class AdminEventService {
             draftEvents,
             pendingEvents,
             approvedEvents,
-            publishedEvents,
             rejectedEvents,
             suspendedEvents,
             cancelledEvents,
@@ -29,8 +28,8 @@ class AdminEventService {
             prisma.event.count(),
             prisma.event.count({ where: { status: "DRAFT" } }),
             prisma.event.count({ where: { status: "PENDING" } }),
+            // Đã duyệt = APPROVED (sự kiện được công khai cho người dùng).
             prisma.event.count({ where: { status: "APPROVED" } }),
-            prisma.event.count({ where: { status: "PUBLISHED" } }),
             prisma.event.count({ where: { status: "REJECTED" } }),
             prisma.event.count({ where: { status: "SUSPENDED" } }),
             prisma.event.count({ where: { status: "CANCELLED" } }),
@@ -42,7 +41,6 @@ class AdminEventService {
             draftEvents,
             pendingEvents,
             approvedEvents,
-            publishedEvents,
             rejectedEvents,
             suspendedEvents,
             cancelledEvents,
@@ -105,7 +103,6 @@ class AdminEventService {
             const validStatuses = [
                 "PENDING",
                 "APPROVED",
-                "PUBLISHED",
                 "REJECTED",
                 "CANCELLED",
                 "COMPLETED",
@@ -165,7 +162,6 @@ class AdminEventService {
                     },
                     _count: {
                         select: {
-                            eventSessions: true,
                             posts: true,
                         },
                     },
@@ -180,6 +176,7 @@ class AdminEventService {
                 id: event.id,
                 name: event.name,
                 description: event.description,
+                thumbnailUrl: event.thumbnailUrl,
                 bannerUrl: event.bannerUrl,
                 location: event.location,
                 status: event.status,
@@ -191,7 +188,8 @@ class AdminEventService {
                 rejectReason: event.rejectReason,
                 category: event.category,
                 organizer: event.organizer,
-                sessionCount: event._count.eventSessions,
+                seatMapId: event.seatMapId,
+                seatMap: event.seatMap,
                 postCount: event._count.posts,
                 createdAt: event.createdAt,
                 updatedAt: event.updatedAt,
@@ -227,24 +225,54 @@ class AdminEventService {
                     },
                 },
 
-                eventSessions: {
-                    orderBy: {
-                        startAt: "asc",
-                    },
+                seatMap: {
                     include: {
-                        seatMap: {
-                            include: {
-                                _count: {
+                        // Cần đủ thông tin để Admin vẽ lại sơ đồ
+                        // (hình dạng, toạ độ, xoay, lật gương, lỗ...).
+                        zones: {
+                            orderBy: [
+                                { zIndex: "asc" },
+                                { name: "asc" },
+                            ],
+                            select: {
+                                id: true,
+                                name: true,
+                                code: true,
+                                color: true,
+                                type: true,
+                                shape: true,
+                                capacity: true,
+                                price: true,
+                                rowCount: true,
+                                seatPerRow: true,
+                                posX: true,
+                                posY: true,
+                                width: true,
+                                height: true,
+                                rotation: true,
+                                level: true,
+                                zIndex: true,
+                                points: true,
+                                holes: true,
+                                flipX: true,
+                                flipY: true,
+                                removedSeats: true,
+                                blockedSeats: true,
+                                seatNumbering: true,
+                                seats: {
                                     select: {
-                                        zones: true,
+                                        id: true,
+                                        rowLabel: true,
+                                        seatNumber: true,
+                                        status: true,
+                                        order: true,
                                     },
                                 },
                             },
                         },
                         _count: {
                             select: {
-                                ticketTypes: true,
-                                tickets: true,
+                                zones: true,
                             },
                         },
                     },
@@ -261,14 +289,86 @@ class AdminEventService {
         return {
             ...event,
 
-            eventSessions: event.eventSessions.map((session) => ({
-                ...session,
-                ticketTypeCount: session._count.ticketTypes,
-                ticketCount: session._count.tickets,
-                zoneCount: session.seatMap?._count.zones || 0,
-            })),
-
             postCount: event._count.posts,
+        };
+    }
+
+    /**
+     * Lấy chi tiết sơ đồ ghế (kèm khu vực) cho Admin.
+     *
+     * Admin không phải chủ sơ đồ nên không dùng được route của Organizer.
+     */
+    async getSeatMapDetail({ seatMapId }) {
+        if (
+            typeof seatMapId !== "string" ||
+            !/^[a-fA-F0-9]{24}$/.test(seatMapId)
+        ) {
+            this.createError("ID sơ đồ ghế không hợp lệ");
+        }
+
+        const seatMap = await prisma.seatMap.findUnique({
+            where: {
+                id: seatMapId,
+            },
+            include: {
+                zones: {
+                    orderBy: [
+                        { zIndex: "asc" },
+                        { name: "asc" },
+                    ],
+                    select: {
+                        id: true,
+                        name: true,
+                        code: true,
+                        color: true,
+                        type: true,
+                        shape: true,
+                        capacity: true,
+                        price: true,
+                        rowCount: true,
+                        seatPerRow: true,
+                        posX: true,
+                        posY: true,
+                        width: true,
+                        height: true,
+                        rotation: true,
+                        level: true,
+                        zIndex: true,
+                        points: true,
+                        holes: true,
+                        flipX: true,
+                        flipY: true,
+                        removedSeats: true,
+                        blockedSeats: true,
+                        seatNumbering: true,
+                        seats: {
+                            select: {
+                                id: true,
+                                rowLabel: true,
+                                seatNumber: true,
+                                status: true,
+                                order: true,
+                            },
+                        },
+                    },
+                },
+                events: {
+                    select: {
+                        id: true,
+                        name: true,
+                        slug: true,
+                    },
+                },
+            },
+        });
+
+        if (!seatMap) {
+            this.createError("Không tìm thấy sơ đồ ghế", 404);
+        }
+
+        return {
+            ...seatMap,
+            event: seatMap.events[0] || null,
         };
     }
 
@@ -299,6 +399,37 @@ class AdminEventService {
     // APPROVE EVENT
     // ==========================================
 
+    /**
+     * Đồng bộ trạng thái sơ đồ ghế theo trạng thái sự kiện.
+     *
+     * - Duyệt (APPROVED) -> sơ đồ READY (dùng để bán vé).
+     * - Từ chối / huỷ / khóa -> sơ đồ về DRAFT (để BTC chỉnh lại).
+     *
+     * Sơ đồ đang ARCHIVED thì giữ nguyên, không tự động mở lại.
+     */
+    async syncSeatMapStatus({ seatMapId, status }) {
+        if (!seatMapId) return;
+
+        const seatMap = await prisma.seatMap.findUnique({
+            where: { id: seatMapId },
+            select: { id: true, status: true },
+        });
+
+        if (!seatMap) return;
+
+        // Đã lưu trữ thì giữ nguyên trạng thái.
+        if (seatMap.status === "ARCHIVED") return;
+
+        const nextStatus = status === "APPROVED" ? "READY" : "DRAFT";
+
+        if (seatMap.status === nextStatus) return;
+
+        await prisma.seatMap.update({
+            where: { id: seatMapId },
+            data: { status: nextStatus },
+        });
+    }
+
     async approveEvent({ eventId }) {
         const event = await this.findEvent(eventId);
 
@@ -308,7 +439,7 @@ class AdminEventService {
             );
         }
 
-        return prisma.event.update({
+        const updated = await prisma.event.update({
             where: {
                 id: eventId,
             },
@@ -318,6 +449,14 @@ class AdminEventService {
                 rejectReason: null,
             },
         });
+
+        // Sự kiện được duyệt -> sơ đồ ghế cũng sẵn sàng bán vé.
+        await this.syncSeatMapStatus({
+            seatMapId: event.seatMapId,
+            status: "APPROVED",
+        });
+
+        return updated;
     }
 
     // ==========================================
@@ -337,7 +476,7 @@ class AdminEventService {
             this.createError("Vui lòng nhập lý do từ chối");
         }
 
-        return prisma.event.update({
+        const updated = await prisma.event.update({
             where: {
                 id: eventId,
             },
@@ -347,6 +486,14 @@ class AdminEventService {
                 rejectReason: reason.trim(),
             },
         });
+
+        // Bị từ chối -> sơ đồ về bản nháp để BTC chỉnh lại.
+        await this.syncSeatMapStatus({
+            seatMapId: event.seatMapId,
+            status: "REJECTED",
+        });
+
+        return updated;
     }
 
     // ==========================================
@@ -356,13 +503,13 @@ class AdminEventService {
     async suspendEvent({ eventId }) {
         const event = await this.findEvent(eventId);
 
-        if (!["APPROVED", "PUBLISHED"].includes(event.status)) {
+        if (!["APPROVED"].includes(event.status)) {
             this.createError(
-                "Chỉ có thể khóa sự kiện đã được duyệt hoặc công khai"
+                "Chỉ có thể khóa sự kiện đã được duyệt"
             );
         }
 
-        return prisma.event.update({
+        const updated = await prisma.event.update({
             where: {
                 id: eventId,
             },
@@ -370,6 +517,14 @@ class AdminEventService {
                 status: "SUSPENDED",
             },
         });
+
+        // Khoá sự kiện -> sơ đồ về bản nháp (không bán vé nữa).
+        await this.syncSeatMapStatus({
+            seatMapId: event.seatMapId,
+            status: "SUSPENDED",
+        });
+
+        return updated;
     }
 
     // ==========================================
@@ -385,7 +540,7 @@ class AdminEventService {
             );
         }
 
-        return prisma.event.update({
+        const updated = await prisma.event.update({
             where: {
                 id: eventId,
             },
@@ -393,6 +548,14 @@ class AdminEventService {
                 status: "APPROVED",
             },
         });
+
+        // Mở khoá -> sơ đồ sẵn sàng trở lại.
+        await this.syncSeatMapStatus({
+            seatMapId: event.seatMapId,
+            status: "APPROVED",
+        });
+
+        return updated;
     }
 
     // ==========================================
@@ -411,7 +574,7 @@ class AdminEventService {
             );
         }
 
-        return prisma.event.update({
+        const updated = await prisma.event.update({
             where: {
                 id: eventId,
             },
@@ -419,6 +582,14 @@ class AdminEventService {
                 status: "CANCELLED",
             },
         });
+
+        // Huỷ sự kiện -> sơ đồ về bản nháp.
+        await this.syncSeatMapStatus({
+            seatMapId: event.seatMapId,
+            status: "CANCELLED",
+        });
+
+        return updated;
     }
 }
 

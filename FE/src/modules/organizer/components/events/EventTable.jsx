@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Trash2, Armchair } from "lucide-react";
 
 import IconButton from "../../../../components/common/button/IconButton";
 
@@ -14,6 +14,8 @@ function EventTable({
     pageSize = 10,
     onRefresh,
     onAlert,
+    onManageSeatMaps,
+    seatMapRefreshKey = 0,
 }) {
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [modalType, setModalType] = useState(null);
@@ -36,6 +38,13 @@ function EventTable({
     const handleCloseModal = () => {
         setSelectedEvent(null);
         setModalType(null);
+    };
+
+    // Sang tab quản lý sơ đồ: đóng modal sửa trước vì overlay modal
+    // sẽ che khuất tab bên dưới.
+    const handleManageSeatMaps = () => {
+        handleCloseModal();
+        onManageSeatMaps?.();
     };
 
     const handleSuccess = (message) => {
@@ -68,13 +77,25 @@ function EventTable({
                 label: "Bản nháp",
                 className: "bg-gray-100 text-gray-700",
             },
-            PUBLISHED: {
-                label: "Đã xuất bản",
+            PENDING: {
+                label: "Chờ duyệt",
+                className: "bg-yellow-100 text-yellow-700",
+            },
+            APPROVED: {
+                label: "Đã duyệt",
                 className: "bg-green-100 text-green-700",
+            },
+            REJECTED: {
+                label: "Bị từ chối",
+                className: "bg-red-100 text-red-700",
+            },
+            SUSPENDED: {
+                label: "Đang bị khóa",
+                className: "bg-orange-100 text-orange-700",
             },
             CANCELLED: {
                 label: "Đã hủy",
-                className: "bg-red-100 text-red-700",
+                className: "bg-gray-100 text-gray-700",
             },
             COMPLETED: {
                 label: "Đã kết thúc",
@@ -105,6 +126,9 @@ function EventTable({
                             <th className="min-w-[160px] px-5 py-4">
                                 Thời gian diễn ra
                             </th>
+                            <th className="min-w-[140px] px-5 py-4">
+                                Sơ đồ ghế
+                            </th>
                             <th className="px-5 py-4">Trạng thái</th>
                             <th className="w-[180px] px-5 py-4 text-center">
                                 Thao tác
@@ -116,7 +140,7 @@ function EventTable({
                         {loading ? (
                             <tr>
                                 <td
-                                    colSpan={7}
+                                    colSpan={8}
                                     className="px-5 py-12 text-center"
                                 >
                                     Đang tải danh sách sự kiện...
@@ -125,7 +149,7 @@ function EventTable({
                         ) : events.length === 0 ? (
                             <tr>
                                 <td
-                                    colSpan={7}
+                                    colSpan={8}
                                     className="px-5 py-12 text-center"
                                 >
                                     <p className="mb-2 font-medium text-gray-600">
@@ -170,6 +194,26 @@ function EventTable({
 
                                         <td className="px-5 py-4">
                                             {formatDate(event.startAt)}
+                                        </td>
+
+                                        <td className="px-5 py-4">
+                                            {event.seatMap ? (
+                                                <span className="inline-flex items-center gap-1.5 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
+                                                    <Armchair size={13} />
+                                                    {event.seatMap.name}
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        onManageSeatMaps?.()
+                                                    }
+                                                    className="inline-flex items-center gap-1.5 rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500 transition hover:bg-blue-50 hover:text-blue-700"
+                                                >
+                                                    <Armchair size={13} />
+                                                    Chọn sơ đồ
+                                                </button>
+                                            )}
                                         </td>
 
                                         <td className="px-5 py-4">
@@ -231,6 +275,8 @@ function EventTable({
                     onClose={handleCloseModal}
                     onSuccess={handleSuccess}
                     onAlert={onAlert}
+                    onManageSeatMaps={handleManageSeatMaps}
+                    seatMapRefreshKey={seatMapRefreshKey}
                 />
             )}
 

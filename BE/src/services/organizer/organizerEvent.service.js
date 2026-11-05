@@ -79,6 +79,116 @@ class OrganizerEventService {
         }
     }
 
+    // Kiểm tra sơ đồ ghế có thuộc về ban tổ chức và còn trống hay không.
+    async validateSeatMap(seatMapId, organizerId, excludeEventId = null) {
+        if (
+            seatMapId === null ||
+            seatMapId === undefined ||
+            seatMapId === ""
+        ) {
+            return null;
+        }
+
+        if (
+            typeof seatMapId !== "string" ||
+            !/^[a-fA-F0-9]{24}$/.test(seatMapId)
+        ) {
+            this.throwError("ID sơ đồ ghế không hợp lệ");
+        }
+
+        const seatMap = await prisma.seatMap.findUnique({
+            where: {
+                id: seatMapId,
+            },
+            include: {
+                events: {
+                    select: {
+                        id: true,
+                    },
+                },
+            },
+        });
+
+        if (!seatMap) {
+            this.throwError("Sơ đồ ghế không tồn tại", 404);
+        }
+
+        if (seatMap.organizerId !== organizerId) {
+            this.throwError(
+                "Bạn không có quyền sử dụng sơ đồ ghế này",
+                403
+            );
+        }
+
+        if (seatMap.status === "ARCHIVED") {
+            this.throwError(
+                "Sơ đồ ghế đã lưu trữ, không thể gắn vào sự kiện"
+            );
+        }
+
+        const attachedEvent = seatMap.events.find(
+            (event) => event.id !== excludeEventId
+        );
+
+        if (attachedEvent) {
+            this.throwError(
+                "Sơ đồ ghế này đang được gắn cho một sự kiện khác",
+                409
+            );
+        }
+
+        return seatMap;
+    }
+
+    async getEventStats({ organizerId }) {
+        this.validateOrganizer(organizerId);
+
+        const where = { organizerId };
+
+        const [
+            totalEvents,
+            draftEvents,
+            pendingEvents,
+            approvedEvents,
+            rejectedEvents,
+            suspendedEvents,
+            cancelledEvents,
+            completedEvents,
+        ] = await Promise.all([
+            prisma.event.count({ where }),
+            prisma.event.count({ where: { ...where, status: "DRAFT" } }),
+            prisma.event.count({
+                where: { ...where, status: "PENDING" },
+            }),
+            prisma.event.count({
+                where: { ...where, status: "APPROVED" },
+            }),
+            prisma.event.count({
+                where: { ...where, status: "REJECTED" },
+            }),
+            prisma.event.count({
+                where: { ...where, status: "SUSPENDED" },
+            }),
+            prisma.event.count({
+                where: { ...where, status: "CANCELLED" },
+            }),
+            prisma.event.count({
+                where: { ...where, status: "COMPLETED" },
+            }),
+        ]);
+
+        return {
+            totalEvents,
+            draftEvents,
+            pendingEvents,
+            approvedEvents,
+            rejectedEvents,
+            suspendedEvents,
+            cancelledEvents,
+            completedEvents,
+        };
+    }
+
     async getEvents({
         organizerId,
         page = 1,
@@ -117,7 +227,7 @@ class OrganizerEventService {
             const allowedStatuses = [
                 "DRAFT",
                 "PENDING",
-                "PUBLISHED",
+                "APPROVED",
                 "REJECTED",
                 "CANCELLED",
                 "COMPLETED",
@@ -145,6 +255,18 @@ class OrganizerEventService {
                             id: true,
                             name: true,
                             slug: true,
+                        },
+                    },
+                    seatMap: {
+                        select: {
+                            id: true,
+                            name: true,
+                            status: true,
+                            _count: {
+                                select: {
+                                    zones: true,
+                                },
+                            },
                         },
                     },
                 },
@@ -180,7 +302,21 @@ class OrganizerEventService {
                         slug: true,
                     },
                 },
-                eventSessions: true,
+                seatMap: {
+                    include: {
+                        zones: {
+                            select: {
+                                id: true,
+                                name: true,
+                                code: true,
+                                color: true,
+                                type: true,
+                                capacity: true,
+                                price: true,
+                            },
+                        },
+                    },
+                },
             },
         });
 
@@ -204,6 +340,7 @@ class OrganizerEventService {
         saleEndAt,
         startAt,
         endAt,
+        seatMapId,
     }) {
         this.validateOrganizer(organizerId);
 
@@ -220,6 +357,11 @@ class OrganizerEventService {
         const eventSlug = slug?.trim() || generateSlug(name.trim());
 
         await this.validateSlug(eventSlug);
+
+        const seatMap = await this.validateSeatMap(
+            seatMapId,
+            organizerId
+        );
 
         const startDate = this.parseDate(
             startAt,
@@ -271,9 +413,15 @@ class OrganizerEventService {
                     startAt: startDate,
                     endAt: endDate,
                     status: "DRAFT",
+                    seatMapId: seatMap ? seatMap.id : null,
                 },
                 include: {
                     category: true,
+                    seatMap: {
+                        include: {
+                            zones: true,
+                        },
+                    },
                 },
             });
         } catch (error) {
@@ -295,6 +443,7 @@ class OrganizerEventService {
         saleEndAt,
         startAt,
         endAt,
+        seatMapId,
     }) {
         this.validateOrganizer(organizerId);
 
@@ -360,6 +509,17 @@ class OrganizerEventService {
         if (categoryId !== undefined) {
             await this.validateCategory(categoryId);
             data.categoryId = categoryId;
+        }
+
+        // Gắn hoặc tháo sơ đồ ghế khỏi sự kiện.
+        if (seatMapId !== undefined) {
+            const seatMap = await this.validateSeatMap(
+                seatMapId,
+                organizerId,
+                existingEvent.id
+            );
+
+            data.seatMapId = seatMap ? seatMap.id : null;
         }
 
         if (saleStartAt !== undefined) {
@@ -428,6 +588,11 @@ class OrganizerEventService {
                 data,
                 include: {
                     category: true,
+                    seatMap: {
+                        include: {
+                            zones: true,
+                        },
+                    },
                 },
             });
         } catch (error) {
@@ -474,6 +639,22 @@ class OrganizerEventService {
             this.throwError("Thời gian sự kiện không hợp lệ");
         }
 
+        // Gửi duyệt lại -> sơ đồ ghế về bản nháp để Admin xét duyệt
+        // trên phiên bản mới nhất.
+        if (event.seatMapId) {
+            await prisma.seatMap.updateMany({
+                where: {
+                    id: event.seatMapId,
+                    status: {
+                        not: "ARCHIVED",
+                    },
+                },
+                data: {
+                    status: "DRAFT",
+                },
+            });
+        }
+
         return prisma.event.update({
             where: {
                 id: event.id,
@@ -485,6 +666,11 @@ class OrganizerEventService {
             },
             include: {
                 category: true,
+                seatMap: {
+                    include: {
+                        zones: true,
+                    },
+                },
             },
         });
     }

@@ -27,6 +27,19 @@ class OrganizerEventController {
         );
     });
 
+    getEventStats = asyncHandler(async (req, res) => {
+        const result = await this.organizerEventService.getEventStats({
+            organizerId: req.user.id,
+        });
+
+        return sendResponse(
+            res,
+            200,
+            "Lấy thống kê sự kiện thành công",
+            result
+        );
+    });
+
     getEventDetail = asyncHandler(async (req, res) => {
         const { id } = req.params;
 

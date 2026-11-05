@@ -16,7 +16,7 @@ class EventService {
             typeof keyword === "string" ? keyword.trim() : "";
 
         const where = {
-            status: "PUBLISHED",
+            status: "APPROVED",
         };
 
         if (searchKeyword) {
@@ -77,7 +77,7 @@ class EventService {
         const event = await prisma.event.findFirst({
             where: {
                 id: eventId,
-                status: "PUBLISHED",
+                status: "APPROVED",
             },
             include: {
                 category: {

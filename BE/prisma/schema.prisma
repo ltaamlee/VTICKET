@@ -26,18 +26,43 @@ enum UserStatus {
 enum EventStatus {
   DRAFT
   PENDING
-  PUBLISHED
+  APPROVED
   REJECTED
-  CANCELLED
   COMPLETED
+  CANCELLED
   SUSPENDED
 }
 
-enum SessionStatus {
-  SCHEDULED
-  ONGOING
-  COMPLETED
-  CANCELLED
+enum ZoneType {
+  SEATED
+  STANDING
+  STAGE
+}
+
+// Hình dạng khu vực khi vẽ trên canvas.
+enum ZoneShape {
+  RECTANGLE
+  ROUNDED
+  CIRCLE
+  ELLIPSE
+  TRIANGLE
+  DIAMOND
+  TRAPEZOID
+  POLYGON
+}
+
+enum SeatType {
+  STANDARD
+  VIP
+  WHEELCHAIR
+}
+
+// Chiều duyệt ghế khi trả vé ngẫu nhiên cho người mua.
+enum SeatNumbering {
+  // Theo hàng: A1, A2, A3, B1, B2, ...
+  ROW
+  // Theo cột: A1, B1, C1, A2, B2, ...
+  COLUMN
 }
 
 enum TicketTypeStatus {
@@ -51,6 +76,12 @@ enum SeatStatus {
   RESERVED
   BOOKED
   BLOCKED
+}
+
+enum SeatMapStatus {
+  DRAFT
+  READY
+  ARCHIVED
 }
 
 enum TicketStatus {
@@ -144,7 +175,7 @@ model Role {
 model User {
   id         String     @id @default(auto()) @map("_id") @db.ObjectId
   email      String     @unique
-  username   String?     
+  username   String?
   password   String
   roleId     String     @db.ObjectId
   role       Role       @relation(fields: [roleId], references: [id])
@@ -162,8 +193,9 @@ model User {
   posts             Post[]
   comments          Comment[]
   reactions         Reaction[]
-  soldResales       ReSale[]     @relation("SellerResales")
-  boughtResales     ReSale[]     @relation("BuyerResales")
+  soldResales       ReSale[] @relation("SellerResales")
+  boughtResales     ReSale[] @relation("BuyerResales")
+  seatMaps          SeatMap[] @relation("OrganizerSeatMaps")
 
   @@map("users")
 }
@@ -195,30 +227,41 @@ model Category {
 }
 
 model Event {
-  id          String      @id @default(auto()) @map("_id") @db.ObjectId
-  name        String
-  slug        String      @unique
-  description String?
-  thumbnailUrl   String?
-  bannerUrl   String?
-  organizerId String      @db.ObjectId
-  organizer   User        @relation(fields: [organizerId], references: [id])
-  categoryId  String      @db.ObjectId
-  category    Category    @relation(fields: [categoryId], references: [id])
-  location    String
-  status      EventStatus @default(DRAFT)
-  saleStartAt DateTime?
-  saleEndAt   DateTime?
-  startAt     DateTime
-  endAt       DateTime
+  id           String      @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  slug         String      @unique
+  description  String?
+  thumbnailUrl String?
+  bannerUrl    String?
+
+  organizerId String   @db.ObjectId
+  organizer   User     @relation(fields: [organizerId], references: [id])
+  categoryId  String   @db.ObjectId
+  category    Category @relation(fields: [categoryId], references: [id])
+
+  location     String
+  contactEmail String?
+  contactPhone String?
+
+  status       EventStatus @default(DRAFT)
+  saleStartAt  DateTime?
+  saleEndAt    DateTime?
+  startAt      DateTime
+  endAt        DateTime
+
+  submittedAt  DateTime?
   reviewedAt   DateTime?
+  publishedAt  DateTime?
   rejectReason String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
 
-  eventSessions EventSession[]
-  posts         Post[]
+  seatMapId String? @db.ObjectId
+  seatMap   SeatMap? @relation("EventSeatMap", fields: [seatMapId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
+  ticketTypes TicketType[]
+  tickets     Ticket[]
+  posts       Post[]
   @@index([organizerId])
   @@index([categoryId])
   @@index([status])
@@ -226,37 +269,26 @@ model Event {
   @@map("events")
 }
 
-model EventSession {
-  id        String        @id @default(auto()) @map("_id") @db.ObjectId
-  eventId   String        @db.ObjectId
-  event     Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  name      String
-  startAt   DateTime
-  endAt     DateTime
-  status    SessionStatus @default(SCHEDULED)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-
-  seatMap     SeatMap?
-  ticketTypes TicketType[]
-  tickets     Ticket[]
-
-  @@index([eventId])
-  @@index([status])
-  @@index([startAt])
-  @@map("eventSessions")
-}
-
 model SeatMap {
-  id             String       @id @default(auto()) @map("_id") @db.ObjectId
-  eventSessionId String       @unique @db.ObjectId
-  eventSession   EventSession @relation(fields: [eventSessionId], references: [id], onDelete: Cascade)
-  name           String
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  name    String
+  status  SeatMapStatus @default(DRAFT)
+
+  // Kích thước canvas thiết kế sơ đồ.
+  canvasWidth  Float @default(900)
+  canvasHeight Float @default(600)
+
+  organizerId String   @db.ObjectId
+  organizer   User     @relation("OrganizerSeatMaps", fields: [organizerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   zones Zone[]
+  events Event[] @relation("EventSeatMap")
 
+  @@index([organizerId])
+  @@index([status])
   @@map("seatMaps")
 }
 
@@ -265,13 +297,60 @@ model Zone {
   seatMapId String   @db.ObjectId
   seatMap   SeatMap  @relation(fields: [seatMapId], references: [id], onDelete: Cascade)
   name      String
-  price     Float
-  capacity  Int
+  code      String?
+  color     String?
+  type      ZoneType @default(SEATED)
+  capacity  Int      @default(0)
+  price     Float    @default(0)
+  rowCount  Int      @default(0)
+  seatPerRow Int     @default(0)
+  isLocked Boolean  @default(false)
+
+  // Hình dạng khu vực trên canvas.
+  shape ZoneShape @default(RECTANGLE)
+
+  // Các ô ghế đã bị xoá trong lưới ghế (dùng để giữ các hàng so le).
+  // Lưu theo định dạng "rowLabel|seatNumber".
+  removedSeats Json? @map("removed_seats")
+
+  // Các ô ghế bị khoá (không bán vé): "rowLabel|seatNumber".
+  blockedSeats Json? @map("blocked_seats")
+
+  // Chiều đánh số ghế khi trả vé ngẫu nhiên:
+  //  - ROW    -> duyệt theo hàng (A1, A2, A3, B1, B2, ...)
+  //  - COLUMN -> duyệt theo cột (A1, B1, C1, A2, B2, ...)
+  seatNumbering SeatNumbering @default(ROW) @map("seat_numbering")
+
+  // Tọa độ trên canvas (px theo hệ toạ độ sơ đồ).
+  posX      Float    @default(0)
+  posY      Float    @default(0)
+  width     Float    @default(120)
+  height    Float    @default(60)
+  rotation  Float    @default(0)
+
+  points Json?
+  holes  Json?
+
+  originParts Json? @map("origin_parts")
+  combineGroupId String? @map("combine_group_id")
+
+  groupId String? @map("group_id")
+
+  zIndex  Int     @default(0) @map("z_index")
+
+  flipX   Boolean @default(false) @map("flip_x")
+  flipY   Boolean @default(false) @map("flip_y")
+
+  level     Int      @default(1)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  seats Seat[]
+  seats       Seat[]
+  ticketTypes TicketType[]
 
+  @@index([seatMapId])
+  @@index([level])
   @@map("zones")
 }
 
@@ -281,9 +360,20 @@ model Seat {
   zone       Zone       @relation(fields: [zoneId], references: [id], onDelete: Cascade)
   rowLabel   String
   seatNumber String
+  type       SeatType   @default(STANDARD)
   status     SeatStatus @default(AVAILABLE)
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+
+  // Toạ độ ghế trong khu vực (tương đối so với zone).
+  posX Float @default(0)
+  posY Float @default(0)
+
+  // Thứ tự duyệt ghế theo chiều đánh số của khu vực (ROW/COLUMN).
+  // Dùng để random trả ghế: các ghế có order liên tiếp luôn
+  // nằm gần nhau -> hạn chế sai sót khi khách tìm chỗ ngồi.
+  order Int @default(0)
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   tickets Ticket[]
 
@@ -292,24 +382,26 @@ model Seat {
 }
 
 model TicketType {
-  id             String           @id @default(auto()) @map("_id") @db.ObjectId
-  eventSessionId String           @db.ObjectId
-  eventSession   EventSession     @relation(fields: [eventSessionId], references: [id], onDelete: Cascade)
-  name           String
-  description    String?
-  price          Float
-  capacity       Int
-  soldQuantity   Int              @default(0)
-  saleStartAt    DateTime?
-  saleEndAt      DateTime?
-  status         TicketTypeStatus @default(ACTIVE)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  id           String           @id @default(auto()) @map("_id") @db.ObjectId
+  eventId      String           @db.ObjectId
+  event        Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  zoneId       String           @db.ObjectId
+  zone         Zone             @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  name         String
+  price        Float
+  capacity     Int
+  soldQuantity Int              @default(0)
+  saleStartAt  DateTime?
+  saleEndAt    DateTime?
+  status       TicketTypeStatus @default(ACTIVE)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   orderItems OrderItem[]
   tickets    Ticket[]
 
-  @@index([eventSessionId])
+  @@index([eventId])
+  @@index([zoneId])
   @@index([status])
   @@map("ticketTypes")
 }
@@ -347,6 +439,8 @@ model OrderItem {
 
   tickets Ticket[]
 
+  @@index([orderId])
+  @@index([ticketTypeId])
   @@map("orderItems")
 }
 
@@ -360,7 +454,7 @@ model Payment {
   status          PaymentStatus @default(PENDING)
   paidAt          DateTime?
   createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  updatedAt       DateTime @updatedAt
 
   @@index([orderId])
   @@index([transactionCode])
@@ -368,30 +462,32 @@ model Payment {
 }
 
 model Ticket {
-  id             String       @id @default(auto()) @map("_id") @db.ObjectId
-  ticketCode     String       @unique
-  qrToken        String       @unique
-  userId         String       @db.ObjectId
-  user           User         @relation(fields: [userId], references: [id])
-  eventSessionId String       @db.ObjectId
-  eventSession   EventSession @relation(fields: [eventSessionId], references: [id])
-  ticketTypeId   String       @db.ObjectId
-  ticketType     TicketType   @relation(fields: [ticketTypeId], references: [id])
-  orderItemId    String?      @db.ObjectId
-  orderItem      OrderItem?   @relation(fields: [orderItemId], references: [id])
-  seatId         String?      @db.ObjectId
-  seat           Seat?        @relation(fields: [seatId], references: [id])
-  status         TicketStatus @default(ISSUED)
-  issuedAt       DateTime?
-  checkInAt      DateTime?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id           String       @id @default(auto()) @map("_id") @db.ObjectId
+  ticketCode   String       @unique
+  qrToken      String       @unique
+  userId       String       @db.ObjectId
+  user         User         @relation(fields: [userId], references: [id])
+  eventId      String       @db.ObjectId
+  event        Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ticketTypeId String       @db.ObjectId
+  ticketType   TicketType   @relation(fields: [ticketTypeId], references: [id])
+  orderItemId  String?      @db.ObjectId
+  orderItem    OrderItem?   @relation(fields: [orderItemId], references: [id])
+  seatId       String?      @db.ObjectId
+  seat         Seat?        @relation(fields: [seatId], references: [id])
+  status       TicketStatus @default(ISSUED)
+  issuedAt     DateTime?
+  checkInAt    DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime @updatedAt
 
   resale ReSale?
 
   @@index([userId])
-  @@index([eventSessionId])
+  @@index([eventId])
   @@index([ticketTypeId])
+  @@index([orderItemId])
+  @@index([seatId])
   @@index([status])
   @@map("tickets")
 }
@@ -409,7 +505,6 @@ model ReSale {
   qrCode    String?
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
-  expiresAt DateTime?
 
   @@index([sellerId])
   @@index([buyerId])
@@ -452,6 +547,7 @@ model Comment {
 
   @@index([postId])
   @@index([authorId])
+  @@index([status])
   @@map("comments")
 }
 
@@ -470,17 +566,16 @@ model Reaction {
 }
 
 model SystemSetting {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  key       String   @unique
-  value     Json
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  key         String   @unique
+  value       Json
   description String?
-  updatedBy String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@map("systemSettings")
 }
-
 
 model OrganizerProfile {
   id               String        @id @default(auto()) @map("_id") @db.ObjectId
@@ -526,7 +621,7 @@ model OrganizerRequest {
   reviewedBy       String?                @db.ObjectId
   reviewedAt       DateTime?
   createdAt        DateTime               @default(now())
-  updatedAt        DateTime               @updatedAt
+  updatedAt        DateTime @updatedAt
 
   @@index([userId])
   @@index([status])

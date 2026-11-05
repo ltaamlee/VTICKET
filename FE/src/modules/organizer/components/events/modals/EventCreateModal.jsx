@@ -1,16 +1,25 @@
 import { useRef, useState } from "react";
-import { X, CalendarDays, MapPin, FileText, Send, Save,} from "lucide-react";
+import { X, FileText, Send, Save } from "lucide-react";
 
 import Button from "../../../../../components/common/button/Button";
-import { createEvent, uploadEventImage, submitEvent, } from "../../../services/eventService";
+import {
+    createEvent,
+    uploadEventImage,
+    submitEvent,
+} from "../../../services/eventService";
 import { generateSlug } from "../../../../../utils/generateSlug";
-import ImageUploader from "../ImageUploader";
+import EventBasicInfoSection from "./EventBasicInfoSection";
+import EventScheduleSection from "./EventScheduleSection";
+import EventImagesSection from "./EventImagesSection";
+import EventSeatMapSection from "./EventSeatMapSection";
 
 function EventCreateModal({
     categories = [],
     onClose,
     onSuccess,
     onAlert,
+    onManageSeatMaps,
+    seatMapRefreshKey = 0,
 }) {
     const formRef = useRef(null);
 
@@ -24,6 +33,9 @@ function EventCreateModal({
         endAt: "",
         saleStartAt: "",
         saleEndAt: "",
+        bannerUrl: "",
+        thumbnailUrl: "",
+        seatMapId: "",
     });
 
     const [bannerFile, setBannerFile] = useState(null);
@@ -127,8 +139,8 @@ function EventCreateModal({
         try {
             setLoading(true);
 
-            let bannerUrl = null;
-            let thumbnailUrl = null;
+            let bannerUrl = formData.bannerUrl || null;
+            let thumbnailUrl = formData.thumbnailUrl || null;
 
             // Upload ảnh banner
             if (bannerFile) {
@@ -170,6 +182,7 @@ function EventCreateModal({
 
                 bannerUrl,
                 thumbnailUrl,
+                seatMapId: formData.seatMapId || null,
             };
 
             // Luôn tạo sự kiện ở trạng thái DRAFT
@@ -230,12 +243,6 @@ function EventCreateModal({
         handleSubmit(action);
     };
 
-    const inputClass =
-        "w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-50";
-
-    const labelClass =
-        "mb-1.5 block text-sm font-medium text-gray-700";
-
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-5">
             <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
@@ -276,229 +283,43 @@ function EventCreateModal({
                                 </h3>
                             </div>
 
-                            {/* Tên sự kiện */}
-                            <div>
-                                <label className={labelClass}>
-                                    Tên sự kiện <span className="text-red-500">*</span>
-                                </label>
-
-                                <input
-                                    name="name"
-                                    value={formData.name}
-                                    onChange={handleChange}
-                                    placeholder="Nhập tên sự kiện"
-                                    className={inputClass}
-                                    required
+                            <EventBasicInfoSection
+                                formData={formData}
+                                handleChange={handleChange}
+                                categories={categories}
+                                slugError={slugError}
+                            >
+                                <EventSeatMapSection
+                                    value={formData.seatMapId}
+                                    onChange={(value) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            seatMapId: value,
+                                        }))
+                                    }
+                                    onAlert={onAlert}
+                                    onManageSeatMaps={onManageSeatMaps}
+                                    refreshKey={seatMapRefreshKey}
                                 />
-                            </div>
-
-                            {/* Slug */}
-                            <div>
-                                <label className={labelClass}>
-                                    Slug <span className="text-red-500">*</span>
-                                </label>
-
-                                <input
-                                    name="slug"
-                                    value={formData.slug}
-                                    onChange={handleChange}
-                                    placeholder="Ví dụ: sac-xuan-viet-2026"
-                                    className={`${inputClass} ${slugError
-                                            ? "border-red-500 focus:border-red-500 focus:ring-red-50"
-                                            : ""
-                                        }`}
-                                    required
-                                />
-
-                                {slugError && (
-                                    <p className="mt-1.5 text-xs text-red-500">
-                                        {slugError}
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Danh mục */}
-                            <div>
-                                <label className={labelClass}>
-                                    Danh mục <span className="text-red-500">*</span>
-                                </label>
-
-                                <select
-                                    name="categoryId"
-                                    value={formData.categoryId}
-                                    onChange={handleChange}
-                                    className={inputClass}
-                                    required
-                                >
-                                    <option value="">
-                                        Chọn danh mục sự kiện
-                                    </option>
-
-                                    {categories.map((category) => (
-                                        <option
-                                            key={category.id}
-                                            value={category.id}
-                                        >
-                                            {category.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Địa điểm */}
-                            <div>
-                                <label className={labelClass}>
-                                    Địa điểm <span className="text-red-500">*</span>
-                                </label>
-
-                                <div className="relative">
-                                    <MapPin
-                                        size={17}
-                                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                                    />
-
-                                    <input
-                                        name="location"
-                                        value={formData.location}
-                                        onChange={handleChange}
-                                        placeholder="Nhập địa điểm tổ chức"
-                                        className={`${inputClass} pl-10`}
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Mô tả */}
-                            <div>
-                                <label className={labelClass}>
-                                    Mô tả sự kiện
-                                </label>
-
-                                <textarea
-                                    name="description"
-                                    value={formData.description}
-                                    onChange={handleChange}
-                                    rows={5}
-                                    placeholder="Giới thiệu nội dung sự kiện..."
-                                    className={`${inputClass} resize-none`}
-                                />
-                            </div>
+                            </EventBasicInfoSection>
                         </div>
 
                         {/* THỜI GIAN SỰ KIỆN */}
-                        <div className="space-y-5">
-                            <div className="flex items-center justify-center gap-2 pb-3">
-                                <CalendarDays size={18} className="text-blue-600" />
-                                <h3 className="font-semibold text-gray-900">
-                                    Thời gian sự kiện
-                                </h3>
-                            </div>
-
-                            <div className="rounded-xl border border-gray-200 p-4">
-                                <h4 className="mb-4 text-sm font-semibold text-gray-800">
-                                    Thời gian diễn ra
-                                </h4>
-
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className={labelClass}>
-                                            Bắt đầu <span className="text-red-500">*</span>
-                                        </label>
-
-                                        <input
-                                            type="datetime-local"
-                                            name="startAt"
-                                            value={formData.startAt}
-                                            onChange={handleChange}
-                                            className={inputClass}
-                                            required
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className={labelClass}>
-                                            Kết thúc <span className="text-red-500">*</span>
-                                        </label>
-
-                                        <input
-                                            type="datetime-local"
-                                            name="endAt"
-                                            value={formData.endAt}
-                                            min={formData.startAt || undefined}
-                                            onChange={handleChange}
-                                            className={inputClass}
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="rounded-xl border border-gray-200 p-4">
-                                <div className="mb-4">
-                                    <h4 className="text-sm font-semibold text-gray-800">
-                                        Thời gian mở bán vé
-                                    </h4>
-
-                                    <p className="mt-1 text-xs text-gray-400">
-                                        Có thể bỏ trống và cấu hình sau.
-                                    </p>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className={labelClass}>
-                                            Bắt đầu mở bán
-                                        </label>
-
-                                        <input
-                                            type="datetime-local"
-                                            name="saleStartAt"
-                                            value={formData.saleStartAt}
-                                            onChange={handleChange}
-                                            className={inputClass}
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className={labelClass}>
-                                            Kết thúc mở bán
-                                        </label>
-
-                                        <input
-                                            type="datetime-local"
-                                            name="saleEndAt"
-                                            value={formData.saleEndAt}
-                                            min={formData.saleStartAt || undefined}
-                                            onChange={handleChange}
-                                            className={inputClass}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <EventScheduleSection
+                            formData={formData}
+                            handleChange={handleChange}
+                        />
 
                         {/* THUMBNAIL VÀ BANNER */}
-                        <div className="grid grid-cols-[minmax(0,0.65fr)_minmax(0,1.35fr)] items-start gap-5 lg:col-span-2">
-                            <div className="max-w-[280px]">
-                                <ImageUploader
-                                    title="Ảnh thẻ sự kiện"
-                                    ratio="1:1"
-                                    recommendation="Khuyến nghị: 600 × 600 px"
-                                    file={thumbnailFile}
-                                    setFile={setThumbnailFile}
-                                    onAlert={onAlert}
-                                />
-                            </div>
-
-                            <ImageUploader
-                                title="Ảnh banner"
-                                ratio="16:9"
-                                recommendation="Khuyến nghị: 1920 × 1080 px"
-                                file={bannerFile}
-                                setFile={setBannerFile}
-                                onAlert={onAlert}
-                            />
-                        </div>
+                        <EventImagesSection
+                            formData={formData}
+                            setFormData={setFormData}
+                            thumbnailFile={thumbnailFile}
+                            setThumbnailFile={setThumbnailFile}
+                            bannerFile={bannerFile}
+                            setBannerFile={setBannerFile}
+                            onAlert={onAlert}
+                        />
                     </div>
 
                     {/* FOOTER */}
