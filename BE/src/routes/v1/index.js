@@ -13,4 +13,7 @@ router.use('/users', userRoutes);
 router.use('/upload', uploadRoutes);
 router.use('/organizer', organizerRoutes);
 
+// router.use('/event', eventRoutes);
+// router.use('/category', categoryRoutes);
+
 module.exports = router;

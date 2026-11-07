@@ -1,14 +1,9 @@
-
 const prisma = require("../../config/prisma");
 const generateSlug = require("../../utils/generateSlug");
+const { EventStatus, isValidEventStatus, getEventStatus, } = require("../../shared/eventStatus");
+const BaseService = require("../public/base.service");
 
-class OrganizerEventService {
-    throwError(message, statusCode = 400) {
-        const error = new Error(message);
-        error.statusCode = statusCode;
-        throw error;
-    }
-
+class OrganizerEventService extends BaseService {
     handlePrismaError(error) {
         if (error.code === "P2002") {
             this.throwError(
@@ -143,50 +138,7 @@ class OrganizerEventService {
     async getEventStats({ organizerId }) {
         this.validateOrganizer(organizerId);
 
-        const where = { organizerId };
-
-        const [
-            totalEvents,
-            draftEvents,
-            pendingEvents,
-            approvedEvents,
-            rejectedEvents,
-            suspendedEvents,
-            cancelledEvents,
-            completedEvents,
-        ] = await Promise.all([
-            prisma.event.count({ where }),
-            prisma.event.count({ where: { ...where, status: "DRAFT" } }),
-            prisma.event.count({
-                where: { ...where, status: "PENDING" },
-            }),
-            prisma.event.count({
-                where: { ...where, status: "APPROVED" },
-            }),
-            prisma.event.count({
-                where: { ...where, status: "REJECTED" },
-            }),
-            prisma.event.count({
-                where: { ...where, status: "SUSPENDED" },
-            }),
-            prisma.event.count({
-                where: { ...where, status: "CANCELLED" },
-            }),
-            prisma.event.count({
-                where: { ...where, status: "COMPLETED" },
-            }),
-        ]);
-
-        return {
-            totalEvents,
-            draftEvents,
-            pendingEvents,
-            approvedEvents,
-            rejectedEvents,
-            suspendedEvents,
-            cancelledEvents,
-            completedEvents,
-        };
+        return getEventStatus({ organizerId });
     }
 
     async getEvents({
@@ -224,17 +176,7 @@ class OrganizerEventService {
         }
 
         if (status) {
-            const allowedStatuses = [
-                "DRAFT",
-                "PENDING",
-                "APPROVED",
-                "REJECTED",
-                "CANCELLED",
-                "COMPLETED",
-                "SUSPENDED",
-            ];
-
-            if (!allowedStatuses.includes(status)) {
+            if (!isValidEventStatus(status)) {
                 this.throwError("Trạng thái sự kiện không hợp lệ");
             }
 
@@ -412,7 +354,7 @@ class OrganizerEventService {
                     saleEndAt: saleEndDate,
                     startAt: startDate,
                     endAt: endDate,
-                    status: "DRAFT",
+                    status: EventStatus.DRAFT,
                     seatMapId: seatMap ? seatMap.id : null,
                 },
                 include: {
@@ -458,7 +400,10 @@ class OrganizerEventService {
             this.throwError("Không tìm thấy sự kiện", 404);
         }
 
-        const editableStatuses = ["DRAFT", "REJECTED"];
+        const editableStatuses = [
+            EventStatus.DRAFT,
+            EventStatus.REJECTED,
+        ];
 
         if (!editableStatuses.includes(existingEvent.status)) {
             this.throwError(
@@ -614,7 +559,7 @@ class OrganizerEventService {
             this.throwError("Không tìm thấy sự kiện", 404);
         }
 
-        const submitableStatuses = ["DRAFT", "REJECTED"];
+        const submitableStatuses = [EventStatus.DRAFT, EventStatus.REJECTED];
 
         if (!submitableStatuses.includes(event.status)) {
             this.throwError(
@@ -639,8 +584,6 @@ class OrganizerEventService {
             this.throwError("Thời gian sự kiện không hợp lệ");
         }
 
-        // Gửi duyệt lại -> sơ đồ ghế về bản nháp để Admin xét duyệt
-        // trên phiên bản mới nhất.
         if (event.seatMapId) {
             await prisma.seatMap.updateMany({
                 where: {
@@ -660,7 +603,7 @@ class OrganizerEventService {
                 id: event.id,
             },
             data: {
-                status: "PENDING",
+                status: EventStatus.PENDING,
                 rejectReason: null,
                 reviewedAt: null,
             },
@@ -683,7 +626,7 @@ class OrganizerEventService {
                 id: eventId,
                 organizerId,
                 status: {
-                    in: ["DRAFT", "REJECTED"],
+                    in: [EventStatus.DRAFT, EventStatus.REJECTED],
                 },
             },
         });

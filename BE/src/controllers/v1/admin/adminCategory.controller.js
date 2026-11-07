@@ -7,6 +7,7 @@ class AdminCategoryController{
         this.adminCategoryService = service;
     }
 
+    // Lấy danh sách danh mục
     getCategories = asyncHandler(async (req, res) => {
         const { page = 1, keyword = "", role = ""} = req.query;
 
@@ -21,6 +22,7 @@ class AdminCategoryController{
         });
     });
 
+    // Xem chi tiết danh mục
     getCategoryDetail = asyncHandler(async (req, res) => {
         const { id } = req.params;
 
@@ -31,6 +33,7 @@ class AdminCategoryController{
         return sendResponse(res, 200, "Xem chi tiết danh mục thành công", result);
     });
 
+    // Tạo danh mục
     createCategory = asyncHandler(async (req, res) => {
         const { name, slug } = req.body;
 
@@ -42,6 +45,7 @@ class AdminCategoryController{
         return sendResponse(res, 201, "Tạo danh mục thành công", result);
     });
 
+    // Cập nhật danh mục
     updateCategory = asyncHandler(async (req, res) => {
         const { id } = req.params;
 
@@ -53,6 +57,7 @@ class AdminCategoryController{
         return sendResponse(res, 200, "Cập nhật thông tin danh mục thành công", result);
     })
 
+    // Xóa danh mục
     deleteCategory = asyncHandler(async (req, res) => {
         const { id } = req.params;
 

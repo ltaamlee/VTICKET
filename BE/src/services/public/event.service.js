@@ -1,5 +1,5 @@
-
 const prisma = require("../../config/prisma");
+const EventStatus = require("../../shared/eventStatus")
 
 class EventService {
     async getEvents({
