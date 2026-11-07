@@ -60,6 +60,22 @@ class AdminEventController {
         );
     });
 
+    // GET /admin/seat-maps/:id
+    getSeatMapDetail = asyncHandler(async (req, res) => {
+        const { id } = req.params;
+
+        const result = await this.adminEventService.getSeatMapDetail({
+            seatMapId: id,
+        });
+
+        return sendResponse(
+            res,
+            200,
+            "Xem chi tiết sơ đồ ghế thành công",
+            result
+        );
+    });
+
     approveEvent = asyncHandler(async (req, res) => {
         const { id } = req.params;
 

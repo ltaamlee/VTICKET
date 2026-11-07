@@ -1,5 +1,5 @@
 import { useState } from "react";
-function DashboardPage() {
+function AdminDashboardPage() {
     return (
         <div className="space-y-6">
             Tổng doanh thu vé
@@ -12,4 +12,4 @@ function DashboardPage() {
     );
 }
 
-export default DashboardPage;
+export default AdminDashboardPage;

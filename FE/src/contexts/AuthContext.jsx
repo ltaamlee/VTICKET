@@ -23,21 +23,21 @@ export function AuthProvider({ children }) {
 
         setToken(data.token);
         setUser(data.user);
-    };
+    }
 
-    const logout = () => {
+    const logout =() => {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
 
         setToken(null);
         setUser(null);
-    };
+    }
 
     const updateUser = (updatedFields) => {
         const updated = { ...user, ...updatedFields };
         localStorage.setItem("user", JSON.stringify(updated));
         setUser(updated);
-    };
+    }
 
     const value = {
         user,

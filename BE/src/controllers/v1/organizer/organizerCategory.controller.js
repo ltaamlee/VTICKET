@@ -1,39 +1,16 @@
-const adminCategoryService = require("../../../services/admin/adminCategory.service")
-const asyncHandler = require("../../../utils/asyncHandler");
+const asyncHandler = require('../../../utils/asyncHandler');
+const sendResponse = require('../../../utils/sendResponse');
 
-class OrganizerCategoryController{
-    constructor (service = adminCategoryService){
-        this.adminCategoryService = service;
+const organizerCategoryService = require('../../../services/organizer/organizerCategory.service');
+
+class OrganizerCategoryController {
+    constructor(service = organizerCategoryService) {
+        this.organizerCategoryService = service;
     }
 
     getCategories = asyncHandler(async (req, res) => {
-        const { page = 1, keyword = "", role = ""} = req.query;
-
-        const result = await this.adminCategoryService.getCategories({
-            page,
-            keyword,
-        });
-
-        return res.status(200).json({
-            success: true,
-            message: "Lấy danh sách danh mục thành công",
-            data: result.categories,
-            pagination: result.pagination,
-        });
-    });
-
-    getCategoryDetail = asyncHandler(async (req, res) => {
-        const { id } = req.params;
-
-        const result = await this.adminCategoryService.getCategoryDetail({
-            categoryId: id,
-        });
-
-        return res.status(200).json({
-            success: true,
-            message: "Xem chi tiết danh mục thành công",
-            data: result,
-        });
+        const result = await this.organizerCategoryService.getCategories();
+        return sendResponse(res, 200, 'Lấy danh sách danh mục thành công', result);
     });
 }
 

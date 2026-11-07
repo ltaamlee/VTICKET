@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { UploadCloud, Eye, X } from "lucide-react";
-import ImagePreviewModal from "../../../components/common/ImagePreviewModal";
+import ImagePreviewModal from "../../../../components/common/ImagePreviewModal";
 
 export default function OrganizerLegalDocuments({
   organizerType,

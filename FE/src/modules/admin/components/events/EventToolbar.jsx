@@ -2,10 +2,8 @@ import { Search, RotateCcw } from "lucide-react";
 
 const statuses = [
     { value: "", label: "Tất cả trạng thái" },
-    { value: "DRAFT", label: "Bản nháp" },
     { value: "PENDING", label: "Chờ duyệt" },
     { value: "APPROVED", label: "Đã duyệt" },
-    { value: "PUBLISHED", label: "Đang công khai" },
     { value: "REJECTED", label: "Bị từ chối" },
     { value: "SUSPENDED", label: "Đang bị khóa" },
     { value: "CANCELLED", label: "Đã hủy" },

@@ -4,7 +4,7 @@ const sendResponse = require('../../../utils/sendResponse');
 
 class OrganizerRequestController {
     constructor(service = organizerRequestService) {
-        this.service = service;
+        this.organizerRequestService = service;
     }
 
     /**
@@ -12,7 +12,7 @@ class OrganizerRequestController {
      */
     createRequest = asyncHandler(async (req, res) => {
         const userId = req.user.id;
-        const result = await this.service.createRequest(userId, req.body);
+        const result = await this.organizerRequestService.createRequest(userId, req.body);
         return sendResponse(
             res,
             201,
@@ -26,7 +26,8 @@ class OrganizerRequestController {
      */
     getMyRequest = asyncHandler(async (req, res) => {
         const userId = req.user.id;
-        const result = await this.service.getMyRequest(userId);
+        const result = await this.organizerRequestService.getMyRequest(userId);
+
         return sendResponse(res, 200, 'Lấy thông tin đơn đăng ký thành công', result);
     });
 
@@ -36,7 +37,8 @@ class OrganizerRequestController {
     updateMyRequest = asyncHandler(async (req, res) => {
         const userId = req.user.id;
         const { id } = req.params;
-        const result = await this.service.updateMyRequest(userId, id, req.body);
+        const result = await this.organizerRequestService.updateMyRequest(userId, id, req.body);
+
         return sendResponse(res, 200, 'Cập nhật đơn đăng ký thành công', result);
     });
 
@@ -46,7 +48,7 @@ class OrganizerRequestController {
     cancelMyRequest = asyncHandler(async (req, res) => {
         const userId = req.user.id;
         const { id } = req.params;
-        const result = await this.service.cancelMyRequest(userId, id);
+        const result = await this.organizerRequestService.cancelMyRequest(userId, id);
         return sendResponse(res, 200, result.message, null);
     });
 }

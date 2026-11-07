@@ -1,7 +1,7 @@
 import { apiRequest } from "../../../services/api";
 
 export function getEventStats() {
-    return apiRequest("/admin/event-stats", {
+    return apiRequest("/admin/events/stats", {
         method: "GET",
     });
 }
@@ -26,6 +26,12 @@ export function getEvents({
 
 export function getEventDetail(eventId) {
     return apiRequest(`/admin/events/${eventId}`, {
+        method: "GET",
+    });
+}
+
+export function getSeatMapDetail(seatMapId) {
+    return apiRequest(`/admin/seat-maps/${seatMapId}`, {
         method: "GET",
     });
 }

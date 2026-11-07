@@ -6,7 +6,6 @@ export function getSettings() {
     });
 }
 
-
 export function getSetting(key) {
     return apiRequest(`/admin/settings/${encodeURIComponent(key)}`, {
         method: "GET",

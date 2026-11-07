@@ -1,6 +1,6 @@
 const prisma = require("../../config/prisma");
 
-class DashboardService {
+class AdminDashboardService {
     /**
      * Get overview statistics for admin dashboard
      */
@@ -40,4 +40,4 @@ class DashboardService {
     };
 }
 
-module.exports = new DashboardService();
+module.exports = new AdminDashboardService();

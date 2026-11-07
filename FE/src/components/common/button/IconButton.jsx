@@ -1,19 +1,25 @@
-import { Eye, Pencil, Trash2, Lock, Unlock } from "lucide-react";
+import { Eye, Pencil, Trash2, Lock, Unlock, CheckCircle, XCircle, Copy } from "lucide-react";
 
 const icons = {
     view: Eye,
     edit: Pencil,
     delete: Trash2,
+    copy: Copy,
     lock: Lock,
     unlock: Unlock,
+    approve: CheckCircle,
+    reject: XCircle,
 };
 
 const variants = {
     view: "bg-blue-50 text-blue-600 hover:bg-blue-600",
     edit: "bg-emerald-50 text-emerald-600 hover:bg-emerald-600",
     delete: "bg-red-50 text-red-600 hover:bg-red-600",
+    copy: "bg-blue-50 text-blue-600 hover:bg-blue-600",
     lock: "bg-amber-50 text-amber-600 hover:bg-amber-600",
     unlock: "bg-emerald-50 text-emerald-600 hover:bg-emerald-600",
+    approve: "bg-emerald-50 text-emerald-600 hover:bg-emerald-600",
+    reject: "bg-red-50 text-red-600 hover:bg-red-600",
 };
 
 function IconButton({

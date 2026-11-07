@@ -1,21 +1,20 @@
 import Button from "../../../../components/common/button/Button";
 import SearchInput from "../../../../components/common/toolbar/SearchInput";
 
-function CategoryToolbar({
+function EventToolbar({
     keyword,
     setKeyword,
-    slug,
-    setSlug,
     onReset,
 }) {
     return (
         <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
-            <SearchInput
-                value={keyword}
-                onChange={setKeyword}
-                placeholder="Tìm theo tên danh mục..."
-            />
-
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-1">
+                <SearchInput
+                    value={keyword}
+                    onChange={setKeyword}
+                    placeholder="Tìm theo tên danh mục"
+                />
+            </div>
 
             <Button
                 type="button"
@@ -28,4 +27,4 @@ function CategoryToolbar({
     );
 }
 
-export default CategoryToolbar;
+export default EventToolbar;

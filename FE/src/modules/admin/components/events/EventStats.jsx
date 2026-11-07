@@ -3,68 +3,69 @@ import {
     Clock,
     CheckCircle,
     XCircle,
-    Ban,
-    CalendarCheck,
+    Lock,
 } from "lucide-react";
 
+import StatCard from "../../../../components/common/stats/StatCard";
+
+/**
+ * Thống kê sự kiện phía Admin.
+ *
+ * Chỉ hiển thị các trạng thái Admin cần thao tác:
+ * tổng, chờ duyệt, đã duyệt, bị từ chối, đang bị khóa.
+ */
 const statItems = [
     {
         key: "totalEvents",
         label: "Tổng sự kiện",
         icon: CalendarDays,
+        bg: "bg-sky-50",
+        iconBg: "bg-sky-500",
     },
     {
         key: "pendingEvents",
         label: "Chờ duyệt",
         icon: Clock,
+        bg: "bg-amber-50",
+        iconBg: "bg-amber-500",
     },
     {
-        key: "publishedEvents",
-        label: "Đang công khai",
+        key: "approvedEvents",
+        label: "Đã duyệt",
         icon: CheckCircle,
+        bg: "bg-emerald-50",
+        iconBg: "bg-emerald-500",
     },
     {
         key: "rejectedEvents",
         label: "Bị từ chối",
         icon: XCircle,
+        bg: "bg-rose-50",
+        iconBg: "bg-rose-500",
     },
     {
         key: "suspendedEvents",
         label: "Đang bị khóa",
-        icon: Ban,
-    },
-    {
-        key: "completedEvents",
-        label: "Đã hoàn thành",
-        icon: CalendarCheck,
+        icon: Lock,
+        bg: "bg-orange-50",
+        iconBg: "bg-orange-500",
     },
 ];
 
-export default function EventStats({ stats = {} }) {
+export default function EventStats({ stats = {}, loading = false }) {
     return (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {statItems.map((item) => {
-                const Icon = item.icon;
-
-                return (
-                    <div
-                        key={item.key}
-                        className="rounded-xl border border-gray-200 bg-white p-5"
-                    >
-                        <div className="flex items-center justify-between">
-                            <p className="text-sm text-gray-500">
-                                {item.label}
-                            </p>
-
-                            <Icon size={20} className="text-gray-500" />
-                        </div>
-
-                        <p className="mt-3 text-2xl font-semibold text-gray-900">
-                            {stats[item.key] ?? 0}
-                        </p>
-                    </div>
-                );
-            })}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            {statItems.map((item) => (
+                <StatCard
+                    key={item.key}
+                    label={item.label}
+                    value={stats[item.key]}
+                    icon={item.icon}
+                    bg={item.bg}
+                    iconBg={item.iconBg}
+                    loading={loading}
+                />
+            ))}
         </div>
     );
 }

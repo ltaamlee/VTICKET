@@ -9,11 +9,11 @@ import ProtectedRoute from "../routes/ProtectedRoute";
 import Page403 from "../modules/errors/403";
 import Page404 from "../modules/errors/404";
 
-import DashboardPage from "../modules/admin/pages/DashboardPage";
+import AdminDashboardPage from "../modules/admin/pages/DashboardPage";
 import AdminLayout from "../modules/admin/components/AdminLayout";
 import UserPage from "../modules/admin/pages/UserManagementPage";
 import CategoryPage from "../modules/admin/pages/CategoryManagementPage";
-import EventPage from "../modules/admin/pages/EventManagementPage";
+import AdminEventPage from "../modules/admin/pages/EventManagementPage";
 import SystemPage from "../modules/admin/pages/SystemManagementPage";
 
 import OrganizerRequestsPage from "../modules/admin/pages/OrganizerRequestsPage";
@@ -22,6 +22,10 @@ import OrganizerRegisterPage from "../modules/organizer/pages/OrganizerRegisterP
 import MyTicketsPage from "../modules/ticket/pages/MyTicketsPage";
 import MembershipPage from "../modules/membership/pages/MembershipPage";
 import MyEventsPage from "../modules/event/pages/MyEventsPage";
+
+import OrganizerLayout from "../modules/organizer/components/OrganizerLayout";
+import OrganizerEventPage from "../modules/organizer/pages/EventManagementPage";
+import OrganizerDashboardPage from "../modules/organizer/pages/DashboardPage";
 
 function AppRoutes() {
   return (
@@ -47,13 +51,21 @@ function AppRoutes() {
 
         <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
           <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<DashboardPage />} />
-            <Route path="dashboard" element={<DashboardPage />} />
+            <Route index element={<AdminDashboardPage />} />
+            <Route path="dashboard" element={<AdminDashboardPage />} />
             <Route path="users" element={<UserPage />} />
             <Route path="categories" element={<CategoryPage/>} />
             <Route path="system" element={<SystemPage/>} />
             <Route path="organizer-requests" element={<OrganizerRequestsPage />} />
-            <Route path="events" element={<EventPage />} />
+            <Route path="events" element={<AdminEventPage />} />
+          </Route>
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={["ORGANIZER"]} />}>
+          <Route path="/organizer" element={<OrganizerLayout />}>
+            <Route index element={<OrganizerDashboardPage />} />
+            <Route path="dashboard" element={<OrganizerDashboardPage />} />
+            <Route path="events" element={<OrganizerEventPage />} />
           </Route>
         </Route>
       </Routes>

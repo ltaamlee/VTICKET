@@ -4,9 +4,9 @@ import { apiRequest } from "../../../services/api";
  * Lấy số lượng thống kê đơn đăng ký Ban Tổ Chức (total, pending, approved, rejected, cancelled)
  */
 export function getOrganizerRequestStats() {
-  return apiRequest("/admin/organizer-requests/stats", {
-    method: "GET",
-  });
+    return apiRequest("/admin/organizer-requests/stats", {
+        method: "GET",
+    });
 }
 
 /**
@@ -14,15 +14,15 @@ export function getOrganizerRequestStats() {
  * @param {Object} options { page, limit, status, keyword }
  */
 export function getOrganizerRequests({ page = 1, limit = 10, status = "", keyword = "" } = {}) {
-  const params = new URLSearchParams();
-  if (page) params.append("page", String(page));
-  if (limit) params.append("limit", String(limit));
-  if (status) params.append("status", status);
-  if (keyword) params.append("keyword", keyword);
+    const params = new URLSearchParams();
+    if (page) params.append("page", String(page));
+    if (limit) params.append("limit", String(limit));
+    if (status) params.append("status", status);
+    if (keyword) params.append("keyword", keyword);
 
-  return apiRequest(`/admin/organizer-requests?${params.toString()}`, {
-    method: "GET",
-  });
+    return apiRequest(`/admin/organizer-requests?${params.toString()}`, {
+        method: "GET",
+    });
 }
 
 /**
@@ -30,9 +30,9 @@ export function getOrganizerRequests({ page = 1, limit = 10, status = "", keywor
  * @param {string} id 
  */
 export function getOrganizerRequestById(id) {
-  return apiRequest(`/admin/organizer-requests/${id}`, {
-    method: "GET",
-  });
+    return apiRequest(`/admin/organizer-requests/${id}`, {
+        method: "GET",
+    });
 }
 
 /**
@@ -40,9 +40,9 @@ export function getOrganizerRequestById(id) {
  * @param {string} id 
  */
 export function approveOrganizerRequest(id) {
-  return apiRequest(`/admin/organizer-requests/${id}/approve`, {
-    method: "PUT",
-  });
+    return apiRequest(`/admin/organizer-requests/${id}/approve`, {
+        method: "PUT",
+    });
 }
 
 /**
@@ -51,8 +51,8 @@ export function approveOrganizerRequest(id) {
  * @param {string} rejectReason 
  */
 export function rejectOrganizerRequest(id, rejectReason) {
-  return apiRequest(`/admin/organizer-requests/${id}/reject`, {
-    method: "PUT",
-    body: JSON.stringify({ rejectReason }),
-  });
+    return apiRequest(`/admin/organizer-requests/${id}/reject`, {
+        method: "PUT",
+        body: JSON.stringify({ rejectReason }),
+    });
 }

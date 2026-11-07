@@ -7,8 +7,9 @@ const {
 } = require("../../middlewares/auth.middleware");
 
 const organizerRequestController = require("../../controllers/v1/organizer/organizerRequest.controller");
-router.use(authenticate);
-router.use(authorize("ORGANIZER"));
+const organizerEventController = require("../../controllers/v1/organizer/organizerEvent.controller");
+const organizerCategoryController = require("../../controllers/v1/organizer/organizerCategory.controller");
+const organizerSeatMapController = require("../../controllers/v1/organizer/organizerSeatMap.controller");
 
 // ==========================================
 // 1. NHÓM ĐĂNG KÝ LÀM BAN TỔ CHỨC (Cần đăng nhập)
@@ -19,12 +20,25 @@ router.get("/my-request", authenticate, organizerRequestController.getMyRequest)
 router.put("/my-request/:id", authenticate, organizerRequestController.updateMyRequest);
 router.delete("/my-request/:id", authenticate, organizerRequestController.cancelMyRequest);
 
-// ==========================================
-// 2. NHÓM CHỨC NĂNG DÀNH CHO ORGANIZER (Role: ORGANIZER)
-// ==========================================
-// router.use(authenticate);
-// router.use(authorize("ORGANIZER"));
-// router.get("/dashboard", organizerDashboardController.getDashboardData);
-// router.get("/events", organizerEventController.getEvents);
+router.use(authenticate);
+router.use(authorize("ORGANIZER"));
+router.get("/categories", organizerCategoryController.getCategories);
+
+// Event
+router.get("/events", organizerEventController.getEvents);
+router.get("/events/stats", organizerEventController.getEventStats);
+router.get("/events/:id", organizerEventController.getEventDetail);
+router.post("/events", organizerEventController.createEvent);
+router.put("/events/:id", organizerEventController.updateEvent);
+router.delete("/events/:id", organizerEventController.deleteEvent);
+router.patch("/events/:id/submit", organizerEventController.submitEvent);
+
+// Seat Map
+router.get("/seat-maps", organizerSeatMapController.getSeatMaps);
+router.get("/seat-maps/:id", organizerSeatMapController.getSeatMapDetail);
+router.post("/seat-maps", organizerSeatMapController.createSeatMap);
+router.put("/seat-maps/:id", organizerSeatMapController.updateSeatMap);
+router.post("/seat-maps/:id/duplicate", organizerSeatMapController.duplicateSeatMap);
+router.delete("/seat-maps/:id", organizerSeatMapController.deleteSeatMap);
 
 module.exports = router;
