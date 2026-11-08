@@ -1,7 +1,6 @@
 const asyncHandler = require("../../../utils/asyncHandler");
 const sendResponse = require("../../../utils/sendResponse");
-
-import categoryService from "../../../services/category.service";
+const categoryService = require("../../../services/category/category.service");
 
 class CategoryController {
     constructor(service = categoryService) {
@@ -9,7 +8,7 @@ class CategoryController {
     }
 
     getCategories = asyncHandler(async (req, res) => {
-        const result = await this.categoryService.getCategories();
+        const result = await this.categoryService.getCategories(req.query);
         return sendResponse(res, 200, "Lấy danh sách danh mục thành công", result);
     });
 }
