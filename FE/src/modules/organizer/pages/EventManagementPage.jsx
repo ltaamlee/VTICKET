@@ -9,7 +9,7 @@ import EventToolbar from "../components/events/EventToolbar";
 import EventTable from "../components/events/EventTable";
 import OrganizerEventStats from "../components/events/OrganizerEventStats";
 import EventCreateModal from "../components/events/modals/EventCreateModal";
-import SeatMapEditor from "../components/seatmaps/SeatMapEditor";
+import SeatMapEditor from "../components/seatmaps/editor/SeatMapEditor";
 import SeatMapTable from "../components/seatmaps/SeatMapTable";
 
 import Pagination from "../../../components/common/Pagination";

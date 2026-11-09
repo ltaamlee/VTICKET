@@ -1,4 +1,4 @@
-export function getZoneBounds(zone) {
+function getZoneBounds(zone) {
     return {
         x: Number(zone.posX) || 0,
         y: Number(zone.posY) || 0,
@@ -8,6 +8,34 @@ export function getZoneBounds(zone) {
         bottom:
             (Number(zone.posY) || 0) + (Number(zone.height) || 0),
     };
+}
+
+/**
+ * Scale lại danh sách đỉnh đa giác theo tỉ lệ mới.
+ *
+ * Dùng chung cho:
+ *  - Dãn khu vực (groupTransform.js)
+ *  - Đổi kích thước bằng tay (ZonePropertiesPanel.jsx)
+ *
+ * @param {Array<{x:number,y:number}>} points
+ * @param {number} ratioX
+ * @param {number} ratioY
+ * @param {number} maxX  giới hạn toạ độ X (bề rộng mới)
+ * @param {number} maxY  giới hạn toạ độ Y (chiều cao mới)
+ */
+export function scalePolygonPoints(
+    points,
+    ratioX,
+    ratioY,
+    maxX,
+    maxY
+) {
+    if (!Array.isArray(points)) return points;
+
+    return points.map((p) => ({
+        x: Math.max(0, Math.min(p.x * ratioX, maxX)),
+        y: Math.max(0, Math.min(p.y * ratioY, maxY)),
+    }));
 }
 
 /** Bounding box bao trọn nhiều zone. */

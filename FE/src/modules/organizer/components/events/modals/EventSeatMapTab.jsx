@@ -1,7 +1,7 @@
 import { Armchair } from "lucide-react";
 
 import SeatMapPreview from "../../seatmaps/SeatMapPreview";
-import { ZONE_TYPE_LABEL } from "../../seatmaps/seatmapConstants";
+import { ZONE_TYPE_LABEL } from "../../../../../constants/seatmapConstants";
 
 const SEAT_MAP_STATUS = {
     DRAFT: {

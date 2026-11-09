@@ -1,12 +1,11 @@
 import { memo, useRef, useState } from "react";
 import { Armchair, Grid3x3, Drama, Shapes } from "lucide-react";
-
 import {
-    POLYGON_PRESETS,
-    ZoneShapeIcon,
     ZONE_SHAPES,
     buildPresetPoints,
-} from "./zoneShapes";
+} from "../../../../utils/canvas/shapeGeometry";
+import ZoneShapeIcon from "./ZoneShapeIcon";
+import PolygonPresetPicker from "./PolygonPresetPicker";
 import {
     DEFAULT_SHAPE,
     GRID_SIZE,
@@ -15,7 +14,7 @@ import {
     TYPE_SIZE_HINT,
     ZONE_COLORS,
     ZONE_TYPES,
-} from "./seatmapConstants";
+} from "../../../../constants/seatmapConstants";
 
 const inputClass =
     "w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-50";
@@ -248,49 +247,10 @@ function SeatMapSidebar({
 
                 {/* Mẫu đa giác dựng sẵn - sân khấu hình chữ T/U/L */}
                 {newShape === "POLYGON" && (
-                    <>
-                        <p className="mb-1.5 mt-4 flex items-center gap-1 text-[11px] font-medium text-gray-500">
-                            <Shapes size={12} />
-                            Mẫu đa giác
-                        </p>
-
-                        <div className="grid grid-cols-4 gap-1.5">
-                            {POLYGON_PRESETS.map((preset) => (
-                                <button
-                                    key={preset.value}
-                                    type="button"
-                                    onClick={() =>
-                                        handleSelectPreset(preset.value)
-                                    }
-                                    title={preset.label}
-                                    className={`flex items-center justify-center rounded-lg border py-1.5 transition ${
-                                        newPreset === preset.value
-                                            ? "border-blue-500 bg-blue-50"
-                                            : "border-gray-200 bg-white hover:border-gray-300"
-                                    }`}
-                                >
-                                    <svg
-                                        viewBox="0 0 1 1"
-                                        className="h-5 w-5"
-                                    >
-                                        <polygon
-                                            points={preset.points
-                                                .map(
-                                                    ([x, y]) =>
-                                                        `${x},${y}`
-                                                )
-                                                .join(" ")}
-                                            fill={
-                                                newPreset === preset.value
-                                                    ? "#3b82f6"
-                                                    : "#94a3b8"
-                                            }
-                                        />
-                                    </svg>
-                                </button>
-                            ))}
-                        </div>
-                    </>
+                    <PolygonPresetPicker
+                        value={newPreset}
+                        onChange={handleSelectPreset}
+                    />
                 )}
             </div>
         </div>

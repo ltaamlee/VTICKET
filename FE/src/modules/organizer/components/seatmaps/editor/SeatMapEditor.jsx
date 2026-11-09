@@ -1,32 +1,19 @@
-
 import { useCallback, useState } from "react";
-import {
-    X,
-    Save,
-    Magnet,
-    Ruler,
-    Undo2,
-    Redo2,
-    Copy,
-    CopyPlus,
-    ClipboardPaste,
-    Lock,
-    Trash,
-} from "lucide-react";
+import { X, Save, Magnet, Ruler, Undo2, Redo2, Copy, CopyPlus, ClipboardPaste, Lock, Trash, } from "lucide-react";
 
-import Button from "../../../../components/common/button/Button";
+import Button from "../../../../../components/common/button/Button";
 import SeatMapCanvas from "./SeatMapCanvas";
-import SeatMapSidebar from "./SeatMapSidebar";
-import ZonePropertiesPanel from "./ZonePropertiesPanel";
-import CanvasArrangeToolbar from "./CanvasArrangeToolbar";
-import useSeatMapEditor from "./useSeatMapEditor";
-import { GRID_SIZE } from "./seatmapConstants";
+import SeatMapSidebar from "../SeatMapSidebar";
+import ZonePropertiesPanel from "../ZonePropertiesPanel";
+import CanvasArrangeToolbar from "../CanvasArrangeToolbar";
+import useSeatMapEditor from "../../hooks/useSeatMapEditor";
+import { GRID_SIZE } from "../../../../../constants/seatmapConstants";
 import {
     blockSeatCell,
     removeSeatCell,
     restoreSeatCell,
     unblockSeatCell,
-} from "./seatGridUtils";
+} from "../../../../../utils/seats/seatLayout";
 
 /**
  * Phím tắt:
@@ -686,7 +673,6 @@ function SeatMapEditor({
                                 onSelectZonesInRect={selectZonesInRect}
                                 onUpdateZone={updateZone}
                                 onUpdateZones={updateZones}
-                                onDeleteZone={removeZone}
                                 onBeforeDrag={pushHistory}
                                 canvasWidth={canvasWidth}
                                 canvasHeight={canvasHeight}

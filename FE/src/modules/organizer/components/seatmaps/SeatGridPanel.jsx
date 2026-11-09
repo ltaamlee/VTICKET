@@ -1,7 +1,7 @@
 
 import { Lock, Trash2, X } from "lucide-react";
 
-import { buildSeatGrid } from "./seatGridUtils";
+import { buildSeatGrid } from "../../../../utils/seats/seatLayout";
 
 const CELL = 24;
 

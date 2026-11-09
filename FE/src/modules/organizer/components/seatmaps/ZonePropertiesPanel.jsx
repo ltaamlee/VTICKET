@@ -1,27 +1,28 @@
 import { useCallback } from "react";
-import { X, Trash2, Copy, Shapes, Lock, Trash, Grid3x3, Shuffle } from "lucide-react";
+import { X, Trash2, Copy, Lock, Trash, Grid3x3, Shuffle } from "lucide-react";
 
 import CurrencyInput from "../../../../components/common/form/CurrencyInput";
 import {
-    POLYGON_PRESETS,
-    ZoneShapeIcon,
     ZONE_SHAPES,
     buildPresetPoints,
-} from "./zoneShapes";
-import SeatGrid from "./seatGrid";
-import { lettersToRowLabel } from "./seatNumbering";
+} from "../../../../utils/canvas/shapeGeometry";
+import { scalePolygonPoints } from "../../../../utils/canvas/canvasGeometry";
+import ZoneShapeIcon from "./ZoneShapeIcon";
+import PolygonPresetPicker from "./PolygonPresetPicker";
+import SeatGridPanel from "./SeatGridPanel";
+import { lettersToRowLabel } from "../../../../utils/seats/seatKeys";
 import {
     blockSeatCell,
     removeSeatCell,
     restoreSeatCell,
     unblockSeatCell,
-} from "./seatGridUtils";
+} from "../../../../utils/seats/seatLayout";
 import {
     DEFAULT_SHAPE,
     PRESET_SIZE_HINT,
     SHAPE_SIZE_HINT,
     ZONE_TYPES,
-} from "./seatmapConstants";
+} from "../../../../constants/seatmapConstants";
 import { formatVND } from "../../../../utils/formatCurrency";
 
 const inputClass =
@@ -194,36 +195,24 @@ export default function ZonePropertiesPanel({
             const newWidth = Number(next.width) || oldWidth;
             const newHeight = Number(next.height) || oldHeight;
 
-            next.points = zone.points.map((p) => ({
-                x: Math.max(
-                    0,
-                    Math.min(p.x * (newWidth / oldWidth), newWidth)
-                ),
-                y: Math.max(
-                    0,
-                    Math.min(p.y * (newHeight / oldHeight), newHeight)
-                ),
-            }));
+            next.points = scalePolygonPoints(
+                zone.points,
+                newWidth / oldWidth,
+                newHeight / oldHeight,
+                newWidth,
+                newHeight
+            );
 
             // Các lỗ (hình rỗng) cũng scale theo.
             if (Array.isArray(zone.holes)) {
                 next.holes = zone.holes.map((hole) =>
-                    hole.map((p) => ({
-                        x: Math.max(
-                            0,
-                            Math.min(
-                                p.x * (newWidth / oldWidth),
-                                newWidth
-                            )
-                        ),
-                        y: Math.max(
-                            0,
-                            Math.min(
-                                p.y * (newHeight / oldHeight),
-                                newHeight
-                            )
-                        ),
-                    }))
+                    scalePolygonPoints(
+                        hole,
+                        newWidth / oldWidth,
+                        newHeight / oldHeight,
+                        newWidth,
+                        newHeight
+                    )
                 );
             }
         }
@@ -475,66 +464,19 @@ export default function ZonePropertiesPanel({
                 </div>
 
                 {zone.shape === "POLYGON" && (
-                    <div>
-                        <label className={labelClass}>
-                            <span className="inline-flex items-center gap-1">
-                                <Shapes size={12} />
-                                Mẫu hình dạng
-                            </span>
-                        </label>
-
-                        <div className="grid grid-cols-4 gap-1.5">
-                            {POLYGON_PRESETS.map((preset) => {
-                                const isActive =
-                                    activePreset === preset.value;
-
-                                const width = zone.width || 160;
-                                const height = zone.height || 140;
-
-                                return (
-                                    <button
-                                        key={preset.value}
-                                        type="button"
-                                        onClick={() =>
-                                            handlePresetChange(
-                                                preset.value
-                                            )
-                                        }
-                                        title={preset.label}
-                                        className={`flex items-center justify-center rounded-lg border py-1.5 transition ${
-                                            isActive
-                                                ? "border-blue-500 bg-blue-50"
-                                                : "border-gray-200 bg-white hover:border-gray-300"
-                                        }`}
-                                    >
-                                        <svg
-                                            viewBox="0 0 1 1"
-                                            className="h-5 w-5"
-                                        >
-                                            <polygon
-                                                points={preset.points
-                                                    .map(
-                                                        ([x, y]) =>
-                                                            `${x},${y}`
-                                                    )
-                                                    .join(" ")}
-                                                fill={
-                                                    isActive
-                                                        ? "#3b82f6"
-                                                        : "#94a3b8"
-                                                }
-                                            />
-                                        </svg>
-                                    </button>
-                                );
-                            })}
-                        </div>
+                    <>
+                        <PolygonPresetPicker
+                            value={activePreset}
+                            onChange={handlePresetChange}
+                            label="Mẫu hình dạng"
+                            showLabel={false}
+                        />
 
                         <p className="mt-1.5 text-[11px] text-gray-400">
                             Chọn mẫu rồi kéo các đỉnh trên canvas để chỉnh
                             chi tiết.
                         </p>
-                    </div>
+                    </>
                 )}
 
                 {/* Màu */}
@@ -689,7 +631,7 @@ export default function ZonePropertiesPanel({
                                 </div>
                             </div>
 
-                            <SeatGrid
+                            <SeatGridPanel
                                 zone={zone}
                                 tool={seatTool}
                                 onCellClick={handleSeatCellClick}

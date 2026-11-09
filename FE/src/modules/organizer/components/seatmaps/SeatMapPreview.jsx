@@ -1,8 +1,15 @@
 import { useMemo } from "react";
 
-import { buildShape, buildShapePath, toPointsString } from "./zoneShapes";
-import { buildSeatCellRects } from "./seatGridUtils";
-import { ZONE_TYPE_LABEL } from "./seatmapConstants";
+import {
+    buildShape,
+    toPointsString,
+} from "../../../../utils/canvas/shapeGeometry";
+import { buildShapePath } from "../../../../utils/canvas/shapePath";
+import {
+    buildSeatCells,
+    SEAT_GAP,
+} from "../../../../utils/seats/seatLayout";
+import { ZONE_TYPE_LABEL } from "../../../../constants/seatmapConstants";
 
 function truncate(text, max = 22) {
     const value = String(text ?? "");
@@ -135,54 +142,30 @@ export default function SeatMapPreview({ seatMap, className = "" }) {
                                   )
                                 : Number(zone.capacity) || 0;
 
-                        // Lưới ghế: vẽ các ô bên trong khu vực.
-                        // Ô luôn vuông & bằng nhau (xem buildSeatCellRects).
-                        const seatRects =
+                        /**
+                         * Lưới ghế + khung bao của các ô CÒN LẠI.
+                         * Xoá ghế ở rìa ngoài cùng -> đường bao ngoài của
+                         * khu vực co lại đúng chỗ; khôi phục ghế -> nở lại.
+                         *
+                         * Dùng chung hàm lõi với canvas Konva để hai
+                         * nơi luôn hiển thị giống nhau.
+                         */
+                        const seatLayout =
                             zone.type === "SEATED"
-                                ? buildSeatCellRects({
+                                ? buildSeatCells({
                                       rowCount: zone.rowCount,
                                       seatPerRow: zone.seatPerRow,
                                       width,
                                       height,
                                       removedSeats: zone.removedSeats,
                                       blockedSeats: zone.blockedSeats,
+                                      gap: SEAT_GAP,
                                   })
-                                : [];
-
-                        /**
-                         * Khung bao của các ô ghế CÒN LẠI.
-                         * Xoá ghế ở rìa ngoài cùng -> đường bao ngoài của
-                         * khu vực co lại đúng chỗ; khôi phục ghế -> nở lại.
-                         */
-                        const seatContentBounds =
-                            seatRects.length > 0
-                                ? (() => {
-                                      let minX = Infinity;
-                                      let minY = Infinity;
-                                      let maxX = -Infinity;
-                                      let maxY = -Infinity;
-
-                                      seatRects.forEach((cell) => {
-                                          minX = Math.min(minX, cell.x);
-                                          minY = Math.min(minY, cell.y);
-                                          maxX = Math.max(
-                                              maxX,
-                                              cell.x + cell.width
-                                          );
-                                          maxY = Math.max(
-                                              maxY,
-                                              cell.y + cell.height
-                                          );
-                                      });
-
-                                      return {
-                                          x: minX,
-                                          y: minY,
-                                          width: maxX - minX,
-                                          height: maxY - minY,
-                                      };
-                                  })()
                                 : null;
+
+                        const seatRects = seatLayout?.cells || [];
+                        const seatContentBounds =
+                            seatLayout?.contentBounds || null;
 
                         const hasRemovedSeats =
                             Array.isArray(zone.removedSeats) &&

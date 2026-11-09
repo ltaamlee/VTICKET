@@ -7,7 +7,12 @@ import {
     useState,
 } from "react";
 
-import { DEFAULT_SHAPE, GRID_SIZE } from "./seatmapConstants";
+import {
+    DEFAULT_CANVAS_HEIGHT,
+    DEFAULT_CANVAS_WIDTH,
+    DEFAULT_SHAPE,
+    GRID_SIZE,
+} from "../../../../constants/seatmapConstants";
 import {
     alignZones,
     distributeZones,
@@ -17,9 +22,9 @@ import {
     groupZones,
     reorderZones,
     ungroupZones,
-} from "./canvasGeometry";
-import { combineZones, splitZones } from "./booleanOperations";
-import { convertSeatKeys } from "./seatNumbering";
+} from "../../../../utils/canvas/canvasGeometry";
+import { combineZones, splitZones } from "../../../../utils/canvas/booleanOperations";
+import { convertSeatKeys } from "../../../../utils/seats/seatKeys";
 
 /**
  * Toàn bộ logic cho modal chỉnh sửa sơ đồ ghế:
@@ -35,8 +40,12 @@ import { convertSeatKeys } from "./seatNumbering";
 export default function useSeatMapEditor({ seatMap, onChange }) {
     const [zones, setZones] = useState([]);
     const [selectedZoneIds, setSelectedZoneIds] = useState([]);
-    const [canvasWidth, setCanvasWidth] = useState(900);
-    const [canvasHeight, setCanvasHeight] = useState(600);
+    const [canvasWidth, setCanvasWidth] = useState(
+        DEFAULT_CANVAS_WIDTH
+    );
+    const [canvasHeight, setCanvasHeight] = useState(
+        DEFAULT_CANVAS_HEIGHT
+    );
     const [showGrid, setShowGrid] = useState(true);
 
     // Lịch sử undo/redo.
@@ -65,15 +74,19 @@ export default function useSeatMapEditor({ seatMap, onChange }) {
     useEffect(() => {
         if (!seatMap) {
             setZones([]);
-            setCanvasWidth(900);
-            setCanvasHeight(600);
+            setCanvasWidth(DEFAULT_CANVAS_WIDTH);
+            setCanvasHeight(DEFAULT_CANVAS_HEIGHT);
             setSelectedZoneIds([]);
 
             return;
         }
 
-        setCanvasWidth(seatMap.canvasWidth || 900);
-        setCanvasHeight(seatMap.canvasHeight || 600);
+        setCanvasWidth(
+            seatMap.canvasWidth || DEFAULT_CANVAS_WIDTH
+        );
+        setCanvasHeight(
+            seatMap.canvasHeight || DEFAULT_CANVAS_HEIGHT
+        );
 
         setZones(
             (seatMap.zones || []).map((zone, index) => ({

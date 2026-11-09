@@ -13,7 +13,10 @@
  *    tâm của nhóm, đồng thời vị trí cũng được scale tương ứng.
  */
 
-import { getZoneBounds } from "./canvasGeometry";
+import {
+    getSelectionBounds,
+    scalePolygonPoints,
+} from "./canvasGeometry";
 
 /**
  * Tâm của hộp bao trọn cả nhóm.
@@ -21,16 +24,13 @@ import { getZoneBounds } from "./canvasGeometry";
 export function getGroupCenter(zones) {
     if (!zones?.length) return { x: 0, y: 0 };
 
-    const bounds = zones.map(getZoneBounds);
+    const bounds = getSelectionBounds(zones);
 
-    const minX = Math.min(...bounds.map((b) => b.x));
-    const minY = Math.min(...bounds.map((b) => b.y));
-    const maxX = Math.max(...bounds.map((b) => b.right));
-    const maxY = Math.max(...bounds.map((b) => b.bottom));
+    if (!bounds) return { x: 0, y: 0 };
 
     return {
-        x: (minX + maxX) / 2,
-        y: (minY + maxY) / 2,
+        x: bounds.x + bounds.width / 2,
+        y: bounds.y + bounds.height / 2,
     };
 }
 
@@ -114,23 +114,23 @@ export function scaleGroup(zones, scaleX, scaleY, center, anchor = null) {
             const ratioX = patch.width / (zone.width || 1);
             const ratioY = patch.height / (zone.height || 1);
 
-            patch.points = zone.points.map((p) => ({
-                x: Math.max(0, Math.min(p.x * ratioX, patch.width)),
-                y: Math.max(0, Math.min(p.y * ratioY, patch.height)),
-            }));
+            patch.points = scalePolygonPoints(
+                zone.points,
+                ratioX,
+                ratioY,
+                patch.width,
+                patch.height
+            );
 
             if (Array.isArray(zone.holes)) {
                 patch.holes = zone.holes.map((hole) =>
-                    hole.map((p) => ({
-                        x: Math.max(
-                            0,
-                            Math.min(p.x * ratioX, patch.width)
-                        ),
-                        y: Math.max(
-                            0,
-                            Math.min(p.y * ratioY, patch.height)
-                        ),
-                    }))
+                    scalePolygonPoints(
+                        hole,
+                        ratioX,
+                        ratioY,
+                        patch.width,
+                        patch.height
+                    )
                 );
             }
         }

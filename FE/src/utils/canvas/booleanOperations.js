@@ -5,30 +5,7 @@ import polygonClipping from "polygon-clipping";
  * Thư viện: polygon-clipping (Martinez-Rueda boolean ops).
  */
 
-export const BOOLEAN_OPERATIONS = [
-    {
-        value: "UNION",
-        label: "Gộp lại",
-        hint: "Gộp các hình thành một khối liền mạch",
-    },
-    {
-        value: "DIFFERENCE",
-        label: "Trừ",
-        hint: "Lấy hình đầu tiên trừ các hình còn lại",
-    },
-    {
-        value: "INTERSECT",
-        label: "Giao",
-        hint: "Chỉ giữ phần chung của tất cả các hình",
-    },
-    {
-        value: "EXCLUDE",
-        label: "Loại trừ",
-        hint: "Giữ phần không thuộc hình nào (giống XOR)",
-    },
-];
-
-export function zoneToPolygon(zone) {
+function zoneToPolygon(zone) {
     const width = Math.max(Number(zone?.width) || 0, 0.01);
     const height = Math.max(Number(zone?.height) || 0, 0.01);
     const posX = Number(zone?.posX) || 0;
@@ -242,7 +219,7 @@ function roundedRectPolygon(width, height, radius, steps = 8) {
     return points;
 }
 
-export function applyBooleanOperation(zones, operation) {
+function applyBooleanOperation(zones, operation) {
     const valid = (zones || []).filter(
         (zone) => zoneToPolygon(zone)[0]?.length >= 3
     );
@@ -314,7 +291,7 @@ export function applyBooleanOperation(zones, operation) {
     }
 }
 
-export function polygonsToZones(polygons, template) {
+function polygonsToZones(polygons, template) {
     const zones = [];
 
     polygons.forEach((polygon) => {
@@ -378,7 +355,7 @@ export function polygonsToZones(polygons, template) {
     return zones;
 }
 
-export function splitZoneWithHoles(zone) {
+function splitZoneWithHoles(zone) {
     if (!zone || zone.shape !== "POLYGON") return [];
 
     const holes = Array.isArray(zone.holes) ? zone.holes : [];
