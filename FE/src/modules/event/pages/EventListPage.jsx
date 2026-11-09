@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import Header from "../../../components/layout/Header";
 import Footer from "../../../components/layout/Footer";
-import EventHero from "../components/list/EventHero";
 import EventFilterBar from "../components/list/EventFilterBar";
 import EventFilterSidebar from "../components/list/EventFilterSidebar";
 import ActiveFilters from "../components/list/ActiveFilters";
@@ -162,7 +161,7 @@ export default function EventListPage() {
     // Xử lý chuyển trang
     const handlePageChange = (newPage) => {
         updateSearchParams({ page: newPage });
-        window.scrollTo({ top: 350, behavior: "smooth" });
+        window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
     const currentFilters = {
@@ -180,13 +179,6 @@ export default function EventListPage() {
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
             <Header />
-
-            {/* Banner đầu trang & Ô tìm kiếm nhanh */}
-            <EventHero
-                keyword={keyword}
-                onKeywordChange={(val) => handleFilterChange("keyword", val)}
-                onSearchSubmit={() => updateSearchParams({ page: 1 })}
-            />
 
             {/* Thân trang: Sidebar lọc và Lưới sự kiện */}
             <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
