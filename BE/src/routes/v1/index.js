@@ -6,11 +6,15 @@ const adminRoutes = require('./admin.route');
 const userRoutes = require('./user.routes');
 const uploadRoutes = require('./upload.routes');
 const organizerRoutes = require('./organizer.route');
+const eventRoutes = require('./event.route');
+const categoryRoutes = require('./category.route');
 
 router.use('/auth', authRoutes);
 router.use('/admin', adminRoutes);
 router.use('/users', userRoutes);
 router.use('/upload', uploadRoutes);
 router.use('/organizer', organizerRoutes);
+router.use('/events', eventRoutes);
+router.use('/categories', categoryRoutes);
 
 module.exports = router;
