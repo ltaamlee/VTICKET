@@ -32,10 +32,15 @@ export function scalePolygonPoints(
 ) {
     if (!Array.isArray(points)) return points;
 
-    return points.map((p) => ({
-        x: Math.max(0, Math.min(p.x * ratioX, maxX)),
-        y: Math.max(0, Math.min(p.y * ratioY, maxY)),
-    }));
+    return points.map((p) => {
+        const px = Array.isArray(p) ? Number(p[0]) || 0 : Number(p?.x) || 0;
+        const py = Array.isArray(p) ? Number(p[1]) || 0 : Number(p?.y) || 0;
+
+        return {
+            x: Math.max(0, Math.min(Math.round(px * ratioX * 10) / 10, maxX)),
+            y: Math.max(0, Math.min(Math.round(py * ratioY * 10) / 10, maxY)),
+        };
+    });
 }
 
 /** Bounding box bao trọn nhiều zone. */

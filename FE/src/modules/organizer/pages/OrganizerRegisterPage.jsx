@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import Header from "../../../components/layout/Header";
-import Footer from "../../../components/layout/Footer";
+import Header from "../../../layout/Header";
+import Footer from "../../../layout/Footer";
 import { useAuth } from "../../../contexts/AuthContext";
 import {
   registerOrganizer,
@@ -11,11 +11,11 @@ import {
 } from "../services/organizerService";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 
-import OrganizerHeroBanner from "../components/register/OrganizerHeroBanner";
-import OrganizerStatusCards from "../components/register/OrganizerStatusCards";
-import OrganizerBasicInfoForm from "../components/register/OrganizerBasicInfoForm";
-import OrganizerLegalDocuments from "../components/register/OrganizerLegalDocuments";
-import OrganizerTermsSection from "../components/register/OrganizerTermsSection";
+import OrganizerHeroBanner from "../register/OrganizerHeroBanner";
+import OrganizerStatusCards from "../register/OrganizerStatusCards";
+import OrganizerBasicInfoForm from "../register/OrganizerBasicInfoForm";
+import OrganizerLegalDocuments from "../register/OrganizerLegalDocuments";
+import OrganizerTermsSection from "../register/OrganizerTermsSection";
 
 function OrganizerRegisterPage() {
   const { user: authUser } = useAuth();

@@ -1,9 +1,8 @@
-
 const prisma = require("../../../config/prisma");
 
 const BaseService = require("../../public/base.service");
 const seatMapValidationService = require("./seatMapValidation.service");
-const seatMapBuilderService = require("./seatMapBuilder.service");
+const organizerZoneService = require("../zone/organizerZone.service");
 
 const SEAT_MAP_STATUS_VALUES = ["DRAFT", "READY", "ARCHIVED"];
 
@@ -123,38 +122,37 @@ class OrganizerSeatMapService extends BaseService {
             this.throwError("Tên sơ đồ ghế không được để trống");
         }
         
-        const normalizedZones = seatMapValidationService.normalizeZones(zones);
-
         const canvas = seatMapValidationService.normalizeCanvas(
             canvasWidth,
             canvasHeight
         );
 
         try {
-            return await prisma.seatMap.create({
-                data: {
-                    name: name.trim(),
-                    status: SEAT_MAP_STATUS_VALUES.includes(status)
-                        ? status
-                        : "DRAFT",
-                    organizerId,
-                    canvasWidth: canvas.width,
-                    canvasHeight: canvas.height,
-                    zones: {
-                        create: normalizedZones.map((zone, zoneIndex) => ({
-                            ...seatMapBuilderService.buildZoneData(zone),
-                            seats: seatMapBuilderService.buildSeatCreateData(
-                                zone,
-                                zoneIndex
-                            ),
-                        })),
+            return await prisma.$transaction(async (tx) => {
+                const seatMap = await tx.seatMap.create({
+                    data: {
+                        name: name.trim(),
+                        status: SEAT_MAP_STATUS_VALUES.includes(status)
+                            ? status
+                            : "DRAFT",
+                        organizerId,
+                        canvasWidth: canvas.width,
+                        canvasHeight: canvas.height,
                     },
-                },
-                include: {
-                    zones: {
-                        include: { seats: true },
+                });
+
+                await organizerZoneService.createZonesForSeatMap({
+                    tx,
+                    seatMapId: seatMap.id,
+                    zones,
+                });
+
+                return tx.seatMap.findUnique({
+                    where: { id: seatMap.id },
+                    include: {
+                        zones: { include: { seats: true } },
                     },
-                },
+                });
             });
         } catch (error) {
             this.handlePrismaError(error);
@@ -218,79 +216,22 @@ class OrganizerSeatMapService extends BaseService {
         }
 
         try {
-            if (zones !== undefined) {
-                const normalizedZones =
-                    seatMapValidationService.normalizeZones(zones);
-
-                const linkedTicketTypes = await prisma.ticketType.count({
-                    where: {
-                        zone: { seatMapId: seatMap.id },
-                    },
-                });
-
-                if (linkedTicketTypes > 0) {
-                    this.throwError(
-                        "Sơ đồ ghế đã được dùng để tạo loại vé, không thể chỉnh sửa. Hãy nhân bản sơ đồ để tạo bản mới.",
-                        409
-                    );
+            return await prisma.$transaction(async (tx) => {
+                if (zones !== undefined) {
+                    await organizerZoneService.replaceZonesForSeatMap({
+                        tx,
+                        seatMapId: seatMap.id,
+                        zones,
+                    });
                 }
 
-                await prisma.$transaction(async (tx) => {
-                    await tx.seat.deleteMany({
-                        where: {
-                            zone: { seatMapId: seatMap.id },
-                        },
-                    });
-
-                    await tx.zone.deleteMany({
-                        where: { seatMapId: seatMap.id },
-                    });
-
-                    for (
-                        let index = 0;
-                        index < normalizedZones.length;
-                        index += 1
-                    ) {
-                        const zone = normalizedZones[index];
-
-                        const createdZone = await tx.zone.create({
-                            data: {
-                                seatMapId: seatMap.id,
-                                ...seatMapBuilderService.buildZoneData(zone),
-                            },
-                        });
-
-                        const seats = seatMapBuilderService.buildSeats(
-                            zone,
-                            index
-                        );
-
-                        if (seats.length > 0) {
-                            await tx.seat.createMany({
-                                data: seats.map((seat) => ({
-                                    zoneId: createdZone.id,
-                                    rowLabel: seat.rowLabel,
-                                    seatNumber: seat.seatNumber,
-                                    type: seat.type,
-                                    status: seat.status,
-                                    posX: seat.posX,
-                                    posY: seat.posY,
-                                    order: seat.order,
-                                })),
-                            });
-                        }
-                    }
-                });
-            }
-
-            return await prisma.seatMap.update({
-                where: { id: seatMap.id },
-                data,
-                include: {
-                    zones: {
-                        include: { seats: true },
+                return tx.seatMap.update({
+                    where: { id: seatMap.id },
+                    data,
+                    include: {
+                        zones: { include: { seats: true } },
                     },
-                },
+                });
             });
         } catch (error) {
             this.handlePrismaError(error);
@@ -329,61 +270,29 @@ class OrganizerSeatMapService extends BaseService {
                 : `${source.name} (bản sao)`;
 
         try {
-            return await prisma.seatMap.create({
-                data: {
-                    name: newName,
-                    status: "DRAFT",
-                    organizerId,
-                    canvasWidth: source.canvasWidth,
-                    canvasHeight: source.canvasHeight,
-                    zones: {
-                        create: source.zones.map((zone) => ({
-                            name: zone.name,
-                            code: zone.code,
-                            color: zone.color,
-                            type: zone.type,
-                            shape: zone.shape,
-                            price: zone.price,
-                            rowCount: zone.rowCount,
-                            seatPerRow: zone.seatPerRow,
-                            capacity: zone.capacity,
-                            posX: zone.posX,
-                            posY: zone.posY,
-                            width: zone.width,
-                            height: zone.height,
-                            rotation: zone.rotation,
-                            level: zone.level,
-                            points: zone.points ?? undefined,
-                            holes: zone.holes ?? undefined,
-                            originParts: zone.originParts ?? undefined,
-                            removedSeats: zone.removedSeats ?? undefined,
-                            blockedSeats: zone.blockedSeats ?? undefined,
-                            seatNumbering: zone.seatNumbering ?? "ROW",
-                            combineGroupId: zone.combineGroupId,
-                            groupId: zone.groupId,
-                            zIndex: zone.zIndex,
-                            flipX: zone.flipX,
-                            flipY: zone.flipY,
-                            isLocked: zone.isLocked === true,
-                            seats: {
-                                create: zone.seats.map((seat) => ({
-                                    rowLabel: seat.rowLabel,
-                                    seatNumber: seat.seatNumber,
-                                    type: seat.type,
-                                    status: seat.status,
-                                    posX: seat.posX,
-                                    posY: seat.posY,
-                                    order: seat.order ?? 0,
-                                })),
-                            },
-                        })),
+            return await prisma.$transaction(async (tx) => {
+                const duplicate = await tx.seatMap.create({
+                    data: {
+                        name: newName,
+                        status: "DRAFT",
+                        organizerId,
+                        canvasWidth: source.canvasWidth,
+                        canvasHeight: source.canvasHeight,
                     },
-                },
-                include: {
-                    zones: {
-                        include: { seats: true },
+                });
+
+                await organizerZoneService.createZonesForSeatMap({
+                    tx,
+                    seatMapId: duplicate.id,
+                    zones: source.zones,
+                });
+
+                return tx.seatMap.findUnique({
+                    where: { id: duplicate.id },
+                    include: {
+                        zones: { include: { seats: true } },
                     },
-                },
+                });
             });
         } catch (error) {
             this.handlePrismaError(error);

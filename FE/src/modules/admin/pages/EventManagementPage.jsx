@@ -10,9 +10,9 @@ import {
     cancelEvent,
 } from "../services/eventService";
 
-import EventStats from "../components/events/EventStats";
-import EventToolbar from "../components/events/EventToolbar";
-import EventTable from "../components/events/EventTable";
+import EventStats from "../events/EventStats";
+import EventToolbar from "../events/EventToolbar";
+import EventTable from "../events/EventTable";
 import ConfirmModal from "../../../components/common/ConfirmModal";
 import Pagination from "../../../components/common/Pagination";
 
@@ -234,6 +234,8 @@ function AdminEventPage() {
             <EventTable
                 events={events}
                 loading={loading}
+                currentPage={page}
+                pageSize={10}
                 onApprove={(event) => openModal("approve", event)}
                 onReject={(event) => openModal("reject", event)}
                 onSuspend={(event) => openModal("suspend", event)}

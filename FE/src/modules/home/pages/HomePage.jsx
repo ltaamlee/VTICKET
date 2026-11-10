@@ -1,8 +1,8 @@
 import HeroSection from "../components/HeroSection";
 import FeaturedEvents from "../components/FeaturedEvents";
 import CategorySection from "../components/CategorySection";
-import Header from "../../../components/layout/Header";
-import Footer from "../../../components/layout/Footer";
+import Header from "../../../layout/Header";
+import Footer from "../../../layout/Footer";
 import EventSlider from "../components/EventSlider";
 
 function HomePage() {

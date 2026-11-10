@@ -1,16 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, CheckCircle, XCircle, Armchair, CalendarDays } from "lucide-react";
 
 import { getEvents, getEventStats } from "../services/eventService";
 import { getCategories } from "../services/categoryService";
-import useSeatMaps from "../hooks/useSeatMaps";
+import useSeatMaps from "../seatmaps/editor/hooks/useSeatMaps";
+import { subscribeToSeatMapChanges } from "../seatmaps/seatMapSync";
 
-import EventToolbar from "../components/events/EventToolbar";
-import EventTable from "../components/events/EventTable";
-import OrganizerEventStats from "../components/events/OrganizerEventStats";
-import EventCreateModal from "../components/events/modals/EventCreateModal";
-import SeatMapEditor from "../components/seatmaps/editor/SeatMapEditor";
-import SeatMapTable from "../components/seatmaps/SeatMapTable";
+import EventToolbar from "../events/EventToolbar";
+import EventTable from "../events/EventTable";
+import OrganizerEventStats from "../events/OrganizerEventStats";
+import EventFormModal from "../events/modals/EventFormModal";
+import SeatMapTable from "../seatmaps/editor/components/SeatMapTable";
 
 import Pagination from "../../../components/common/Pagination";
 import { Alert } from "../../../components/common/Arlet";
@@ -22,6 +23,8 @@ const TAB_EVENTS = "events";
 const TAB_SEAT_MAPS = "seat-maps";
 
 function OrganizerEventPage() {
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [keyword, setKeyword] = useState("");
     const [status, setStatus] = useState("");
     const [events, setEvents] = useState([]);
@@ -37,7 +40,9 @@ function OrganizerEventPage() {
     const [showCreateModal, setShowCreateModal] = useState(false);
 
     const [categories, setCategories] = useState([]);
-    const [activeTab, setActiveTab] = useState(TAB_EVENTS);
+    const [activeTab, setActiveTab] = useState(
+        searchParams.get("tab") === TAB_SEAT_MAPS ? TAB_SEAT_MAPS : TAB_EVENTS
+    );
 
     // Thống kê sự kiện của BTC.
     const [stats, setStats] = useState({});
@@ -58,17 +63,40 @@ function OrganizerEventPage() {
     useEffect(() => {
         const fetchCategories = async () => {
             try {
-                const result = await getCategories();
-                const data = result?.data;
+                const firstPage = await getCategories({ page: 1 });
+                const firstData = firstPage?.data;
+                const firstCategories = Array.isArray(firstData)
+                    ? firstData
+                    : firstData?.categories;
 
-                if (Array.isArray(data)) {
-                    setCategories(data);
-                } else if (Array.isArray(data?.categories)) {
-                    setCategories(data.categories);
-                } else {
-                    setCategories([]);
+                if (!Array.isArray(firstCategories)) {
+                    throw new Error("Dữ liệu danh mục trả về không hợp lệ.");
                 }
+
+                const totalPages = Math.max(
+                    1,
+                    Number(firstData?.pagination?.totalPages) || 1
+                );
+                const remainingPages = await Promise.all(
+                    Array.from({ length: totalPages - 1 }, (_, index) =>
+                        getCategories({ page: index + 2 })
+                    )
+                );
+
+                const allCategories = [
+                    ...firstCategories,
+                    ...remainingPages.flatMap((result) => {
+                        const data = result?.data;
+                        if (Array.isArray(data)) return data;
+                        if (Array.isArray(data?.categories)) {
+                            return data.categories;
+                        }
+                        throw new Error("Dữ liệu danh mục trả về không hợp lệ.");
+                    }),
+                ];
+                setCategories(allCategories);
             } catch (err) {
+                console.error("Lỗi tải danh sách danh mục:", err);
                 handleAlert(
                     "error",
                     err.response?.data?.message ||
@@ -158,6 +186,11 @@ function OrganizerEventPage() {
         onChange: handleSeatMapsChange,
     });
 
+    const refreshSeatMaps = seatMaps.refresh;
+    useEffect(
+        () => subscribeToSeatMapChanges(refreshSeatMaps),
+        [refreshSeatMaps]
+    );
     const handleRefresh = useCallback(() => {
         setRefreshKey((prev) => prev + 1);
     }, []);
@@ -198,8 +231,19 @@ function OrganizerEventPage() {
 
 
     const handleManageSeatMaps = useCallback(() => {
-        setShowCreateModal(false);
-        setActiveTab(TAB_SEAT_MAPS);
+        window.open(
+            "/organizer/events?tab=seat-maps",
+            "_blank",
+            "noopener,noreferrer"
+        );
+    }, []);
+
+    const handleOpenSeatMapCreate = useCallback(() => {
+        window.open(
+            "/organizer/seat-maps/new",
+            "_blank",
+            "noopener,noreferrer"
+        );
     }, []);
 
     const tabs = [
@@ -244,15 +288,15 @@ function OrganizerEventPage() {
                         <Plus size={18} />
                         Tạo sự kiện
                     </Button>
-                ) : (
+                ) : activeTab === TAB_SEAT_MAPS ? (
                     <Button
                         variant="primary"
-                        onClick={seatMaps.openCreate}
+                        onClick={handleOpenSeatMapCreate}
                     >
                         <Plus size={18} />
                         Tạo sơ đồ ghế
                     </Button>
-                )}
+                ) : null}
             </div>
 
             <OrganizerEventStats
@@ -265,6 +309,7 @@ function OrganizerEventPage() {
                     <Tabs
                         tabs={tabs}
                         defaultTab={TAB_EVENTS}
+                        activeTab={activeTab}
                         onChange={setActiveTab}
                     />
                 </div>
@@ -287,6 +332,7 @@ function OrganizerEventPage() {
 
                         <EventTable
                             events={events}
+                            categories={categories}
                             loading={loading}
                             currentPage={page}
                             pageSize={10}
@@ -305,36 +351,30 @@ function OrganizerEventPage() {
                             />
                         )}
                     </>
-                ) : (
+                ) : activeTab === TAB_SEAT_MAPS ? (
                     <SeatMapTable
                         seatMaps={seatMaps.seatMaps}
                         loading={seatMaps.loading}
-                        onEdit={seatMaps.openEdit}
+                        onEdit={(seatMap) =>
+                            navigate(`/organizer/seat-maps/${seatMap.id}/edit`)
+                        }
                         onDuplicate={seatMaps.handleDuplicate}
                         onDelete={seatMaps.setDeleteTarget}
                     />
-                )}
+                ) : null}
             </div>
 
             {/* MODALS */}
             {showCreateModal && (
-                <EventCreateModal
+                <EventFormModal
+                    mode="create"
+                    open={activeTab === TAB_EVENTS}
                     categories={categories}
                     onClose={() => setShowCreateModal(false)}
                     onSuccess={handleCreateSuccess}
                     onAlert={handleAlert}
                     onManageSeatMaps={handleManageSeatMaps}
                     seatMapRefreshKey={seatMapRefreshKey}
-                />
-            )}
-
-            {seatMaps.editorOpen && (
-                <SeatMapEditor
-                    seatMap={seatMaps.editingSeatMap}
-                    saving={seatMaps.saving}
-                    onClose={seatMaps.closeEditor}
-                    onSave={seatMaps.handleSave}
-                    onAlert={handleAlert}
                 />
             )}
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import AccountLayout from "../../../components/layout/AccountLayout";
+import AccountLayout from "../../../layout/AccountLayout";
 import {
   Ticket,
   Sparkles,

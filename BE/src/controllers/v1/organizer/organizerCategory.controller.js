@@ -9,7 +9,10 @@ class OrganizerCategoryController {
     }
 
     getCategories = asyncHandler(async (req, res) => {
-        const result = await this.organizerCategoryService.getCategories();
+        const { page = 1 } = req.query;
+        const result = await this.organizerCategoryService.getCategories({
+            page,
+        });
         return sendResponse(res, 200, 'Lấy danh sách danh mục thành công', result);
     });
 }

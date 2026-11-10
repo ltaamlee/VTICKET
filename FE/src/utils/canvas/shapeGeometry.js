@@ -216,7 +216,12 @@ export function buildShape({
         case "CUSTOM": {
             const custom = Array.isArray(points)
                 ? points
-                      .map((p) => [Number(p?.x), Number(p?.y)])
+                      .map((p) => {
+                          if (Array.isArray(p)) {
+                              return [Number(p[0]), Number(p[1])];
+                          }
+                          return [Number(p?.x), Number(p?.y)];
+                      })
                       .filter(
                           ([x, y]) =>
                               Number.isFinite(x) && Number.isFinite(y)

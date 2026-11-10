@@ -1,7 +1,3 @@
-/**
- * Các hằng số dùng chung cho trình chỉnh sửa sơ đồ ghế.
- */
-
 export const GRID_SIZE = 20;
 
 export const DEFAULT_CANVAS_WIDTH = 900;

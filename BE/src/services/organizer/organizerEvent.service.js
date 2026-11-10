@@ -2,6 +2,7 @@ const prisma = require("../../config/prisma");
 const generateSlug = require("../../utils/generateSlug");
 const { EventStatus, isValidEventStatus, getEventStatus, } = require("../../shared/eventStatus");
 const BaseService = require("../public/base.service");
+const organizerZoneService = require("./zone/organizerZone.service");
 
 class OrganizerEventService extends BaseService {
     handlePrismaError(error) {
@@ -259,6 +260,19 @@ class OrganizerEventService extends BaseService {
                         },
                     },
                 },
+                ticketTypes: {
+                    orderBy: { createdAt: "asc" },
+                    include: {
+                        zone: {
+                            select: {
+                                id: true,
+                                name: true,
+                                code: true,
+                                color: true,
+                            },
+                        },
+                    },
+                },
             },
         });
 
@@ -340,31 +354,40 @@ class OrganizerEventService extends BaseService {
         }
 
         try {
-            return await prisma.event.create({
-                data: {
-                    name: name.trim(),
-                    slug: eventSlug,
-                    description,
-                    thumbnailUrl,
-                    bannerUrl,
-                    organizerId,
-                    categoryId,
-                    location: location.trim(),
-                    saleStartAt: saleStartDate,
-                    saleEndAt: saleEndDate,
-                    startAt: startDate,
-                    endAt: endDate,
-                    status: EventStatus.DRAFT,
-                    seatMapId: seatMap ? seatMap.id : null,
-                },
-                include: {
-                    category: true,
-                    seatMap: {
-                        include: {
-                            zones: true,
-                        },
+            return await prisma.$transaction(async (tx) => {
+                const event = await tx.event.create({
+                    data: {
+                        name: name.trim(),
+                        slug: eventSlug,
+                        description,
+                        thumbnailUrl,
+                        bannerUrl,
+                        organizerId,
+                        categoryId,
+                        location: location.trim(),
+                        saleStartAt: saleStartDate,
+                        saleEndAt: saleEndDate,
+                        startAt: startDate,
+                        endAt: endDate,
+                        status: EventStatus.DRAFT,
+                        seatMapId: seatMap ? seatMap.id : null,
                     },
-                },
+                });
+
+                await organizerZoneService.syncTicketTypesForEvent(tx, {
+                    eventId: event.id,
+                    seatMapId: event.seatMapId,
+                    saleStartAt: event.saleStartAt,
+                    saleEndAt: event.saleEndAt,
+                });
+
+                return tx.event.findUnique({
+                    where: { id: event.id },
+                    include: {
+                        category: true,
+                        seatMap: { include: { zones: true } },
+                    },
+                });
             });
         } catch (error) {
             this.handlePrismaError(error);
@@ -526,19 +549,26 @@ class OrganizerEventService extends BaseService {
         }
 
         try {
-            return await prisma.event.update({
-                where: {
-                    id: existingEvent.id,
-                },
-                data,
-                include: {
-                    category: true,
-                    seatMap: {
-                        include: {
-                            zones: true,
-                        },
+            return await prisma.$transaction(async (tx) => {
+                const event = await tx.event.update({
+                    where: { id: existingEvent.id },
+                    data,
+                });
+
+                await organizerZoneService.syncTicketTypesForEvent(tx, {
+                    eventId: event.id,
+                    seatMapId: event.seatMapId,
+                    saleStartAt: event.saleStartAt,
+                    saleEndAt: event.saleEndAt,
+                });
+
+                return tx.event.findUnique({
+                    where: { id: event.id },
+                    include: {
+                        category: true,
+                        seatMap: { include: { zones: true } },
                     },
-                },
+                });
             });
         } catch (error) {
             this.handlePrismaError(error);
