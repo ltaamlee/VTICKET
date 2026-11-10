@@ -18,7 +18,7 @@ export default function EventToolbar({
     onReset,
 }) {
     return (
-        <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 md:flex-row">
+        <div className="flex flex-col gap-3 border-b border-gray-100 p-4 md:flex-row">
             <div className="relative flex-1">
                 <Search
                     size={18}

@@ -99,9 +99,6 @@ function SeatMapEditorPage() {
                     <h1 className="text-xl font-bold text-gray-900">
                         {seatMapId ? "Thiết kế sơ đồ ghế" : "Tạo sơ đồ ghế"}
                     </h1>
-                    <p className="mt-1 text-sm text-gray-500">
-                        Khu vực thiết kế riêng, giúp thao tác trên sơ đồ thuận tiện hơn.
-                    </p>
                 </div>
             </div>
 

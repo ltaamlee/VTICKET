@@ -22,35 +22,42 @@ function EventTable({
             ? events.events
             : [];
 
-    const statusConfig = {
-        DRAFT: {
-            label: "Bản nháp",
+    const getStatus = (status) => {
+        const statusMap = {
+            DRAFT: {
+                label: "Bản nháp",
+                className: "bg-gray-100 text-gray-700",
+            },
+            PENDING: {
+                label: "Chờ duyệt",
+                className: "bg-yellow-100 text-yellow-700",
+            },
+            APPROVED: {
+                label: "Đã duyệt",
+                className: "bg-green-100 text-green-700",
+            },
+            REJECTED: {
+                label: "Bị từ chối",
+                className: "bg-red-100 text-red-700",
+            },
+            SUSPENDED: {
+                label: "Đang bị khóa",
+                className: "bg-orange-100 text-orange-700",
+            },
+            CANCELLED: {
+                label: "Đã hủy",
+                className: "bg-gray-100 text-gray-700",
+            },
+            COMPLETED: {
+                label: "Đã hoàn thành",
+                className: "bg-blue-100 text-blue-700",
+            },
+        };
+
+        return statusMap[status] || {
+            label: status || "Không xác định",
             className: "bg-gray-100 text-gray-600",
-        },
-        PENDING: {
-            label: "Chờ duyệt",
-            className: "bg-yellow-100 text-yellow-700",
-        },
-        APPROVED: {
-            label: "Đã duyệt",
-            className: "bg-green-100 text-green-700",
-        },
-        REJECTED: {
-            label: "Bị từ chối",
-            className: "bg-red-100 text-red-700",
-        },
-        SUSPENDED: {
-            label: "Đang bị khóa",
-            className: "bg-orange-100 text-orange-700",
-        },
-        CANCELLED: {
-            label: "Đã hủy",
-            className: "bg-gray-200 text-gray-700",
-        },
-        COMPLETED: {
-            label: "Đã hoàn thành",
-            className: "bg-purple-100 text-purple-700",
-        },
+        };
     };
 
     const handleView = (event) => {
@@ -64,16 +71,21 @@ function EventTable({
     };
 
     const formatDate = (date) => {
-        if (!date) return "--";
+        if (!date) return "Chưa cập nhật";
 
-        return new Date(date).toLocaleString("vi-VN", {
+        const parsedDate = new Date(date);
+
+        if (Number.isNaN(parsedDate.getTime())) {
+            return "Không hợp lệ";
+        }
+
+        return new Intl.DateTimeFormat("vi-VN", {
             day: "2-digit",
             month: "2-digit",
             year: "numeric",
             hour: "2-digit",
             minute: "2-digit",
-            hour12: false,
-        });
+        }).format(parsedDate);
     };
 
     const getOrganizerName = (event) =>
@@ -84,15 +96,19 @@ function EventTable({
 
     return (
         <>
-            <div className="overflow-x-auto rounded-lg border border-gray-100">
+            <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm text-gray-600">
                     <thead className="bg-gray-50 text-xs uppercase text-gray-500">
                         <tr>
                             <th className="px-5 py-4">STT</th>
-                            <th className="px-5 py-4">Sự kiện</th>
+                            <th className="min-w-[220px] px-5 py-4">
+                                Tên sự kiện
+                            </th>
                             <th className="px-5 py-4">Ban tổ chức</th>
                             <th className="px-5 py-4">Danh mục</th>
-                            <th className="px-5 py-4">Thời gian</th>
+                            <th className="min-w-[180px] px-5 py-4">
+                                Thời gian
+                            </th>
                             <th className="px-5 py-4">Trạng thái</th>
                             <th className="w-[220px] px-5 py-4 text-center">
                                 Thao tác
@@ -103,7 +119,10 @@ function EventTable({
                     <tbody className="divide-y divide-gray-100">
                         {loading ? (
                             <tr>
-                                <td colSpan={7} className="px-5 py-12 text-center text-gray-500">
+                                <td
+                                    colSpan={7}
+                                    className="px-5 py-12 text-center text-gray-500"
+                                >
                                     Đang tải danh sách sự kiện...
                                 </td>
                             </tr>
@@ -120,10 +139,7 @@ function EventTable({
                             </tr>
                         ) : (
                             eventList.map((event, index) => {
-                                const status = statusConfig[event.status] || {
-                                    label: event.status || "Không xác định",
-                                    className: "bg-gray-100 text-gray-600",
-                                };
+                                const status = getStatus(event.status);
 
                                 return (
                                     <tr
@@ -135,27 +151,18 @@ function EventTable({
                                                 index +
                                                 1}
                                         </td>
-                                        <td className="px-5 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <img
-                                                    src={event.thumbnailUrl || "/placeholder.png"}
-                                                    alt=""
-                                                    className="h-12 w-16 rounded-lg object-cover"
-                                                />
 
-                                                <div>
-                                                    <p className="font-medium text-gray-900">
-                                                        {event.name}
-                                                    </p>
-                                                    <p className="mt-1 text-xs text-gray-500">
-                                                        {event.location || "—"}
-                                                    </p>
-                                                </div>
+                                        <td className="px-5 py-4">
+                                            <div className="font-medium text-gray-900">
+                                                {event.name || "Chưa cập nhật"}
+                                            </div>
+                                            <div className="mt-1 text-xs text-gray-500">
+                                                {event.location || "—"}
                                             </div>
                                         </td>
 
                                         <td className="px-5 py-4">
-                                            <p className="font-medium">
+                                            <p className="font-medium text-gray-700">
                                                 {getOrganizerName(event)}
                                             </p>
                                             <p className="mt-1 text-xs text-gray-500">
@@ -169,8 +176,9 @@ function EventTable({
 
                                         <td className="px-5 py-4">
                                             {formatDate(event.startAt)}
-                                            {" - "}
-                                            {formatDate(event.endAt)}
+                                            <div className="mt-1 text-xs text-gray-500">
+                                                {formatDate(event.endAt)}
+                                            </div>
                                         </td>
 
                                         <td className="px-5 py-4">

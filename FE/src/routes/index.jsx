@@ -22,6 +22,8 @@ import OrganizerRegisterPage from "../modules/organizer/pages/OrganizerRegisterP
 import MyTicketsPage from "../modules/ticket/pages/MyTicketsPage";
 import MembershipPage from "../modules/membership/pages/MembershipPage";
 import MyEventsPage from "../modules/event/pages/MyEventsPage";
+import EventListPage from "../modules/event/pages/EventListPage";
+import EventDetailPage from "../modules/event/pages/EventDetailPage";
 
 import OrganizerLayout from "../layout/organizer/OrganizerLayout";
 import OrganizerEventPage from "../modules/organizer/pages/EventManagementPage";
@@ -34,6 +36,8 @@ function AppRoutes() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/events" element={<EventListPage />} />
+        <Route path="/events/:idOrSlug" element={<EventDetailPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />

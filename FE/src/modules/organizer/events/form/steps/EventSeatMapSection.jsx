@@ -37,7 +37,7 @@ export default function EventSeatMapSection({
                 onAlert={onAlert}
                 refreshKey={refreshKey}
                 label=""
-                hint="Sơ đồ ghế được tạo riêng ở tab Quản lý sơ đồ ghế, sau đó chọn để gắn vào sự kiện này."
+                hint=""
             />
         </div>
     );
