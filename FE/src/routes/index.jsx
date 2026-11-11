@@ -14,6 +14,7 @@ import AdminLayout from "../modules/admin/components/AdminLayout";
 import UserPage from "../modules/admin/pages/UserManagementPage";
 import CategoryPage from "../modules/admin/pages/CategoryManagementPage";
 import AdminEventPage from "../modules/admin/pages/EventManagementPage";
+import ForumManagement from "../modules/admin/pages/ForumManagement";
 import SystemPage from "../modules/admin/pages/SystemManagementPage";
 
 import OrganizerRequestsPage from "../modules/admin/pages/OrganizerRequestsPage";
@@ -24,6 +25,8 @@ import MembershipPage from "../modules/membership/pages/MembershipPage";
 import MyEventsPage from "../modules/event/pages/MyEventsPage";
 import EventListPage from "../modules/event/pages/EventListPage";
 import EventDetailPage from "../modules/event/pages/EventDetailPage";
+import ForumListPage from "../modules/forum/pages/ForumListPage";
+import PostDetailPage from "../modules/forum/pages/PostDetailPage";
 
 import OrganizerLayout from "../modules/organizer/components/OrganizerLayout";
 import OrganizerEventPage from "../modules/organizer/pages/EventManagementPage";
@@ -36,6 +39,8 @@ function AppRoutes() {
         <Route path="/" element={<HomePage />} />
         <Route path="/events" element={<EventListPage />} />
         <Route path="/events/:idOrSlug" element={<EventDetailPage />} />
+        <Route path="/forum" element={<ForumListPage />} />
+        <Route path="/forum/:id" element={<PostDetailPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -62,6 +67,7 @@ function AppRoutes() {
             <Route path="system" element={<SystemPage/>} />
             <Route path="organizer-requests" element={<OrganizerRequestsPage />} />
             <Route path="events" element={<AdminEventPage />} />
+            <Route path="forum" element={<ForumManagement />} />
           </Route>
         </Route>
 
