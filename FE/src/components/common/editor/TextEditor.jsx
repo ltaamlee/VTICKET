@@ -165,7 +165,7 @@ function TextEditor({
 
         try {
             const formData = new FormData();
-            formData.append("image", file);
+            formData.append("file", file);
 
             const token = localStorage.getItem("token");
 

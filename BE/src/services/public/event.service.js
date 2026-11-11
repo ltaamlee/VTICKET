@@ -106,21 +106,6 @@ class EventService {
                 endAt: {
                     gte: now,
                 },
-                ticketTypes: {
-                    where: { status: "ACTIVE" },
-                    orderBy: { createdAt: "asc" },
-                    select: {
-                        id: true,
-                        zoneId: true,
-                        name: true,
-                        price: true,
-                        capacity: true,
-                        soldQuantity: true,
-                        saleStartAt: true,
-                        saleEndAt: true,
-                        status: true,
-                    },
-                },
             },
             take,
             orderBy: [
