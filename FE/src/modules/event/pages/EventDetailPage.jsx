@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import Header from "../../../components/layout/Header";
-import Footer from "../../../components/layout/Footer";
+import Header from "../../../layout/Header"
+import Footer from "../../../layout/Footer";
 import EventDetailHeader from "../components/detail/EventDetailHeader";
 import EventInfoTabs from "../components/detail/EventInfoTabs";
 import EventDescription from "../components/detail/EventDescription";

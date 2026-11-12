@@ -15,15 +15,14 @@ class AdminSystemController {
     }
 
     getSettings = asyncHandler(async (req, res) => {
-        const result = await adminSystemService.getSettings()
+        const result = await this.adminSystemService.getSettings();
         return sendResponse(res, 200, "Lấy cấu hình hệ thống thành công", result);
     });
 
     getSetting = asyncHandler(async (req, res) => {
         const { key } = req.params;
-        const { value } = req.body;
 
-        const result = await adminSystemService.getSetting(key, value)
+        const result = await this.adminSystemService.getSetting(key);
 
         return sendResponse(res, 200, "Cấu hình theo key thành công", result);
     });
@@ -32,7 +31,7 @@ class AdminSystemController {
         const { key } = req.params;
         const { value } = req.body;
 
-        const setting = await adminSystemService.updateSetting(
+        const setting = await this.adminSystemService.updateSetting(
             key,
             value
         );

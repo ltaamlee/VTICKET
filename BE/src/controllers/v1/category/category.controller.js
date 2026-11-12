@@ -1,6 +1,6 @@
 const asyncHandler = require("../../../utils/asyncHandler");
 const sendResponse = require("../../../utils/sendResponse");
-const categoryService = require("../../../services/category/category.service");
+const categoryService = require("../../../services/public/category.service");
 
 class CategoryController {
     constructor(service = categoryService) {

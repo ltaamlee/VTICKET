@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import AccountLayout from "../../../components/layout/AccountLayout";
+import AccountLayout from "../../../layout/AccountLayout";
 import { useAuth } from "../../../contexts/AuthContext";
 import {
   Calendar,

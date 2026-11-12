@@ -6,3 +6,73 @@ input::-ms-reveal,
 input::-ms-clear {
   display: none;
 }
+
+/* Render overlay-based dialogs as right-side panels across the frontend. */
+[class~="fixed"][class~="inset-0"][class~="z-50"][class~="flex"][class~="items-center"][class~="justify-center"] {
+  align-items: stretch !important;
+  justify-content: flex-end !important;
+  padding: 0 !important;
+  animation: side-panel-backdrop-enter 180ms ease-out both;
+}
+
+[class~="fixed"][class~="inset-0"][class~="z-50"][class~="flex"][class~="items-center"][class~="justify-center"] > :first-child {
+  width: min(560px, 100vw) !important;
+  max-width: 100vw !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  margin: 0 0 0 auto !important;
+  border-radius: 0 !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  will-change: transform;
+  animation: side-panel-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+[class~="fixed"][class~="inset-0"][class~="z-50"][class~="flex"][class~="items-center"][class~="justify-center"] > :first-child[class*="max-w-3xl"] {
+  width: min(760px, 100vw) !important;
+}
+
+[class~="fixed"][class~="inset-0"][class~="z-50"][class~="flex"][class~="items-center"][class~="justify-center"] > :first-child[class*="max-w-4xl"] {
+  width: min(840px, 100vw) !important;
+}
+
+[class~="fixed"][class~="inset-0"][class~="z-50"][class~="flex"][class~="items-center"][class~="justify-center"] > :first-child[class*="max-w-6xl"] {
+  width: min(960px, 100vw) !important;
+}
+
+@keyframes side-panel-backdrop-enter {
+  from {
+    background-color: rgb(0 0 0 / 0%);
+  }
+  to {
+    background-color: rgb(0 0 0 / 50%);
+  }
+}
+
+@keyframes side-panel-enter {
+  from {
+    opacity: 0.7;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.ticket-detail-backdrop {
+  animation: side-panel-backdrop-enter 180ms ease-out both;
+}
+
+.ticket-detail-panel {
+  animation: side-panel-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [class~="fixed"][class~="inset-0"][class~="z-50"][class~="flex"][class~="items-center"][class~="justify-center"],
+  [class~="fixed"][class~="inset-0"][class~="z-50"][class~="flex"][class~="items-center"][class~="justify-center"] > :first-child,
+  .ticket-detail-backdrop,
+  .ticket-detail-panel {
+    animation-duration: 1ms;
+  }
+}

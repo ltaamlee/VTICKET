@@ -17,4 +17,8 @@ router.use('/organizer', organizerRoutes);
 router.use('/events', eventRoutes);
 router.use('/categories', categoryRoutes);
 
+// router.use('/event', eventRoutes);
+// router.use('/category', categoryRoutes);
+
 module.exports = router;
+

@@ -3,9 +3,9 @@ import { Plus, CheckCircle, XCircle } from "lucide-react";
 
 import { getCategories } from "../services/categoryService";
 
-import CategoryToolbar from "../components/categories/CategoryToolbar";
-import CategoryTable from "../components/categories/CategoryTable";
-import CategoryCreateModal from "../components/categories/modals/CategoryCreateModal";
+import CategoryToolbar from "../categories/components/CategoryToolbar";
+import CategoryTable from "../categories/components/CategoryTable";
+import CategoryFormPanel from "../categories/modals/CategoryFormPanel";
 
 import Pagination from "../../../components/common/Pagination";
 import { Alert } from "../../../components/common/Arlet";
@@ -161,6 +161,8 @@ function CategoryPage() {
                 <CategoryTable
                     categories={categories}
                     loading={loading}
+                    currentPage={page}
+                    pageSize={10}
                     onRefresh={handleRefresh}
                     onAlert={handleAlert}
                 />
@@ -176,7 +178,8 @@ function CategoryPage() {
             </div>
 
             {showCreateModal && (
-                <CategoryCreateModal
+                <CategoryFormPanel
+                    mode="create"
                     onClose={() => setShowCreateModal(false)}
                     onSuccess={handleCreateSuccess}
                     onAlert={handleAlert}

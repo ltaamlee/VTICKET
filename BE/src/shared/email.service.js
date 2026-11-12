@@ -1,34 +1,34 @@
 const nodemailer = require('nodemailer');
 
 class EmailService {
-  constructor() {
-    this.transporter = null;
-    this.initTransporter();
-  }
-
-  initTransporter() {
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
-      this.transporter = nodemailer.createTransport({
-        host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-        port: parseInt(process.env.EMAIL_PORT || '587', 10),
-        secure: false,
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASSWORD,
-        },
-      });
+    constructor() {
+        this.transporter = null;
+        this.initTransporter();
     }
-  }
 
-  /**
-   * Send OTP verification email
-   * @param {string} toEmail 
-   * @param {string} otp 
-   * @param {string} fullName 
-   */
-  async sendOtpEmail(toEmail, otp, fullName = 'Quý khách') {
-    const subject = '[VTicket] Mã xác thực đăng ký tài khoản';
-    const htmlContent = `
+    initTransporter() {
+        if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+            this.transporter = nodemailer.createTransport({
+                host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+                port: parseInt(process.env.EMAIL_PORT || '587', 10),
+                secure: false,
+                auth: {
+                    user: process.env.EMAIL_USER,
+                    pass: process.env.EMAIL_PASSWORD,
+                },
+            });
+        }
+    }
+
+    /**
+     * Send OTP verification email
+     * @param {string} toEmail 
+     * @param {string} otp 
+     * @param {string} fullName 
+     */
+    async sendOtpEmail(toEmail, otp, fullName = 'Quý khách') {
+        const subject = '[VTicket] Mã xác thực đăng ký tài khoản';
+        const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 8px;">
         <h2 style="color: #4F46E5; text-align: center;">VTicket - Nền Tảng Vé Điện Tử</h2>
         <p>Xin chào <strong>${fullName}</strong>,</p>
@@ -44,31 +44,31 @@ class EmailService {
       </div>
     `;
 
-    console.log(`[Email Service] OTP sent to ${toEmail}: ${otp} (Expires in 5 minutes)`);
+        console.log(`[Email Service] OTP sent to ${toEmail}: ${otp} (Expires in 5 minutes)`);
 
-    if (this.transporter) {
-      try {
-        await this.transporter.sendMail({
-          from: `"VTicket Support" <${process.env.EMAIL_USER}>`,
-          to: toEmail,
-          subject,
-          html: htmlContent,
-        });
-      } catch (error) {
-        console.error('Error sending email via SMTP:', error.message);
-      }
+        if (this.transporter) {
+            try {
+                await this.transporter.sendMail({
+                    from: `"VTicket Support" <${process.env.EMAIL_USER}>`,
+                    to: toEmail,
+                    subject,
+                    html: htmlContent,
+                });
+            } catch (error) {
+                console.error('Error sending email via SMTP:', error.message);
+            }
+        }
     }
-  }
 
-  /**
-   * Send OTP email for forgot/reset password
-   * @param {string} toEmail 
-   * @param {string} otp 
-   * @param {string} fullName 
-   */
-  async sendForgotPasswordEmail(toEmail, otp, fullName = 'Quý khách') {
-    const subject = '[VTicket] Mã xác thực đặt lại mật khẩu';
-    const htmlContent = `
+    /**
+     * Send OTP email for forgot/reset password
+     * @param {string} toEmail 
+     * @param {string} otp 
+     * @param {string} fullName 
+     */
+    async sendForgotPasswordEmail(toEmail, otp, fullName = 'Quý khách') {
+        const subject = '[VTicket] Mã xác thực đặt lại mật khẩu';
+        const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 8px;">
         <h2 style="color: #4F46E5; text-align: center;">VTicket - Nền Tảng Vé Điện Tử</h2>
         <p>Xin chào <strong>${fullName}</strong>,</p>
@@ -86,31 +86,31 @@ class EmailService {
       </div>
     `;
 
-    console.log(`[Email Service] Forgot password OTP sent to ${toEmail}: ${otp} (Expires in 5 minutes)`);
+        console.log(`[Email Service] Forgot password OTP sent to ${toEmail}: ${otp} (Expires in 5 minutes)`);
 
-    if (this.transporter) {
-      try {
-        await this.transporter.sendMail({
-          from: `"VTicket Support" <${process.env.EMAIL_USER}>`,
-          to: toEmail,
-          subject,
-          html: htmlContent,
-        });
-      } catch (error) {
-        console.error('Error sending email via SMTP:', error.message);
-      }
+        if (this.transporter) {
+            try {
+                await this.transporter.sendMail({
+                    from: `"VTicket Support" <${process.env.EMAIL_USER}>`,
+                    to: toEmail,
+                    subject,
+                    html: htmlContent,
+                });
+            } catch (error) {
+                console.error('Error sending email via SMTP:', error.message);
+            }
+        }
     }
-  }
 
-  /**
-   * Send notification email when organizer request is approved
-   * @param {string} toEmail 
-   * @param {string} organizationName 
-   * @param {string} fullName 
-   */
-  async sendOrganizerApprovedEmail(toEmail, organizationName, fullName = 'Quý khách') {
-    const subject = '[VTicket] Chúc mừng! Yêu cầu đăng ký Ban Tổ Chức đã được phê duyệt';
-    const htmlContent = `
+    /**
+     * Send notification email when organizer request is approved
+     * @param {string} toEmail 
+     * @param {string} organizationName 
+     * @param {string} fullName 
+     */
+    async sendOrganizerApprovedEmail(toEmail, organizationName, fullName = 'Quý khách') {
+        const subject = '[VTicket] Chúc mừng! Yêu cầu đăng ký Ban Tổ Chức đã được phê duyệt';
+        const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 8px;">
         <h2 style="color: #10B981; text-align: center;">VTicket - Chúc Mừng Bạn!</h2>
         <p>Xin chào <strong>${fullName}</strong>,</p>
@@ -125,32 +125,32 @@ class EmailService {
       </div>
     `;
 
-    console.log(`[Email Service] Organizer Approval Email sent to ${toEmail}`);
+        console.log(`[Email Service] Organizer Approval Email sent to ${toEmail}`);
 
-    if (this.transporter) {
-      try {
-        await this.transporter.sendMail({
-          from: `"VTicket Support" <${process.env.EMAIL_USER}>`,
-          to: toEmail,
-          subject,
-          html: htmlContent,
-        });
-      } catch (error) {
-        console.error('Error sending organizer approval email:', error.message);
-      }
+        if (this.transporter) {
+            try {
+                await this.transporter.sendMail({
+                    from: `"VTicket Support" <${process.env.EMAIL_USER}>`,
+                    to: toEmail,
+                    subject,
+                    html: htmlContent,
+                });
+            } catch (error) {
+                console.error('Error sending organizer approval email:', error.message);
+            }
+        }
     }
-  }
 
-  /**
-   * Send notification email when organizer request is rejected
-   * @param {string} toEmail 
-   * @param {string} organizationName 
-   * @param {string} fullName 
-   * @param {string} rejectReason 
-   */
-  async sendOrganizerRejectedEmail(toEmail, organizationName, fullName = 'Quý khách', rejectReason = '') {
-    const subject = '[VTicket] Thông báo về yêu cầu đăng ký Ban Tổ Chức';
-    const htmlContent = `
+    /**
+     * Send notification email when organizer request is rejected
+     * @param {string} toEmail 
+     * @param {string} organizationName 
+     * @param {string} fullName 
+     * @param {string} rejectReason 
+     */
+    async sendOrganizerRejectedEmail(toEmail, organizationName, fullName = 'Quý khách', rejectReason = '') {
+        const subject = '[VTicket] Thông báo về yêu cầu đăng ký Ban Tổ Chức';
+        const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 8px;">
         <h2 style="color: #EF4444; text-align: center;">VTicket - Thông Báo Xét Duyệt</h2>
         <p>Xin chào <strong>${fullName}</strong>,</p>
@@ -166,21 +166,21 @@ class EmailService {
       </div>
     `;
 
-    console.log(`[Email Service] Organizer Rejection Email sent to ${toEmail}`);
+        console.log(`[Email Service] Organizer Rejection Email sent to ${toEmail}`);
 
-    if (this.transporter) {
-      try {
-        await this.transporter.sendMail({
-          from: `"VTicket Support" <${process.env.EMAIL_USER}>`,
-          to: toEmail,
-          subject,
-          html: htmlContent,
-        });
-      } catch (error) {
-        console.error('Error sending organizer rejection email:', error.message);
-      }
+        if (this.transporter) {
+            try {
+                await this.transporter.sendMail({
+                    from: `"VTicket Support" <${process.env.EMAIL_USER}>`,
+                    to: toEmail,
+                    subject,
+                    html: htmlContent,
+                });
+            } catch (error) {
+                console.error('Error sending organizer rejection email:', error.message);
+            }
+        }
     }
-  }
 }
 
 module.exports = new EmailService();

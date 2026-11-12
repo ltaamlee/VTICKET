@@ -1,8 +1,8 @@
 import EventSlider from "../components/EventSlider";
 import CategorySection from "../components/CategorySection";
+import Header from "../../../layout/Header";
+import Footer from "../../../layout/Footer";
 import FeaturedEvents from "../components/FeaturedEvents";
-import Header from "../../../components/layout/Header";
-import Footer from "../../../components/layout/Footer";
 
 function HomePage() {
   return (

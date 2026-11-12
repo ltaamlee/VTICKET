@@ -1,10 +1,15 @@
 import { useState } from "react";
 
-function Tabs({ tabs, defaultTab, onChange }) {
-    const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id);
+function Tabs({ tabs, defaultTab, activeTab: controlledTab, onChange }) {
+    const [uncontrolledTab, setUncontrolledTab] = useState(
+        defaultTab || tabs[0]?.id
+    );
+    const activeTab = controlledTab ?? uncontrolledTab;
 
     const handleChange = (id) => {
-        setActiveTab(id);
+        if (controlledTab === undefined) {
+            setUncontrolledTab(id);
+        }
         onChange?.(id);
     };
 
@@ -20,8 +25,11 @@ function Tabs({ tabs, defaultTab, onChange }) {
                             key={tab.id}
                             type="button"
                             onClick={() => handleChange(tab.id)}
+                            disabled={tab.disabled}
                             className={`flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 text-sm transition-colors ${
-                                active
+                                tab.disabled
+                                    ? "cursor-not-allowed border-transparent text-gray-300"
+                                    : active
                                     ? "border-blue-500 text-blue-600"
                                     : "border-transparent text-gray-600 hover:text-gray-900"
                             }`}

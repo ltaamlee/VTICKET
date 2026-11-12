@@ -7,12 +7,14 @@ class AdminUserController {
         this.adminUserService = service;
     }
 
+    // Thống kê tài khoản người dùng
     getUserStats = asyncHandler(async (req, res) => {
         const result = await this.adminUserService.getUserStats();
 
         return sendResponse(res, 200, "Thống kê tài khoản thành công", result);
     });
 
+    // Lấy danh sách người dùng
     getUsers = asyncHandler(async (req, res) => {
         const { page = 1, keyword = "", role = ""} = req.query;
 
@@ -28,6 +30,7 @@ class AdminUserController {
         });
     });
 
+    // Xem chi tiết người dùng
     getUserDetail = asyncHandler(async (req, res) => {
         const { id } = req.params;
 
@@ -38,6 +41,7 @@ class AdminUserController {
         return sendResponse(res, 200, "Xem chi tiết tài khoản thành công", result);
     });
 
+    // Cập nhật thông tin người dùng
     updateUser = asyncHandler(async (req, res) => {
         const { id } = req.params;
 
@@ -49,6 +53,7 @@ class AdminUserController {
         return sendResponse(res, 200, "Cập nhật thông tin người dùng thành công", result);
     })
 
+    // Xóa người dùng
     deleteUser = asyncHandler(async (req, res) => {
         const { id } = req.params;
 
