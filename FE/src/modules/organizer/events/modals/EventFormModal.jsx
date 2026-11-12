@@ -63,10 +63,11 @@ function createInitialFormData(event, isEdit, categories) {
 
     const isOnline =
         event.eventType === "ONLINE" ||
-        event.location?.toLowerCase().includes("online") ||
-        event.location?.toLowerCase().includes("trực tuyến") ||
-        event.location?.toLowerCase().includes("zoom") ||
-        event.location?.toLowerCase().includes("meet");
+        (!event.eventType &&
+            (event.location?.toLowerCase().includes("online") ||
+                event.location?.toLowerCase().includes("trực tuyến") ||
+                event.location?.toLowerCase().includes("zoom") ||
+                event.location?.toLowerCase().includes("meet")));
 
     return {
         name: event.name || "",
@@ -247,6 +248,7 @@ function EventFormModal({
                 name: formData.name.trim(),
                 slug: formData.slug.trim(),
                 categoryId,
+                eventType: formData.eventType,
                 location: formData.location.trim(),
                 description: formData.description.trim(),
 
@@ -304,11 +306,6 @@ function EventFormModal({
 
             onSuccess?.("Đã gửi sự kiện đến Admin để phê duyệt.");
         } catch (error) {
-            const status =
-                error.response?.status ||
-                error.statusCode ||
-                error.status;
-
             const message =
                 error.response?.data?.message ||
                 error.response?.data?.error ||
@@ -316,13 +313,11 @@ function EventFormModal({
                 "Không thể tạo sự kiện.";
 
             // Duplicate slug error
-            if (
-                status === 409 ||
-                message.toLowerCase().includes("slug")
-            ) {
+            if (message.toLowerCase().includes("slug")) {
                 setSlugError(
                     "Slug đã tồn tại. Vui lòng chọn slug khác."
                 );
+                setActiveStep(0);
                 return;
             }
 

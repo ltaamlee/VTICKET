@@ -254,7 +254,7 @@ function OrganizerEventPage() {
     return (
         <div className="space-y-6">
             {alert && (
-                <div className="fixed right-5 top-5 z-50 w-full max-w-sm">
+                <div className="fixed right-5 top-5 z-[60] w-full max-w-sm">
                     <Alert
                         variant={alert.variant}
                         title={alert.title}
