@@ -4,8 +4,21 @@ import { Armchair, Check, LoaderCircle } from "lucide-react";
 import { getSeatMaps } from "../../services/seatMapService";
 import SeatMapPreview from "./SeatMapPreview";
 
+function isSeatMapAvailable(seatMap, eventId) {
+    const assignedEvents = Array.isArray(seatMap.events)
+        ? seatMap.events
+        : seatMap.event
+          ? [seatMap.event]
+          : [];
+
+    return assignedEvents.every(
+        (event) => eventId != null && String(event.id) === String(eventId)
+    );
+}
+
 function SeatMapPicker({
     value = "",
+    eventId,
     onChange,
     onAlert,
     label = "Sơ đồ sự kiện",
@@ -49,7 +62,7 @@ function SeatMapPicker({
     }, [refreshKey, onAlert]);
 
     const availableSeatMaps = seatMaps.filter(
-        (seatMap) => !seatMap.event || String(seatMap.id) === String(value)
+        (seatMap) => isSeatMapAvailable(seatMap, eventId)
     );
     const selectedSeatMap = availableSeatMaps.find(
         (seatMap) => String(seatMap.id) === String(value)

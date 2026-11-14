@@ -204,16 +204,10 @@ function EventTable({
                                                     {event.seatMap.name}
                                                 </span>
                                             ) : (
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        onManageSeatMaps?.()
-                                                    }
-                                                    className="inline-flex items-center gap-1.5 rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500 transition hover:bg-blue-50 hover:text-blue-700"
-                                                >
+                                                <span className="inline-flex items-center gap-1.5 rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500">
                                                     <Armchair size={13} />
-                                                    Chọn sơ đồ
-                                                </button>
+                                                    Chưa gắn sơ đồ
+                                                </span>
                                             )}
                                         </td>
 

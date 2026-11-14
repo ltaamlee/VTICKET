@@ -5,7 +5,7 @@ import { inputClass, labelClass } from "../../modals/formStyles";
 export default function EventScheduleSection({ formData, handleChange }) {
     return (
         <div className="space-y-5">
-            <div className="flex items-center justify-center gap-2 pb-3">
+            <div className="flex items-center gap-2 pb-1">
                 <CalendarDays size={18} className="text-blue-600" />
                 <h3 className="font-semibold text-gray-900">
                     Thời gian sự kiện
@@ -17,7 +17,7 @@ export default function EventScheduleSection({ formData, handleChange }) {
                     Thời gian diễn ra
                 </h4>
 
-                <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                         <label className={labelClass}>
                             Bắt đầu <span className="text-red-500">*</span>
@@ -62,7 +62,7 @@ export default function EventScheduleSection({ formData, handleChange }) {
                     </p>
                 </div>
 
-                <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                         <label className={labelClass}>
                             Bắt đầu mở bán

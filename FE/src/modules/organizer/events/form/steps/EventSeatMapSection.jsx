@@ -4,6 +4,7 @@ import SeatMapPicker from "../../../seatmaps/components/SeatMapPicker";
 
 export default function EventSeatMapSection({
     value,
+    eventId,
     onChange,
     onAlert,
     onManageSeatMaps,
@@ -33,6 +34,7 @@ export default function EventSeatMapSection({
 
             <SeatMapPicker
                 value={value}
+                eventId={eventId}
                 onChange={onChange}
                 onAlert={onAlert}
                 refreshKey={refreshKey}
