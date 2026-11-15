@@ -10,7 +10,7 @@ import Page403 from "../modules/errors/403";
 import Page404 from "../modules/errors/404";
 
 import AdminDashboardPage from "../modules/admin/pages/DashboardPage";
-import AdminLayout from "../modules/admin/components/AdminLayout";
+import AdminLayout from "../layout/admin/AdminLayout";
 import UserPage from "../modules/admin/pages/UserManagementPage";
 import CategoryPage from "../modules/admin/pages/CategoryManagementPage";
 import AdminEventPage from "../modules/admin/pages/EventManagementPage";
@@ -25,9 +25,11 @@ import MyEventsPage from "../modules/event/pages/MyEventsPage";
 import EventListPage from "../modules/event/pages/EventListPage";
 import EventDetailPage from "../modules/event/pages/EventDetailPage";
 
-import OrganizerLayout from "../modules/organizer/components/OrganizerLayout";
+import OrganizerLayout from "../layout/organizer/OrganizerLayout";
 import OrganizerEventPage from "../modules/organizer/pages/EventManagementPage";
 import OrganizerDashboardPage from "../modules/organizer/pages/DashboardPage";
+import OrganizerTicketPage from "../modules/organizer/pages/TicketManagementPage";
+import SeatMapEditorPage from "../modules/organizer/pages/SeatMapEditorPage";
 
 function AppRoutes() {
   return (
@@ -70,7 +72,10 @@ function AppRoutes() {
             <Route index element={<OrganizerDashboardPage />} />
             <Route path="dashboard" element={<OrganizerDashboardPage />} />
             <Route path="events" element={<OrganizerEventPage />} />
+            <Route path="tickets" element={<OrganizerTicketPage />} />
           </Route>
+          <Route path="/organizer/seat-maps/new" element={<SeatMapEditorPage />} />
+          <Route path="/organizer/seat-maps/:seatMapId/edit" element={<SeatMapEditorPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

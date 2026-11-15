@@ -1,56 +1,18 @@
 const prisma = require("../../config/prisma");
+const { EventStatus, isValidEventStatus, getEventStatus, } = require("../../shared/eventStatus");
+const BaseService = require("../public/base.service");
 
 const notDraft = {
     status: {
-        not: "DRAFT",
+        not: EventStatus.DRAFT,
     },
 };
 
-class AdminEventService {
-
-    createError(message, statusCode = 400) {
-        const error = new Error(message);
-        error.statusCode = statusCode;
-        throw error;
-    }
+class AdminEventService extends BaseService {
 
     async getEventStats() {
-        const [
-            totalEvents,
-            draftEvents,
-            pendingEvents,
-            approvedEvents,
-            rejectedEvents,
-            suspendedEvents,
-            cancelledEvents,
-            completedEvents,
-        ] = await Promise.all([
-            prisma.event.count(),
-            prisma.event.count({ where: { status: "DRAFT" } }),
-            prisma.event.count({ where: { status: "PENDING" } }),
-            // Đã duyệt = APPROVED (sự kiện được công khai cho người dùng).
-            prisma.event.count({ where: { status: "APPROVED" } }),
-            prisma.event.count({ where: { status: "REJECTED" } }),
-            prisma.event.count({ where: { status: "SUSPENDED" } }),
-            prisma.event.count({ where: { status: "CANCELLED" } }),
-            prisma.event.count({ where: { status: "COMPLETED" } }),
-        ]);
-
-        return {
-            totalEvents,
-            draftEvents,
-            pendingEvents,
-            approvedEvents,
-            rejectedEvents,
-            suspendedEvents,
-            cancelledEvents,
-            completedEvents,
-        };
+        return getEventStatus();
     }
-
-    // ==========================================
-    // GET EVENTS
-    // ==========================================
 
     async getEvents({
         page = 1,
@@ -100,17 +62,17 @@ class AdminEventService {
         }
 
         if (searchStatus) {
-            const validStatuses = [
-                "PENDING",
-                "APPROVED",
-                "REJECTED",
-                "CANCELLED",
-                "COMPLETED",
-                "SUSPENDED",
+            const allowedStatuses = [
+                EventStatus.PENDING,
+                EventStatus.APPROVED,
+                EventStatus.REJECTED,
+                EventStatus.CANCELLED,
+                EventStatus.COMPLETED,
+                EventStatus.SUSPENDED,
             ];
 
-            if (!validStatuses.includes(searchStatus)) {
-                this.createError("Trạng thái sự kiện không hợp lệ");
+            if (!isValidEventStatus(searchStatus, allowedStatuses)) {
+                this.throwError("Trạng thái sự kiện không hợp lệ");
             }
 
             where.status = searchStatus;
@@ -118,7 +80,7 @@ class AdminEventService {
 
         if (categoryId) {
             if (!/^[a-fA-F0-9]{24}$/.test(categoryId)) {
-                this.createError("ID danh mục không hợp lệ");
+                this.throwError("ID danh mục không hợp lệ");
             }
 
             where.categoryId = categoryId;
@@ -293,17 +255,12 @@ class AdminEventService {
         };
     }
 
-    /**
-     * Lấy chi tiết sơ đồ ghế (kèm khu vực) cho Admin.
-     *
-     * Admin không phải chủ sơ đồ nên không dùng được route của Organizer.
-     */
     async getSeatMapDetail({ seatMapId }) {
         if (
             typeof seatMapId !== "string" ||
             !/^[a-fA-F0-9]{24}$/.test(seatMapId)
         ) {
-            this.createError("ID sơ đồ ghế không hợp lệ");
+            this.throwError("ID sơ đồ ghế không hợp lệ");
         }
 
         const seatMap = await prisma.seatMap.findUnique({
@@ -363,7 +320,7 @@ class AdminEventService {
         });
 
         if (!seatMap) {
-            this.createError("Không tìm thấy sơ đồ ghế", 404);
+            this.throwError("Không tìm thấy sơ đồ ghế", 404);
         }
 
         return {
@@ -377,7 +334,7 @@ class AdminEventService {
             typeof eventId !== "string" ||
             !/^[a-fA-F0-9]{24}$/.test(eventId)
         ) {
-            this.createError("ID sự kiện không hợp lệ");
+            this.throwError("ID sự kiện không hợp lệ");
         }
 
         const event = await prisma.event.findUnique({
@@ -387,26 +344,12 @@ class AdminEventService {
         });
 
         if (!event) {
-            this.createError("Không tìm thấy sự kiện", 404);
+            this.throwError("Không tìm thấy sự kiện", 404);
         }
 
         return event;
     }
 
-
-
-    // ==========================================
-    // APPROVE EVENT
-    // ==========================================
-
-    /**
-     * Đồng bộ trạng thái sơ đồ ghế theo trạng thái sự kiện.
-     *
-     * - Duyệt (APPROVED) -> sơ đồ READY (dùng để bán vé).
-     * - Từ chối / huỷ / khóa -> sơ đồ về DRAFT (để BTC chỉnh lại).
-     *
-     * Sơ đồ đang ARCHIVED thì giữ nguyên, không tự động mở lại.
-     */
     async syncSeatMapStatus({ seatMapId, status }) {
         if (!seatMapId) return;
 
@@ -420,7 +363,7 @@ class AdminEventService {
         // Đã lưu trữ thì giữ nguyên trạng thái.
         if (seatMap.status === "ARCHIVED") return;
 
-        const nextStatus = status === "APPROVED" ? "READY" : "DRAFT";
+        const nextStatus = status === EventStatus.APPROVED ? "READY" : "DRAFT";
 
         if (seatMap.status === nextStatus) return;
 
@@ -433,8 +376,8 @@ class AdminEventService {
     async approveEvent({ eventId }) {
         const event = await this.findEvent(eventId);
 
-        if (event.status !== "PENDING") {
-            this.createError(
+        if (event.status !== EventStatus.PENDING) {
+            this.throwError(
                 "Chỉ có thể duyệt sự kiện đang chờ duyệt"
             );
         }
@@ -444,13 +387,12 @@ class AdminEventService {
                 id: eventId,
             },
             data: {
-                status: "APPROVED",
+                status: EventStatus.APPROVED,
                 reviewedAt: new Date(),
                 rejectReason: null,
             },
         });
 
-        // Sự kiện được duyệt -> sơ đồ ghế cũng sẵn sàng bán vé.
         await this.syncSeatMapStatus({
             seatMapId: event.seatMapId,
             status: "APPROVED",
@@ -459,21 +401,17 @@ class AdminEventService {
         return updated;
     }
 
-    // ==========================================
-    // REJECT EVENT
-    // ==========================================
-
     async rejectEvent({ eventId, reason }) {
         const event = await this.findEvent(eventId);
 
-        if (event.status !== "PENDING") {
-            this.createError(
+        if (event.status !== EventStatus.PENDING) {
+            this.throwError(
                 "Chỉ có thể từ chối sự kiện đang chờ duyệt"
             );
         }
 
         if (typeof reason !== "string" || !reason.trim()) {
-            this.createError("Vui lòng nhập lý do từ chối");
+            this.throwError("Vui lòng nhập lý do từ chối");
         }
 
         const updated = await prisma.event.update({
@@ -487,7 +425,6 @@ class AdminEventService {
             },
         });
 
-        // Bị từ chối -> sơ đồ về bản nháp để BTC chỉnh lại.
         await this.syncSeatMapStatus({
             seatMapId: event.seatMapId,
             status: "REJECTED",
@@ -496,15 +433,11 @@ class AdminEventService {
         return updated;
     }
 
-    // ==========================================
-    // SUSPEND EVENT
-    // ==========================================
-
     async suspendEvent({ eventId }) {
         const event = await this.findEvent(eventId);
 
-        if (!["APPROVED"].includes(event.status)) {
-            this.createError(
+        if (event.status !== EventStatus.APPROVED) {
+            this.throwError(
                 "Chỉ có thể khóa sự kiện đã được duyệt"
             );
         }
@@ -527,15 +460,11 @@ class AdminEventService {
         return updated;
     }
 
-    // ==========================================
-    // RESTORE EVENT
-    // ==========================================
-
     async restoreEvent({ eventId }) {
         const event = await this.findEvent(eventId);
 
-        if (event.status !== "SUSPENDED") {
-            this.createError(
+        if (event.status !== EventStatus.SUSPENDED) {
+            this.throwError(
                 "Chỉ có thể mở khóa sự kiện đang bị khóa"
             );
         }
@@ -545,7 +474,7 @@ class AdminEventService {
                 id: eventId,
             },
             data: {
-                status: "APPROVED",
+                status: EventStatus.APPROVED,
             },
         });
 
@@ -558,18 +487,14 @@ class AdminEventService {
         return updated;
     }
 
-    // ==========================================
-    // CANCEL EVENT
-    // ==========================================
-
     async cancelEvent({ eventId }) {
         const event = await this.findEvent(eventId);
 
         if (
-            event.status === "CANCELLED" ||
-            event.status === "COMPLETED"
+            event.status === EventStatus.CANCELLED ||
+            event.status === EventStatus.COMPLETED
         ) {
-            this.createError(
+            this.throwError(
                 "Không thể hủy sự kiện đã bị hủy hoặc đã hoàn thành"
             );
         }
@@ -579,7 +504,7 @@ class AdminEventService {
                 id: eventId,
             },
             data: {
-                status: "CANCELLED",
+                status: EventStatus.CANCELLED,
             },
         });
 

@@ -1,7 +1,7 @@
 const prisma = require("../../config/prisma");
 const generateSlug = require("../../utils/generateSlug");
 
-const categoryService = require("../category/category.service");
+const categoryService = require("../public/category.service");
 
 class AdminCategoryService {
 

@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { getUsers } from "../services/userService";
 
-import UserStats from "../components/users/UserStats";
-import UserToolbar from "../components/users/UserToolbar";
-import UserTable from "../components/users/UserTable";
+import UserStats from "../users/components/UserStats";
+import UserToolbar from "../users/components/UserToolbar";
+import UserTable from "../users/components/UserTable";
 import Pagination from "../../../components/common/Pagination";
 
 import { Alert } from "../../../components/common/Arlet";
@@ -155,6 +155,8 @@ function UserPage() {
                 <UserTable
                     users={users}
                     loading={loading}
+                    currentPage={page}
+                    pageSize={10}
                     onRefresh={handleRefresh}
                     onAlert={handleAlert}
                 />

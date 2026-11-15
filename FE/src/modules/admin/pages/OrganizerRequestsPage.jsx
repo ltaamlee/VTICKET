@@ -6,12 +6,12 @@ import {
     approveOrganizerRequest,
     rejectOrganizerRequest,
 } from "../services/organizerRequestService";
-import OrganizerRequestStats from "../components/organizerRequests/OrganizerRequestStats";
-import OrganizerRequestToolbar from "../components/organizerRequests/OrganizerRequestToolbar";
-import OrganizerRequestTable from "../components/organizerRequests/OrganizerRequestTable";
-import OrganizerRequestDetailModal from "../components/organizerRequests/OrganizerRequestDetailModal";
-import OrganizerRequestApproveModal from "../components/organizerRequests/OrganizerRequestApproveModal";
-import OrganizerRequestRejectModal from "../components/organizerRequests/OrganizerRequestRejectModal";
+import OrganizerRequestStats from "../organizerRequests/components/OrganizerRequestStats";
+import OrganizerRequestToolbar from "../organizerRequests/components/OrganizerRequestToolbar";
+import OrganizerRequestTable from "../organizerRequests/components/OrganizerRequestTable";
+import OrganizerRequestDetailModal from "../organizerRequests/modals/OrganizerRequestDetailModal";
+import OrganizerRequestApproveModal from "../organizerRequests/modals/OrganizerRequestApproveModal";
+import OrganizerRequestRejectModal from "../organizerRequests/modals/OrganizerRequestRejectModal";
 import Pagination from "../../../components/common/Pagination";
 import { Alert } from "../../../components/common/Arlet";
 import ImagePreviewModal from "../../../components/common/ImagePreviewModal";
@@ -264,6 +264,8 @@ export default function OrganizerRequestsPage() {
                 <OrganizerRequestTable
                     requests={requests}
                     loading={loading}
+                    currentPage={page}
+                    pageSize={limit}
                     onViewDetail={handleViewDetail}
                     onOpenApprove={handleOpenApprove}
                     onOpenReject={handleOpenReject}

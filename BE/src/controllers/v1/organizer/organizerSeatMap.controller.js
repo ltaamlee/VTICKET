@@ -1,7 +1,7 @@
 const asyncHandler = require("../../../utils/asyncHandler");
 const sendResponse = require("../../../utils/sendResponse");
 
-const organizerSeatMapService = require("../../../services/organizer/organizerSeatMap.service");
+const organizerSeatMapService = require("../../../services/organizer/seatmap/organizerSeatMap.service");
 
 class OrganizerSeatMapController {
     constructor(service = organizerSeatMapService) {

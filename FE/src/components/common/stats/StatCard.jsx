@@ -1,10 +1,3 @@
-/**
- * Thẻ thống kê dùng chung cho Admin và Ban tổ chức.
- *
- * Chỉ chứa phần trình bày - danh sách thẻ và cách lấy số liệu do
- * từng module tự quyết định (xem AdminEventStats / OrganizerEventStats).
- */
-
 export default function StatCard({
     label,
     value,
@@ -12,6 +5,8 @@ export default function StatCard({
     bg = "bg-sky-50",
     iconBg = "bg-sky-500",
     loading = false,
+    formatValue,
+    detail,
 }) {
     return (
         <div
@@ -26,8 +21,13 @@ export default function StatCard({
                 <p className="mt-3 text-3xl font-bold tracking-tight text-gray-900">
                     {loading
                         ? "..."
-                        : (value ?? 0).toLocaleString("vi-VN")}
+                        : formatValue
+                            ? formatValue(value ?? 0)
+                            : (value ?? 0).toLocaleString("vi-VN")}
                 </p>
+                {detail && (
+                    <p className="mt-1 text-xs text-gray-500">{detail}</p>
+                )}
             </div>
 
             {/* Icon bên phải */}

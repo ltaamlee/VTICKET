@@ -33,6 +33,12 @@ enum EventStatus {
   SUSPENDED
 }
 
+enum EventType {
+    OFFLINE
+    ONLINE
+    HYBRID
+}
+
 enum ZoneType {
   SEATED
   STANDING
@@ -59,9 +65,7 @@ enum SeatType {
 
 // Chiều duyệt ghế khi trả vé ngẫu nhiên cho người mua.
 enum SeatNumbering {
-  // Theo hàng: A1, A2, A3, B1, B2, ...
   ROW
-  // Theo cột: A1, B1, C1, A2, B2, ...
   COLUMN
 }
 
@@ -240,9 +244,7 @@ model Event {
   category    Category @relation(fields: [categoryId], references: [id])
 
   location     String
-  contactEmail String?
-  contactPhone String?
-
+  eventType    EventType @default(OFFLINE)
   status       EventStatus @default(DRAFT)
   saleStartAt  DateTime?
   saleEndAt    DateTime?
