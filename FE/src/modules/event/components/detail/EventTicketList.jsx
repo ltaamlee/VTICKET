@@ -1,14 +1,20 @@
-import { Ticket, Users, Clock, AlertCircle } from "lucide-react";
+import { Ticket, Users, Clock } from "lucide-react";
 
 /**
  * EventTicketList - Bảng danh sách các loại vé đang phát hành của sự kiện
  */
-export default function EventTicketList({ ticketTypes = [], onSelectTicket }) {
+export default function EventTicketList({
+    ticketTypes = [],
+    onSelectTicket,
+    session,
+}) {
     if (!ticketTypes || ticketTypes.length === 0) {
         return (
             <div className="rounded-2xl border border-gray-200/80 bg-white p-8 text-center shadow-xs">
                 <Ticket className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                <h3 className="text-base font-bold text-gray-900">Chưa có loại vé mở bán</h3>
+                <h3 className="text-base font-bold text-gray-900">
+                    {session ? "Suất diễn này chưa có vé mở bán" : "Chưa có loại vé mở bán"}
+                </h3>
                 <p className="mt-1 text-xs text-gray-500">
                     Ban tổ chức hiện chưa công bố danh sách vé cho sự kiện này. Vui lòng quay lại sau!
                 </p>
@@ -21,10 +27,15 @@ export default function EventTicketList({ ticketTypes = [], onSelectTicket }) {
             <div>
                 <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                     <Ticket className="h-5 w-5 text-blue-600" />
-                    Các hạng vé đang mở bán
+                    {session ? "Hạng vé của suất diễn" : "Các hạng vé đang mở bán"}
                 </h2>
                 <p className="mt-1 text-xs text-gray-500">
-                    Chọn hạng vé phù hợp để tiến hành đặt vé tham dự sự kiện
+                    {session
+                        ? `Suất diễn ${new Date(session.startAt).toLocaleString("vi-VN", {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                          })}`
+                        : "Chọn hạng vé phù hợp để tiến hành đặt vé tham dự sự kiện"}
                 </p>
             </div>
 
@@ -103,4 +114,3 @@ export default function EventTicketList({ ticketTypes = [], onSelectTicket }) {
         </div>
     );
 }
-

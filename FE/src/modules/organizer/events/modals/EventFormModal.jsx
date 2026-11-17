@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { X, FileText, Send, Save, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Send, Save, ChevronLeft, ChevronRight } from "lucide-react";
 
 import Button from "../../../../components/common/button/Button";
 import {
@@ -8,11 +8,13 @@ import {
     uploadEventImage,
     submitEvent,
 } from "../../services/eventService";
+import { createSession } from "../../services/eventSessionService";
 import { generateSlug } from "../../../../utils/generateSlug";
 import EventBasicInfoSection from "../form/steps/EventBasicInfoSection";
 import EventScheduleSection from "../form/steps/EventScheduleSection";
 import EventImagesSection from "../form/steps/EventImagesSection";
 import EventSeatMapSection from "../form/steps/EventSeatMapSection";
+import EventSessionSection from "../form/steps/EventSessionSection";
 
 import { EVENT_DESCRIPTION_TEMPLATE } from "../../../../utils/eventDescriptionTemplate";
 
@@ -101,7 +103,9 @@ function EventFormModal({
     const stepContentRefs = useRef([]);
     const scrollRef = useRef(null);
     const [activeStep, setActiveStep] = useState(0);
-    const steps = ["Thông tin tổng quan", "Thời gian", "Hình ảnh và sơ đồ"];
+    const steps = ["Thông tin tổng quan", "Thời gian & Suất diễn", "Hình ảnh và sơ đồ"];
+    const [draftSessions, setDraftSessions] = useState([]);
+    const [createdEventId, setCreatedEventId] = useState(null);
 
     const [formData, setFormData] = useState(() =>
         createInitialFormData(event, isEdit, categories)
@@ -228,6 +232,19 @@ function EventFormModal({
             );
         }
 
+        if (
+            draftSessions.some(
+                (session) =>
+                    new Date(session.startAt) < new Date(formData.startAt) ||
+                    new Date(session.endAt) > new Date(formData.endAt)
+            )
+        ) {
+            return showStepError(
+                1,
+                "Thời gian suất diễn phải nằm trong thời gian diễn ra sự kiện."
+            );
+        }
+
         try {
             setLoading(true);
 
@@ -278,6 +295,8 @@ function EventFormModal({
                 seatMapId: formData.seatMapId || null,
             };
 
+            let eventId = event?.id;
+
             if (isEdit) {
                 await updateEvent(event.id, payload);
 
@@ -292,18 +311,52 @@ function EventFormModal({
                 return;
             }
 
-            const response = await createEvent(payload);
+            if (createdEventId) {
+                eventId = createdEventId;
+                await updateEvent(eventId, payload);
+            } else {
+                const response = await createEvent(payload);
+                eventId =
+                    response?.data?.id ||
+                    response?.data?.data?.id ||
+                    response?.data?.event?.id ||
+                    response?.data?.data?.event?.id;
+
+                if (eventId) {
+                    setCreatedEventId(eventId);
+                }
+            }
+
+            if (!eventId && draftSessions.length > 0) {
+                throw new Error(
+                    "Tạo sự kiện thành công nhưng không lấy được ID để lưu suất diễn."
+                );
+            }
+
+            if (eventId && draftSessions.length > 0) {
+                let sessionsToSave = [...draftSessions];
+                for (const session of sessionsToSave) {
+                    if (session.serverId) continue;
+
+                    const savedSession = await createSession(eventId, {
+                        startAt: session.startAt,
+                        endAt: session.endAt,
+                        saleStartAt: session.saleStartAt,
+                        saleEndAt: session.saleEndAt,
+                    });
+                    sessionsToSave = sessionsToSave.map((item) =>
+                        item.id === session.id
+                            ? { ...item, serverId: savedSession?.id }
+                            : item
+                    );
+                    setDraftSessions(sessionsToSave);
+                }
+            }
 
             if (action === "DRAFT") {
                 onSuccess?.("Đã lưu sự kiện dưới dạng bản nháp.");
                 return;
             }
-
-            const eventId =
-                response?.data?.id ||
-                response?.data?.data?.id ||
-                response?.data?.event?.id ||
-                response?.data?.data?.event?.id;
 
             if (!eventId) {
                 throw new Error(
@@ -453,11 +506,27 @@ function EventFormModal({
                                 />
                             </section>
 
-                            <section ref={(element) => { stepContentRefs.current[1] = element; }} hidden={activeStep !== 1} className="mx-auto max-w-3xl">
+                            <section ref={(element) => { stepContentRefs.current[1] = element; }} hidden={activeStep !== 1} className="mx-auto max-w-3xl space-y-5">
                                 <EventScheduleSection
                                     formData={formData}
                                     handleChange={handleChange}
                                 />
+                                {isEdit && event && (
+                                    <EventSessionSection
+                                        eventId={event.id}
+                                        sessions={event.sessions || []}
+                                        eventStartAt={event.startAt}
+                                        eventEndAt={event.endAt}
+                                    />
+                                )}
+                                    {!isEdit && (
+                                        <EventSessionSection
+                                            sessions={draftSessions}
+                                            onDraftSessionsChange={setDraftSessions}
+                                            eventStartAt={formData.startAt}
+                                            eventEndAt={formData.endAt}
+                                        />
+                                    )}
                             </section>
 
                             <section ref={(element) => { stepContentRefs.current[2] = element; }} hidden={activeStep !== 2} className="mx-auto max-w-4xl space-y-5">

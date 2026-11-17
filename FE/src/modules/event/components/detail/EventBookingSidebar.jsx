@@ -1,17 +1,48 @@
-import { Ticket, ShieldCheck, Zap, HelpCircle } from "lucide-react";
+import { ShieldCheck, Zap, HelpCircle } from "lucide-react";
 import EventBadge from "../common/EventBadge";
 
-/**
- * EventBookingSidebar - Khung đặt vé nổi bên phải trang chi tiết sự kiện
- */
-export default function EventBookingSidebar({ event, onBuyClick }) {
+export default function EventBookingSidebar({
+    event,
+    onBuyClick,
+    selectedSession,
+    ticketTypes = event?.ticketTypes || [],
+}) {
     if (!event) return null;
 
-    const isSoldOut = event.ticketStatus === "SOLD_OUT";
-    const isEnded = event.ticketStatus === "ENDED";
-    const isUpcoming = event.ticketStatus === "UPCOMING";
+    const now = new Date();
+    const isEnded = selectedSession
+        ? new Date(selectedSession.endAt) <= now
+        : event.ticketStatus === "ENDED";
+    const isUpcoming = selectedSession
+        ? (selectedSession.saleStartAt &&
+              new Date(selectedSession.saleStartAt) > now) ||
+          (ticketTypes.length > 0 &&
+              ticketTypes.every(
+                  (ticket) => ticket.saleStartAt && new Date(ticket.saleStartAt) > now
+              ))
+        : event.ticketStatus === "UPCOMING";
+    const isSoldOut = selectedSession
+        ? ticketTypes.length === 0 ||
+          ticketTypes.every((ticket) => ticket.remainingQuantity <= 0)
+        : event.ticketStatus === "SOLD_OUT";
+    const ticketStatus = isEnded
+        ? "ENDED"
+        : isUpcoming
+          ? "UPCOMING"
+          : isSoldOut
+            ? "SOLD_OUT"
+            : "SELLING";
+    const prices = ticketTypes.map((ticket) => Number(ticket.price)).filter(Number.isFinite);
+    const priceRange = selectedSession
+        ? {
+              minPrice: prices.length ? Math.min(...prices) : 0,
+              maxPrice: prices.length ? Math.max(...prices) : 0,
+              isFree: prices.length > 0 && prices.every((price) => price === 0),
+          }
+        : event.priceRange;
 
     const formatPrice = (priceRange) => {
+        if (selectedSession && ticketTypes.length === 0) return "Chưa công bố";
         if (!priceRange || priceRange.isFree) return "Miễn phí";
         if (priceRange.minPrice === priceRange.maxPrice) {
             return `${Number(priceRange.minPrice).toLocaleString("vi-VN")} đ`;
@@ -21,7 +52,7 @@ export default function EventBookingSidebar({ event, onBuyClick }) {
 
     const getButtonText = () => {
         if (isEnded) return "Sự kiện đã kết thúc";
-        if (isSoldOut) return "Đã hết vé";
+        if (isSoldOut) return selectedSession && !ticketTypes.length ? "Chưa có vé" : "Đã hết vé";
         if (isUpcoming) return "Sắp mở bán";
         return "Chọn vé ngay";
     };
@@ -33,17 +64,28 @@ export default function EventBookingSidebar({ event, onBuyClick }) {
                 <span className="text-xs text-gray-500 font-medium">Giá vé tham dự</span>
                 <div className="mt-1 flex items-baseline justify-between gap-2">
                     <span className="text-2xl font-black text-blue-600">
-                        {formatPrice(event.priceRange)}
+                        {formatPrice(priceRange)}
                     </span>
-                    <EventBadge status={event.ticketStatus} size="sm" />
+                    <EventBadge status={ticketStatus} size="sm" />
                 </div>
             </div>
 
             {/* Thông tin nhanh số lượng hạng vé */}
             <div className="space-y-2 text-xs text-gray-600">
+                {selectedSession && (
+                    <div className="flex items-center justify-between gap-3">
+                        <span>Suất diễn đã chọn:</span>
+                        <span className="text-right font-bold text-gray-900">
+                            {new Date(selectedSession.startAt).toLocaleString("vi-VN", {
+                                dateStyle: "medium",
+                                timeStyle: "short",
+                            })}
+                        </span>
+                    </div>
+                )}
                 <div className="flex items-center justify-between">
                     <span>Số hạng vé mở bán:</span>
-                    <span className="font-bold text-gray-900">{event.ticketTypes?.length || 0} hạng vé</span>
+                    <span className="font-bold text-gray-900">{ticketTypes.length} hạng vé</span>
                 </div>
                 {event.seatMap && (
                     <div className="flex items-center justify-between">
