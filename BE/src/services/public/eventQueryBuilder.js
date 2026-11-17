@@ -358,6 +358,30 @@ class EventQueryBuilder {
                     },
                 },
             },
+            sessions: {
+                select: {
+                    id: true,
+                    startAt: true,
+                    endAt: true,
+                    saleStartAt: true,
+                    saleEndAt: true,
+                    ticketTypes: {
+                        where: {
+                            status: "ACTIVE",
+                        },
+                        select: {
+                            id: true,
+                            name: true,
+                            price: true,
+                            capacity: true,
+                            soldQuantity: true,
+                        },
+                    },
+                },
+                orderBy: {
+                    startAt: "asc",
+                },
+            },
             seatMap: {
                 include: {
                     zones: true,

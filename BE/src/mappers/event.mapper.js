@@ -206,6 +206,28 @@ class EventMapper {
             };
         }
 
+        const formattedSessions = (event.sessions || []).map((session) => ({
+            id: session.id,
+            startAt: session.startAt,
+            endAt: session.endAt,
+            saleStartAt: session.saleStartAt,
+            saleEndAt: session.saleEndAt,
+            ticketTypes: (session.ticketTypes || []).map((ticket) => {
+                const capacity = Number(ticket.capacity) || 0;
+                const soldQuantity = Number(ticket.soldQuantity) || 0;
+                const remainingQuantity = Math.max(0, capacity - soldQuantity);
+
+                return {
+                    id: ticket.id,
+                    name: ticket.name,
+                    price: ticket.price,
+                    capacity,
+                    soldQuantity,
+                    remainingQuantity,
+                };
+            }),
+        }));
+
         return {
             ...summary,
             description: event.description || "",
@@ -224,6 +246,7 @@ class EventMapper {
                 banner: organizerProfile?.banner || null,
             },
             ticketTypes: formattedTicketTypes,
+            sessions: formattedSessions,
             seatMap: formattedSeatMap,
         };
     }
