@@ -14,7 +14,7 @@ export default function EventInfoTabs({ activeTab, onTabChange, hasSeatMap = fal
     ];
 
     return (
-        <div className="border-b border-gray-200 bg-white sticky top-16 z-20 shadow-xs">
+        <div className="border-b border-slate-200 bg-white sticky top-16 z-20 shadow-2xs">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <nav className="flex space-x-8 overflow-x-auto scrollbar-none" aria-label="Tabs">
                     {tabs.map((tab) => {
@@ -26,13 +26,13 @@ export default function EventInfoTabs({ activeTab, onTabChange, hasSeatMap = fal
                                 key={tab.id}
                                 type="button"
                                 onClick={() => onTabChange(tab.id)}
-                                className={`flex items-center gap-2 py-4 px-1 border-b-2 font-semibold text-sm whitespace-nowrap transition cursor-pointer ${
+                                className={`flex items-center gap-2 py-4 px-1 border-b-2 text-sm whitespace-nowrap transition cursor-pointer ${
                                     isActive
-                                        ? "border-blue-600 text-blue-600"
-                                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                        ? "border-blue-600 text-blue-600 font-bold"
+                                        : "border-transparent text-slate-500 font-medium hover:text-slate-800 hover:border-slate-300"
                                 }`}
                             >
-                                <Icon className={`h-4 w-4 ${isActive ? "text-blue-600" : "text-gray-400"}`} />
+                                <Icon className={`h-4 w-4 ${isActive ? "text-blue-600" : "text-slate-400"}`} />
                                 {tab.label}
                             </button>
                         );
