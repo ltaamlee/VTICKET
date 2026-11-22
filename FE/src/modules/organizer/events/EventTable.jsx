@@ -6,6 +6,7 @@ import IconButton from "../../../components/common/button/IconButton";
 import EventDetailModal from "./modals/EventDetailModal";
 import EventFormModal from "./modals/EventFormModal";
 import EventDeleteModal from "./modals/EventDeleteModal";
+import { getEventDetail } from "../services/eventService";
 
 function EventTable({
     events = [],
@@ -21,14 +22,25 @@ function EventTable({
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [modalType, setModalType] = useState(null);
 
+    const openEventDetail = async (event, type) => {
+        try {
+            const result = await getEventDetail(event.id);
+            setSelectedEvent(result.data || event);
+            setModalType(type);
+        } catch (error) {
+            onAlert?.(
+                "error",
+                error.message || "Không thể tải chi tiết sự kiện."
+            );
+        }
+    };
+
     const handleView = (event) => {
-        setSelectedEvent(event);
-        setModalType("view");
+        openEventDetail(event, "view");
     };
 
     const handleEdit = (event) => {
-        setSelectedEvent(event);
-        setModalType("edit");
+        openEventDetail(event, "edit");
     };
 
     const handleDelete = (event) => {
@@ -131,6 +143,7 @@ function EventTable({
                                 Sơ đồ ghế
                             </th>
                             <th className="px-5 py-4">Trạng thái</th>
+                            <th className="px-5 py-4">Suất diễn</th>
                             <th className="w-[180px] px-5 py-4 text-center">
                                 Thao tác
                             </th>
@@ -217,6 +230,12 @@ function EventTable({
                                             >
                                                 {status.label}
                                             </span>
+                                        </td>
+
+                                        <td className="px-5 py-4">
+                                            {event._count?.sessions
+                                                ? `${event._count.sessions} suất`
+                                                : "Chưa có"}
                                         </td>
 
                                         <td className="px-5 py-4">

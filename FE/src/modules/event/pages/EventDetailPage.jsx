@@ -13,10 +13,7 @@ import EventBookingSidebar from "../components/detail/EventBookingSidebar";
 import { getEventDetail } from "../services/eventService";
 import { AlertCircle, ArrowLeft } from "lucide-react";
 
-/**
- * EventDetailPage - Trang xem thông tin chi tiết sự kiện (/events/:idOrSlug)
- * Tách biệt từng khối chức năng thành các component con độc lập.
- */
+
 export default function EventDetailPage() {
     const { idOrSlug } = useParams();
 
@@ -40,13 +37,6 @@ export default function EventDetailPage() {
                     const sessions = res.data?.sessions || [];
                     const now = new Date();
                     const initialSession =
-                        sessions.find(
-                            (session) =>
-                                new Date(session.endAt) > now &&
-                                session.ticketTypes?.some(
-                                    (ticket) => ticket.remainingQuantity > 0
-                                )
-                        ) ||
                         sessions.find((session) => new Date(session.endAt) > now) ||
                         sessions[0];
                     setSelectedSessionId(initialSession?.id || null);
@@ -113,7 +103,7 @@ export default function EventDetailPage() {
                         <div className="mt-6">
                             <Link
                                 to="/events"
-                                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition"
+                                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-slate-800 transition"
                             >
                                 <ArrowLeft className="h-4 w-4" />
                                 Khám phá các sự kiện khác
@@ -129,9 +119,7 @@ export default function EventDetailPage() {
     const sessions = event.sessions || [];
     const selectedSession =
         sessions.find((session) => session.id === selectedSessionId) || null;
-    const ticketTypes = sessions.length
-        ? selectedSession?.ticketTypes || []
-        : event.ticketTypes || [];
+    const ticketTypes = event.ticketTypes || [];
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -165,21 +153,19 @@ export default function EventDetailPage() {
                                     <EventSessionList
                                         sessions={sessions}
                                         selectedSessionId={selectedSession?.id}
+                                        ticketStatus={event.ticketStatus}
                                         onSelectSession={(session) =>
                                             setSelectedSessionId(session.id)
                                         }
                                     />
                                 )}
+                                {event.seatMap && (
+                                    <EventSeatMapPreview seatMap={event.seatMap} />
+                                )}
                                 <EventTicketList
                                     ticketTypes={ticketTypes}
-                                    onSelectTicket={() => { }}
-                                    session={selectedSession}
                                 />
                             </div>
-                        )}
-
-                        {activeTab === "seatmap" && (
-                            <EventSeatMapPreview seatMap={event.seatMap} />
                         )}
 
                         {activeTab === "organizer" && (
@@ -193,7 +179,6 @@ export default function EventDetailPage() {
                             event={event}
                             onBuyClick={handleBuyClick}
                             selectedSession={selectedSession}
-                            ticketTypes={ticketTypes}
                         />
                     </div>
                 </div>

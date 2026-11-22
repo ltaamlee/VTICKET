@@ -1,10 +1,4 @@
-import { useMemo } from "react";
-import { CalendarDays, Clock, Ticket } from "lucide-react";
-
-function getDateKey(value) {
-    const date = new Date(value);
-    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-}
+import { CalendarDays, Check, Clock } from "lucide-react";
 
 function formatTime(value) {
     return new Date(value).toLocaleTimeString("vi-VN", {
@@ -13,115 +7,110 @@ function formatTime(value) {
     });
 }
 
+function getSessionStatus(session, ticketStatus) {
+    if (new Date(session.endAt) <= new Date()) {
+        return { label: "Đã kết thúc", className: "bg-slate-100 text-slate-500", disabled: true };
+    }
+    if (ticketStatus === "ENDED") {
+        return { label: "Ngừng bán", className: "bg-slate-100 text-slate-500", disabled: true };
+    }
+    if (ticketStatus === "SOLD_OUT") {
+        return { label: "Hết vé", className: "bg-rose-50 text-rose-700", disabled: true };
+    }
+    if (ticketStatus === "UPCOMING") {
+        return { label: "Sắp mở bán", className: "bg-amber-50 text-amber-700", disabled: false };
+    }
+    return { label: "Đang mở bán", className: "bg-emerald-50 text-emerald-700", disabled: false };
+}
+
+/**
+ * EventSessionList - Danh sách suất diễn của sự kiện để người dùng chọn suất
+ * trước khi chọn vé (cách trình bày tương tự Ticketbox).
+ */
 export default function EventSessionList({
     sessions = [],
     selectedSessionId,
     onSelectSession,
+    ticketStatus,
 }) {
-    const dateGroups = useMemo(() => {
-        const groups = new Map();
-
-        [...sessions]
-            .sort((a, b) => new Date(a.startAt) - new Date(b.startAt))
-            .forEach((session) => {
-                const key = getDateKey(session.startAt);
-                const group = groups.get(key) || {
-                    key,
-                    date: new Date(session.startAt),
-                    sessions: [],
-                };
-                group.sessions.push(session);
-                groups.set(key, group);
-            });
-
-        return [...groups.values()];
-    }, [sessions]);
-
-    const selectedGroup =
-        dateGroups.find((group) =>
-            group.sessions.some((session) => session.id === selectedSessionId)
-        ) || dateGroups[0];
-    const activeGroup = selectedGroup;
-
     if (sessions.length === 0) return null;
+
+    const sortedSessions = [...sessions].sort(
+        (a, b) => new Date(a.startAt) - new Date(b.startAt)
+    );
 
     return (
         <section className="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-xs sm:p-6">
             <div className="mb-4 flex items-center gap-2">
                 <CalendarDays className="h-5 w-5 text-blue-600" />
                 <div>
-                    <h2 className="font-bold text-gray-900">Chọn ngày và suất diễn</h2>
+                    <h2 className="font-bold text-gray-900">Chọn suất diễn</h2>
                     <p className="text-xs text-gray-500">
-                        {sessions.length} suất diễn
+                        Sự kiện có {sessions.length} suất diễn
                     </p>
                 </div>
             </div>
 
-            <div className="flex gap-2 overflow-x-auto pb-2">
-                {dateGroups.map((group) => {
-                    const isActive = group.key === activeGroup?.key;
+            <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200">
+                {sortedSessions.map((session) => {
+                    const date = new Date(session.startAt);
+                    const status = getSessionStatus(session, ticketStatus);
+                    const isSelected = session.id === selectedSessionId;
 
                     return (
-                        <button
-                            key={group.key}
-                            type="button"
-                            onClick={() => {
-                                onSelectSession?.(group.sessions[0]);
-                            }}
-                            className={`min-w-24 rounded-xl border px-3 py-2 text-center transition ${
-                                isActive
-                                    ? "border-blue-600 bg-blue-50 text-blue-700"
-                                    : "border-gray-200 text-gray-700 hover:border-blue-300"
+                        <li
+                            key={session.id}
+                            className={`flex flex-wrap items-center gap-4 p-4 transition ${
+                                isSelected ? "bg-blue-50/60" : "bg-white"
                             }`}
                         >
-                            <span className="block text-xs font-medium">
-                                {group.date.toLocaleDateString("vi-VN", {
-                                    weekday: "short",
-                                })}
+                            <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-blue-600 text-white">
+                                <span className="text-[10px] font-medium uppercase">
+                                    {date.toLocaleDateString("vi-VN", { month: "short" })}
+                                </span>
+                                <span className="text-xl font-black leading-none">
+                                    {date.getDate()}
+                                </span>
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                                <p className="flex items-center gap-1.5 text-sm font-bold text-gray-900">
+                                    <Clock className="h-4 w-4 text-gray-400" />
+                                    {formatTime(session.startAt)} - {formatTime(session.endAt)}
+                                </p>
+                                <p className="mt-0.5 text-xs capitalize text-gray-500">
+                                    {date.toLocaleDateString("vi-VN", {
+                                        weekday: "long",
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                        year: "numeric",
+                                    })}
+                                </p>
+                            </div>
+
+                            <span
+                                className={`rounded-full px-2.5 py-1 text-xs font-semibold ${status.className}`}
+                            >
+                                {status.label}
                             </span>
-                            <span className="block text-sm font-bold">
-                                {group.date.toLocaleDateString("vi-VN", {
-                                    day: "2-digit",
-                                    month: "2-digit",
-                                })}
-                            </span>
-                            <span className="block text-[11px] text-gray-500">
-                                {group.sessions.length} suất
-                            </span>
-                        </button>
+
+                            <button
+                                type="button"
+                                disabled={status.disabled}
+                                onClick={() => onSelectSession?.(session)}
+                                className={`inline-flex min-w-28 items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                                    isSelected
+                                        ? "bg-blue-600 text-white"
+                                        : "border border-blue-600 text-blue-600 hover:bg-blue-50"
+                                }`}
+                            >
+                                {isSelected && <Check className="h-4 w-4" />}
+                                {isSelected ? "Đã chọn" : "Chọn suất"}
+                            </button>
+                        </li>
                     );
                 })}
-            </div>
-
-            {activeGroup && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                    {activeGroup.sessions.map((session) => {
-                        const isSelected = session.id === selectedSessionId;
-                        const isPast = new Date(session.endAt) <= new Date();
-
-                        return (
-                            <button
-                                key={session.id}
-                                type="button"
-                                disabled={isPast}
-                                onClick={() => onSelectSession?.(session)}
-                                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
-                                    isSelected
-                                        ? "border-blue-600 bg-blue-600 text-white"
-                                        : "border-gray-200 text-gray-700 hover:border-blue-400"
-                                } disabled:cursor-not-allowed disabled:opacity-45`}
-                            >
-                                <Clock className="h-4 w-4" />
-                                {formatTime(session.startAt)} - {formatTime(session.endAt)}
-                                <span className="inline-flex items-center gap-1 text-xs opacity-80">
-                                    <Ticket className="h-3.5 w-3.5" />
-                                    {session.ticketTypes?.length || 0}
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
-            )}
+            </ul>
         </section>
     );
 }

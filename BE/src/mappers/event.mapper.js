@@ -3,6 +3,12 @@
  * Tuân thủ cấu trúc thư mục mappers/ của dự án (tương tự user.mapper.js, organizerRequest.mapper.js)
  */
 class EventMapper {
+    static getEventTicketTypes(event) {
+        return (event.ticketTypes || []).filter(
+            (ticketType) => !ticketType.sessionId
+        );
+    }
+
     /**
      * Tính toán khoảng giá vé từ danh sách TicketType của sự kiện
      * @param {Array} ticketTypes 
@@ -87,7 +93,7 @@ class EventMapper {
     static toEventSummaryResponse(event) {
         if (!event) return null;
 
-        const ticketTypes = event.ticketTypes || [];
+        const ticketTypes = this.getEventTicketTypes(event);
         const priceRange = this.calculatePriceRange(ticketTypes);
         const ticketStatus = this.determineTicketStatus(event, ticketTypes);
         const organizerProfile = event.organizer?.organizerProfile;
@@ -122,7 +128,6 @@ class EventMapper {
             },
             priceRange,
             ticketStatus,
-            totalTicketTypes: ticketTypes.length,
             createdAt: event.createdAt,
         };
     }
@@ -151,7 +156,7 @@ class EventMapper {
         const summary = this.toEventSummaryResponse(event);
         const organizerProfile = event.organizer?.organizerProfile;
 
-        const formattedTicketTypes = (event.ticketTypes || []).map((ticket) => {
+        const formattedTicketTypes = this.getEventTicketTypes(event).map((ticket) => {
             const capacity = Number(ticket.capacity) || 0;
             const soldQuantity = Number(ticket.soldQuantity) || 0;
             const remainingQuantity = Math.max(0, capacity - soldQuantity);
@@ -160,9 +165,7 @@ class EventMapper {
                 id: ticket.id,
                 name: ticket.name,
                 price: ticket.price,
-                capacity,
-                soldQuantity,
-                remainingQuantity,
+                isSoldOut: remainingQuantity <= 0,
                 saleStartAt: ticket.saleStartAt,
                 saleEndAt: ticket.saleEndAt,
                 status: ticket.status,
@@ -178,54 +181,55 @@ class EventMapper {
             };
         });
 
-        let formattedSeatMap = null;
-        if (event.seatMap) {
-            formattedSeatMap = {
+        const formattedSeatMap = event.seatMap
+            ? {
                 id: event.seatMap.id,
                 name: event.seatMap.name,
                 canvasWidth: event.seatMap.canvasWidth,
                 canvasHeight: event.seatMap.canvasHeight,
-                zones: (event.seatMap.zones || []).map((zone) => ({
-                    id: zone.id,
-                    name: zone.name,
-                    code: zone.code,
-                    color: zone.color,
-                    type: zone.type,
-                    capacity: zone.capacity,
-                    price: zone.price,
-                    shape: zone.shape,
-                    posX: zone.posX,
-                    posY: zone.posY,
-                    width: zone.width,
-                    height: zone.height,
-                    rotation: zone.rotation,
-                    points: zone.points,
-                    holes: zone.holes,
-                    isLocked: zone.isLocked,
-                })),
-            };
-        }
+                zones: (event.seatMap.zones || []).map((zone) => {
+                    const isStage = zone.type === "STAGE";
+                    const removedSeats = Array.isArray(zone.removedSeats)
+                        ? zone.removedSeats
+                        : [];
+                    const blockedSeats = Array.isArray(zone.blockedSeats)
+                        ? zone.blockedSeats
+                        : [];
+
+                    return {
+                        id: zone.id,
+                        name: zone.name,
+                        code: zone.code,
+                        color: zone.color,
+                        type: zone.type,
+                        // Khu vực sân khấu không bán vé nên không công khai giá.
+                        price: isStage ? null : zone.price,
+                        shape: zone.shape,
+                        rowCount: zone.rowCount,
+                        seatPerRow: zone.seatPerRow,
+                        removedSeats,
+                        blockedSeats,
+                        posX: zone.posX,
+                        posY: zone.posY,
+                        width: zone.width,
+                        height: zone.height,
+                        rotation: zone.rotation,
+                        points: zone.points,
+                        holes: zone.holes,
+                        level: zone.level,
+                        zIndex: zone.zIndex,
+                        flipX: zone.flipX,
+                        flipY: zone.flipY,
+                        isLocked: zone.isLocked,
+                    };
+                }),
+            }
+            : null;
 
         const formattedSessions = (event.sessions || []).map((session) => ({
             id: session.id,
             startAt: session.startAt,
             endAt: session.endAt,
-            saleStartAt: session.saleStartAt,
-            saleEndAt: session.saleEndAt,
-            ticketTypes: (session.ticketTypes || []).map((ticket) => {
-                const capacity = Number(ticket.capacity) || 0;
-                const soldQuantity = Number(ticket.soldQuantity) || 0;
-                const remainingQuantity = Math.max(0, capacity - soldQuantity);
-
-                return {
-                    id: ticket.id,
-                    name: ticket.name,
-                    price: ticket.price,
-                    capacity,
-                    soldQuantity,
-                    remainingQuantity,
-                };
-            }),
         }));
 
         return {

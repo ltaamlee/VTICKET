@@ -200,6 +200,9 @@ class OrganizerEventService extends BaseService {
                     createdAt: "desc",
                 },
                 include: {
+                    _count: {
+                        select: { sessions: true },
+                    },
                     category: {
                         select: {
                             id: true,
@@ -279,6 +282,9 @@ class OrganizerEventService extends BaseService {
                             },
                         },
                     },
+                },
+                sessions: {
+                    orderBy: { startAt: "asc" },
                 },
             },
         });
@@ -544,6 +550,23 @@ class OrganizerEventService extends BaseService {
         if (finalStartAt >= finalEndAt) {
             this.throwError(
                 "Thời gian kết thúc phải sau thời gian bắt đầu"
+            );
+        }
+
+        const sessionOutsideEventRange = await prisma.eventSession.findFirst({
+            where: {
+                eventId,
+                OR: [
+                    { startAt: { lt: finalStartAt } },
+                    { endAt: { gt: finalEndAt } },
+                ],
+            },
+            select: { id: true },
+        });
+
+        if (sessionOutsideEventRange) {
+            this.throwError(
+                "Không thể thu hẹp thời gian sự kiện vì có suất diễn nằm ngoài khoảng thời gian mới"
             );
         }
 

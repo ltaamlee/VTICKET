@@ -308,6 +308,7 @@ class EventQueryBuilder {
                 },
                 select: {
                     id: true,
+                    sessionId: true,
                     name: true,
                     price: true,
                     capacity: true,
@@ -363,20 +364,6 @@ class EventQueryBuilder {
                     id: true,
                     startAt: true,
                     endAt: true,
-                    saleStartAt: true,
-                    saleEndAt: true,
-                    ticketTypes: {
-                        where: {
-                            status: "ACTIVE",
-                        },
-                        select: {
-                            id: true,
-                            name: true,
-                            price: true,
-                            capacity: true,
-                            soldQuantity: true,
-                        },
-                    },
                 },
                 orderBy: {
                     startAt: "asc",

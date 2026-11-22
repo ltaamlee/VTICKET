@@ -106,6 +106,7 @@ function EventFormModal({
     const steps = ["Thông tin tổng quan", "Thời gian & Suất diễn", "Hình ảnh và sơ đồ"];
     const [draftSessions, setDraftSessions] = useState([]);
     const [createdEventId, setCreatedEventId] = useState(null);
+    const [hasPendingSession, setHasPendingSession] = useState(false);
 
     const [formData, setFormData] = useState(() =>
         createInitialFormData(event, isEdit, categories)
@@ -245,6 +246,13 @@ function EventFormModal({
             );
         }
 
+        if (hasPendingSession) {
+            return showStepError(
+                1,
+                "Vui lòng nhấn Thêm hoặc Cập nhật để lưu suất diễn đang nhập trước."
+            );
+        }
+
         try {
             setLoading(true);
 
@@ -341,8 +349,6 @@ function EventFormModal({
                     const savedSession = await createSession(eventId, {
                         startAt: session.startAt,
                         endAt: session.endAt,
-                        saleStartAt: session.saleStartAt,
-                        saleEndAt: session.saleEndAt,
                     });
                     sessionsToSave = sessionsToSave.map((item) =>
                         item.id === session.id
@@ -517,6 +523,7 @@ function EventFormModal({
                                         sessions={event.sessions || []}
                                         eventStartAt={event.startAt}
                                         eventEndAt={event.endAt}
+                                        onPendingStateChange={setHasPendingSession}
                                     />
                                 )}
                                     {!isEdit && (
@@ -525,6 +532,7 @@ function EventFormModal({
                                             onDraftSessionsChange={setDraftSessions}
                                             eventStartAt={formData.startAt}
                                             eventEndAt={formData.endAt}
+                                            onPendingStateChange={setHasPendingSession}
                                         />
                                     )}
                             </section>

@@ -33,12 +33,11 @@ export default function EventSessionForm({
     onDraftSessionsChange,
     eventStartAt,
     eventEndAt,
+    onPendingStateChange,
 }) {
     const [formData, setFormData] = useState({
         startAt: "",
         endAt: "",
-        saleStartAt: "",
-        saleEndAt: "",
     });
     const [editingSessionId, setEditingSessionId] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -47,27 +46,35 @@ export default function EventSessionForm({
     const [localSessions, setLocalSessions] = useState(sessions);
     const [showForm, setShowForm] = useState(false);
 
-    // Load sessions when eventId changes
     useEffect(() => {
-        if (eventId) {
-            loadSessions();
-        }
+        if (!eventId) return undefined;
+
+        let cancelled = false;
+
+        getSessionsByEventId(eventId)
+            .then((data) => {
+                if (!cancelled) {
+                    setLocalSessions(Array.isArray(data) ? data : []);
+                }
+            })
+            .catch((err) => {
+                if (!cancelled) {
+                    setError("Không thể tải danh sách suất diễn");
+                }
+                console.error(err);
+            });
+
+        return () => {
+            cancelled = true;
+        };
     }, [eventId]);
 
-    // Update local sessions when prop changes
-    useEffect(() => {
-        setLocalSessions(sessions);
-    }, [sessions]);
+    const hasPendingSession =
+        showForm && Boolean(formData.startAt || formData.endAt);
 
-    async function loadSessions() {
-        try {
-            const data = await getSessionsByEventId(eventId);
-            setLocalSessions(data);
-        } catch (err) {
-            setError("Không thể tải danh sách suất diễn");
-            console.error(err);
-        }
-    }
+    useEffect(() => {
+        onPendingStateChange?.(hasPendingSession);
+    }, [hasPendingSession, onPendingStateChange]);
 
     function handleInputChange(e) {
         const { name, value } = e.target;
@@ -82,15 +89,18 @@ export default function EventSessionForm({
         setFormData({
             startAt: "",
             endAt: "",
-            saleStartAt: "",
-            saleEndAt: "",
         });
         setEditingSessionId(null);
         setShowForm(false);
     }
 
+    async function loadSessions() {
+        const data = await getSessionsByEventId(eventId);
+        setLocalSessions(Array.isArray(data) ? data : []);
+    }
+
     async function handleSubmit(e) {
-        e.preventDefault();
+        e?.preventDefault();
         setError("");
         setSuccess("");
         setLoading(true);
@@ -142,13 +152,6 @@ export default function EventSessionForm({
                     id: editingSessionId || `draft-${Date.now()}`,
                     startAt: startAt.toISOString(),
                     endAt: endAt.toISOString(),
-                    saleStartAt: formData.saleStartAt
-                        ? parseDateTime(formData.saleStartAt).toISOString()
-                        : null,
-                    saleEndAt: formData.saleEndAt
-                        ? parseDateTime(formData.saleEndAt).toISOString()
-                        : null,
-                    ticketTypes: [],
                 };
                 const nextSessions = editingSessionId
                     ? localSessions.map((session) =>
@@ -165,32 +168,6 @@ export default function EventSessionForm({
                 );
                 resetForm();
                 return;
-            }
-
-            // Validate sale dates if provided
-            if (formData.saleStartAt || formData.saleEndAt) {
-                const saleStartAt = formData.saleStartAt
-                    ? parseDateTime(formData.saleStartAt)
-                    : null;
-                const saleEndAt = formData.saleEndAt
-                    ? parseDateTime(formData.saleEndAt)
-                    : null;
-
-                if (saleStartAt && saleEndAt && saleStartAt >= saleEndAt) {
-                    setError(
-                        "Thời gian mở bán kết thúc phải sau thời gian mở bán bắt đầu"
-                    );
-                    setLoading(false);
-                    return;
-                }
-
-                if (saleEndAt && saleEndAt > startAt) {
-                    setError(
-                        "Thời gian mở bán phải kết thúc trước sự kiện bắt đầu"
-                    );
-                    setLoading(false);
-                    return;
-                }
             }
 
             // Check for conflicts
@@ -211,12 +188,6 @@ export default function EventSessionForm({
             const sessionData = {
                 startAt: startAt.toISOString(),
                 endAt: endAt.toISOString(),
-                saleStartAt: formData.saleStartAt
-                    ? parseDateTime(formData.saleStartAt).toISOString()
-                    : null,
-                saleEndAt: formData.saleEndAt
-                    ? parseDateTime(formData.saleEndAt).toISOString()
-                    : null,
             };
 
             if (editingSessionId) {
@@ -250,8 +221,6 @@ export default function EventSessionForm({
         setFormData({
             startAt: formatDateTime(session.startAt),
             endAt: formatDateTime(session.endAt),
-            saleStartAt: formatDateTime(session.saleStartAt),
-            saleEndAt: formatDateTime(session.saleEndAt),
         });
         setEditingSessionId(session.id);
         setShowForm(true);
@@ -316,7 +285,7 @@ export default function EventSessionForm({
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-4">
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div>
                                 <label className={labelClass}>
@@ -327,6 +296,8 @@ export default function EventSessionForm({
                                     name="startAt"
                                     value={formData.startAt}
                                     onChange={handleInputChange}
+                                    min={formatDateTime(eventStartAt) || undefined}
+                                    max={formatDateTime(eventEndAt) || undefined}
                                     className={inputClass}
                                     required
                                 />
@@ -342,49 +313,22 @@ export default function EventSessionForm({
                                     value={formData.endAt}
                                     min={formData.startAt || undefined}
                                     onChange={handleInputChange}
+                                    max={formatDateTime(eventEndAt) || undefined}
                                     className={inputClass}
                                     required
                                 />
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <p className="text-xs text-gray-500">
-                                Thời gian mở bán vé (tùy chọn)
-                            </p>
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <div>
-                                    <label className={labelClass}>
-                                        Bắt đầu mở bán
-                                    </label>
-                                    <input
-                                        type="datetime-local"
-                                        name="saleStartAt"
-                                        value={formData.saleStartAt}
-                                        onChange={handleInputChange}
-                                        className={inputClass}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className={labelClass}>
-                                        Kết thúc mở bán
-                                    </label>
-                                    <input
-                                        type="datetime-local"
-                                        name="saleEndAt"
-                                        value={formData.saleEndAt}
-                                        min={formData.saleStartAt || undefined}
-                                        onChange={handleInputChange}
-                                        className={inputClass}
-                                    />
-                                </div>
-                            </div>
-                        </div>
+                        <p className="text-xs text-gray-500">
+                            Thời gian mở bán vé được thiết lập chung cho cả sự
+                            kiện ở phần Thời gian bên trên.
+                        </p>
 
                         <div className="flex gap-3 pt-2">
                             <Button
-                                type="submit"
+                                type="button"
+                                onClick={handleSubmit}
                                 disabled={loading}
                                 className="flex-1"
                             >
@@ -404,13 +348,14 @@ export default function EventSessionForm({
                                 Hủy
                             </Button>
                         </div>
-                    </form>
+                    </div>
                 </div>
             )}
 
             {/* Add Session Button */}
             {!showForm && (
                 <button
+                    type="button"
                     onClick={() => setShowForm(true)}
                     className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
                 >
@@ -434,7 +379,7 @@ export default function EventSessionForm({
                                 key={session.id}
                                 className="p-4 hover:bg-gray-50 transition-colors"
                             >
-                                <div className="grid gap-3 sm:grid-cols-4 items-start">
+                                <div className="grid gap-3 sm:grid-cols-3 items-start">
                                     <div>
                                         <p className="text-xs text-gray-500 mb-1">
                                             Thời gian
@@ -460,36 +405,21 @@ export default function EventSessionForm({
 
                                     <div>
                                         <p className="text-xs text-gray-500 mb-1">
-                                            Mở bán
+                                            Thời lượng
                                         </p>
                                         <p className="text-sm font-medium text-gray-900">
-                                            {session.saleStartAt
-                                                ? new Date(
-                                                    session.saleStartAt
-                                                ).toLocaleDateString(
-                                                    "vi-VN",
-                                                    {
-                                                        month: "short",
-                                                        day: "numeric",
-                                                        hour: "2-digit",
-                                                        minute: "2-digit",
-                                                    }
-                                                )
-                                                : "Chưa đặt"}
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <p className="text-xs text-gray-500 mb-1">
-                                            Vé
-                                        </p>
-                                        <p className="text-sm font-medium text-gray-900">
-                                            {session.ticketTypes?.length || 0} loại
+                                            {Math.round(
+                                                (new Date(session.endAt) -
+                                                    new Date(session.startAt)) /
+                                                    60000
+                                            )}{" "}
+                                            phút
                                         </p>
                                     </div>
 
                                     <div className="flex gap-2 justify-end">
                                         <button
+                                            type="button"
                                             onClick={() =>
                                                 handleEditSession(session)
                                             }
@@ -499,6 +429,7 @@ export default function EventSessionForm({
                                             Sửa
                                         </button>
                                         <button
+                                            type="button"
                                             onClick={() =>
                                                 handleDeleteSession(session.id)
                                             }
@@ -509,6 +440,25 @@ export default function EventSessionForm({
                                         </button>
                                     </div>
                                 </div>
+                                {session.ticketTypes?.length > 0 && (
+                                    <div className="mt-3 border-t border-gray-100 pt-3">
+                                        <p className="mb-2 text-xs font-medium text-gray-500">
+                                            Hạng vé của suất diễn
+                                        </p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {session.ticketTypes.map((ticketType) => (
+                                                <span
+                                                    key={ticketType.id}
+                                                    className="rounded-md bg-blue-50 px-2.5 py-1 text-xs text-blue-800"
+                                                >
+                                                    {ticketType.name} ·{" "}
+                                                    {Number(ticketType.price).toLocaleString("vi-VN")} đ ·{" "}
+                                                    {ticketType.capacity} vé
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>

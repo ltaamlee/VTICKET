@@ -1,24 +1,17 @@
 const asyncHandler = require("../../../utils/asyncHandler");
 const sendResponse = require("../../../utils/sendResponse");
-const eventSessionService = require("../../../services/organizer/eventSession.service");
+const eventSessionService = require("../../../services/organizer/organizerEventSession.service");
 
-/**
- * EventSessionController - Bộ điều khiển HTTP cho suất diễn sự kiện
- * Áp dụng nguyên lý Single Responsibility (SRP) và Dependency Injection trong OOP.
- */
 class EventSessionController {
     constructor(service = eventSessionService) {
         this.eventSessionService = service;
     }
 
-    /**
-     * Lấy danh sách suất diễn của một sự kiện
-     * GET /api/v1/organizer/events/:eventId/sessions
-     */
     getSessions = asyncHandler(async (req, res) => {
         const { eventId } = req.params;
         const result = await this.eventSessionService.getSessionsByEventId(
-            eventId
+            eventId,
+            req.user.id
         );
         return sendResponse(
             res,
@@ -28,13 +21,13 @@ class EventSessionController {
         );
     });
 
-    /**
-     * Lấy chi tiết suất diễn
-     * GET /api/v1/organizer/events/:eventId/sessions/:sessionId
-     */
     getSessionDetail = asyncHandler(async (req, res) => {
-        const { sessionId } = req.params;
-        const result = await this.eventSessionService.getSessionById(sessionId);
+        const { eventId, sessionId } = req.params;
+        const result = await this.eventSessionService.getSessionById(
+            eventId,
+            sessionId,
+            req.user.id
+        );
         return sendResponse(
             res,
             200,
@@ -43,13 +36,10 @@ class EventSessionController {
         );
     });
 
-    /**
-     * Tạo mới suất diễn
-     * POST /api/v1/organizer/events/:eventId/sessions
-     */
+
     createSession = asyncHandler(async (req, res) => {
         const { eventId } = req.params;
-        const { startAt, endAt, saleStartAt, saleEndAt } = req.body;
+        const { startAt, endAt } = req.body;
 
         if (!startAt || !endAt) {
             return sendResponse(
@@ -59,12 +49,11 @@ class EventSessionController {
             );
         }
 
-        const result = await this.eventSessionService.createSession(eventId, {
-            startAt,
-            endAt,
-            saleStartAt,
-            saleEndAt,
-        });
+        const result = await this.eventSessionService.createSession(
+            eventId,
+            { startAt, endAt },
+            req.user.id
+        );
 
         return sendResponse(
             res,
@@ -74,20 +63,17 @@ class EventSessionController {
         );
     });
 
-    /**
-     * Cập nhật suất diễn
-     * PATCH /api/v1/organizer/events/:eventId/sessions/:sessionId
-     */
-    updateSession = asyncHandler(async (req, res) => {
-        const { sessionId } = req.params;
-        const { startAt, endAt, saleStartAt, saleEndAt } = req.body;
 
-        const result = await this.eventSessionService.updateSession(sessionId, {
-            startAt,
-            endAt,
-            saleStartAt,
-            saleEndAt,
-        });
+    updateSession = asyncHandler(async (req, res) => {
+        const { eventId, sessionId } = req.params;
+        const { startAt, endAt } = req.body;
+
+        const result = await this.eventSessionService.updateSession(
+            eventId,
+            sessionId,
+            { startAt, endAt },
+            req.user.id
+        );
 
         return sendResponse(
             res,
@@ -97,13 +83,14 @@ class EventSessionController {
         );
     });
 
-    /**
-     * Xóa suất diễn
-     * DELETE /api/v1/organizer/events/:eventId/sessions/:sessionId
-     */
+
     deleteSession = asyncHandler(async (req, res) => {
-        const { sessionId } = req.params;
-        const result = await this.eventSessionService.deleteSession(sessionId);
+        const { eventId, sessionId } = req.params;
+        const result = await this.eventSessionService.deleteSession(
+            eventId,
+            sessionId,
+            req.user.id
+        );
         return sendResponse(
             res,
             200,
@@ -112,10 +99,7 @@ class EventSessionController {
         );
     });
 
-    /**
-     * Kiểm tra xung đột thời gian
-     * POST /api/v1/organizer/events/:eventId/sessions/check-conflict
-     */
+
     checkTimeConflict = asyncHandler(async (req, res) => {
         const { eventId } = req.params;
         const { startAt, endAt, excludeSessionId } = req.body;
@@ -133,7 +117,8 @@ class EventSessionController {
                 eventId,
                 startAt,
                 endAt,
-                excludeSessionId
+                excludeSessionId,
+                req.user.id
             );
 
         return sendResponse(res, 200, "Kiểm tra xung đột thành công", {
