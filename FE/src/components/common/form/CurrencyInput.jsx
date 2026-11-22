@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { formatVNDNumber, parseVND } from "../../../utils/formatCurrency";
 
-export default function CurrencyInput({
+function CurrencyInput({
     value = 0,
     onChange,
     disabled = false,
@@ -77,3 +77,5 @@ export default function CurrencyInput({
         />
     );
 }
+
+export default CurrencyInput;

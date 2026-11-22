@@ -38,6 +38,7 @@ const EVENT_TAG_SELECT = {
     startAt: true,
     location: true,
     status: true,
+    organizerId: true,
 };
 
 const POST_SUMMARY_INCLUDE = {
@@ -201,6 +202,7 @@ class ForumService {
             keyword = "",
             eventId = "",
             mine = false,
+            liked = false,
             sortBy = "newest",
         } = queryParams;
 
@@ -213,6 +215,7 @@ class ForumService {
 
         const andConditions = [];
         const isMine = mine === true || mine === "true";
+        const isLiked = liked === true || liked === "true";
 
         if (isMine) {
             if (!currentUserId) {
@@ -224,6 +227,19 @@ class ForumService {
             andConditions.push({ status: { not: "DELETED" } });
         } else {
             andConditions.push({ status: "VISIBLE" });
+        }
+
+        if (isLiked) {
+            if (!currentUserId) {
+                throw new UnauthorizedException(
+                    "Vui lòng đăng nhập để xem danh sách bài viết đã thích"
+                );
+            }
+            andConditions.push({
+                reactions: {
+                    some: { userId: currentUserId },
+                },
+            });
         }
 
         if (typeof keyword === "string" && keyword.trim()) {

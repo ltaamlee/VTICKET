@@ -29,6 +29,7 @@ export function getPosts({
     keyword = "",
     eventId = "",
     mine = false,
+    liked = false,
     sortBy = "newest",
 } = {}) {
     const query = buildQuery({
@@ -37,6 +38,7 @@ export function getPosts({
         keyword: keyword.trim(),
         eventId,
         mine: mine ? "true" : "",
+        liked: liked ? "true" : "",
         sortBy,
     });
 

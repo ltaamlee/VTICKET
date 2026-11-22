@@ -1,6 +1,6 @@
 const asyncHandler = require("../../../utils/asyncHandler");
 const sendResponse = require("../../../utils/sendResponse");
-const eventService = require("../../../services/event/event.service");
+const eventService = require("../../../services/public/event.service");
 
 /**
  * EventController - Bộ điều khiển HTTP cho sự kiện công khai (Public Events)

@@ -14,6 +14,7 @@ export function useForumPosts({
     keyword = "",
     eventId = "",
     mine = false,
+    liked = false,
     sortBy = "newest",
     enabled = true,
     onTotalChange,
@@ -55,9 +56,10 @@ export function useForumPosts({
             keyword,
             eventId,
             mine: isAuthenticated && mine,
+            liked: isAuthenticated && liked,
             sortBy,
         });
-    }, [page, limit, keyword, eventId, mine, sortBy, isAuthenticated]);
+    }, [page, limit, keyword, eventId, mine, liked, sortBy, isAuthenticated]);
 
     const refreshPosts = useCallback(
         async ({ silent = false } = {}) => {

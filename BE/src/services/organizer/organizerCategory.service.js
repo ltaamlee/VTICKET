@@ -1,5 +1,5 @@
 const prisma = require("../../config/prisma");
- const categoryService = require("../category/category.service");
+const categoryService = require("../public/category.service");
 
 class OrganizerCategoryService {
     async getCategories(params) {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import Header from "../../../components/layout/Header";
-import Footer from "../../../components/layout/Footer";
+import Header from "../../../layout/Header"
+import Footer from "../../../layout/Footer";
 import EventDetailHeader from "../components/detail/EventDetailHeader";
 import EventInfoTabs from "../components/detail/EventInfoTabs";
 import EventDescription from "../components/detail/EventDescription";
@@ -97,7 +97,7 @@ export default function EventDetailPage() {
                         <div className="mt-6">
                             <Link
                                 to="/events"
-                                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition"
+                                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-slate-800 transition"
                             >
                                 <ArrowLeft className="h-4 w-4" />
                                 Khám phá các sự kiện khác
@@ -140,7 +140,6 @@ export default function EventDetailPage() {
                             <div id="tickets-section">
                                 <EventTicketList
                                     ticketTypes={event.ticketTypes}
-                                    onSelectTicket={() => { }}
                                 />
                             </div>
                         )}

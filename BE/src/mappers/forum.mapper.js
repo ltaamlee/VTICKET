@@ -37,6 +37,7 @@ class ForumMapper {
             startAt: event.startAt || null,
             location: event.location || null,
             status: event.status || null,
+            organizerId: event.organizerId || null,
         };
     }
 

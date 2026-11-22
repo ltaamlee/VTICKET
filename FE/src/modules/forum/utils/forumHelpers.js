@@ -40,10 +40,11 @@ export const ROLE_BADGES = {
         label: "Quản trị viên",
         className: "bg-red-50 text-red-700 border border-red-200",
     },
-    ORGANIZER: {
-        label: "Ban tổ chức",
-        className: "bg-indigo-50 text-indigo-700 border border-indigo-200",
-    },
+};
+
+export const BTC_BADGE = {
+    label: "Ban tổ chức",
+    className: "bg-indigo-50 text-indigo-700 border border-indigo-200",
 };
 
 export const SORT_OPTIONS = [
@@ -112,4 +113,18 @@ export function isEdited(createdAt, updatedAt) {
     if (!createdAt || !updatedAt) return false;
     return new Date(updatedAt).getTime() - new Date(createdAt).getTime() > 5000;
 }
+
+
+export function formatSocialCount(count) {
+    const num = Number(count) || 0;
+    if (num <= 0) return "";
+    if (num < 1000) return String(num);
+    if (num < 1000000) {
+        const k = (num / 1000).toFixed(1).replace(".", ",");
+        return k.endsWith(",0") ? `${Math.floor(num / 1000)}K` : `${k}K`;
+    }
+    const m = (num / 1000000).toFixed(1).replace(".", ",");
+    return m.endsWith(",0") ? `${Math.floor(num / 1000000)}M` : `${m}M`;
+}
+
 

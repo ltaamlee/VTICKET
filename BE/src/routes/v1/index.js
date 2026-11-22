@@ -19,4 +19,8 @@ router.use('/events', eventRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/forum', forumRoutes);
 
+// router.use('/event', eventRoutes);
+// router.use('/category', categoryRoutes);
+
 module.exports = router;
+

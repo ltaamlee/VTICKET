@@ -2,25 +2,21 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
     ArrowLeft,
-    Calendar,
     ChevronRight,
     EyeOff,
-    MapPin,
-    MessageCircle,
     Pencil,
     Trash2,
 } from "lucide-react";
-import Header from "../../../components/layout/Header";
-import Footer from "../../../components/layout/Footer";
+import Header from "../../../layout/Header";
+import Footer from "../../../layout/Footer";
 import Button from "../../../components/common/button/Button";
 import ConfirmModal from "../../../components/common/ConfirmModal";
 import AuthorBadge from "../components/AuthorBadge";
 import CommentSection from "../components/CommentSection";
 import ForumNotice from "../components/ForumNotice";
 import PostFormModal from "../components/PostFormModal";
-import ReactionBar from "../components/ReactionBar";
+import PostActionBar from "../components/PostActionBar";
 import { usePostDetail } from "../hooks/usePostDetail";
-import { formatShortEventDate, getEventDetailPath } from "../utils/forumHelpers";
 
 function PostDetailPage() {
     const { id } = useParams();
@@ -132,18 +128,16 @@ function PostDetailPage() {
                             <div className="flex flex-wrap items-start justify-between gap-4">
                                 <AuthorBadge
                                     author={post.author}
+                                    event={post.event}
                                     createdAt={post.createdAt}
                                     updatedAt={post.updatedAt}
+                                    isEventOrganizer={Boolean(
+                                        post.event?.organizerId &&
+                                            post.author?.id === post.event.organizerId
+                                    )}
                                 />
 
                                 <div className="flex flex-wrap items-center gap-2">
-                                    {!post.event && (
-                                        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                                            <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" />
-                                            Thảo luận chung
-                                        </span>
-                                    )}
-
                                     {post.isOwner && (
                                         <>
                                             <Button
@@ -173,62 +167,28 @@ function PostDetailPage() {
                                 {post.title}
                             </h1>
 
-                            {post.event && (
-                                <Link
-                                    to={getEventDetailPath(post.event)}
-                                    className="mt-4 flex items-center gap-4 rounded-xl border border-blue-100 bg-blue-50/70 p-3.5 transition-colors hover:bg-blue-50"
-                                >
-                                    {post.event.thumbnailUrl && (
-                                        <img
-                                            src={post.event.thumbnailUrl}
-                                            alt={post.event.name}
-                                            className="h-14 w-20 shrink-0 rounded-lg object-cover"
-                                        />
-                                    )}
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-                                            Sự kiện liên quan
-                                        </p>
-                                        <p className="truncate font-semibold text-slate-900">
-                                            {post.event.name}
-                                        </p>
-                                        <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-600">
-                                            {post.event.startAt && (
-                                                <span className="inline-flex items-center gap-1">
-                                                    <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
-                                                    {formatShortEventDate(post.event.startAt)}
-                                                </span>
-                                            )}
-                                            {post.event.location && (
-                                                <span className="inline-flex items-center gap-1 truncate">
-                                                    <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                                                    <span className="truncate">{post.event.location}</span>
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </Link>
-                            )}
-
                             <div className="mt-6 whitespace-pre-wrap wrap-break-word text-base leading-relaxed text-slate-800">
                                 {post.content}
                             </div>
 
-                            <div className="mt-8 border-t border-slate-100 pt-5">
-                                <p className="mb-2.5 text-xs font-medium uppercase tracking-wide text-slate-500">
-                                    Cảm xúc về bài viết
-                                </p>
-                                <ReactionBar
+                            <div className="mt-8 border-t border-slate-100 pt-4 flex items-center justify-between">
+                                <PostActionBar
+                                    postId={post.id}
                                     reactions={post.reactions}
+                                    commentCount={post.totalComments ?? post.commentCount ?? 0}
                                     disabled={reacting}
-                                    showLabels={true}
                                     onReact={handleReact}
+                                    onCommentClick={() => {
+                                        const el = document.getElementById("comments");
+                                        if (el) el.scrollIntoView({ behavior: "smooth" });
+                                    }}
                                 />
                             </div>
                         </article>
 
                         <CommentSection
                             postId={post.id}
+                            eventOrganizerId={post.event?.organizerId}
                             comments={post.comments || []}
                             totalComments={post.totalComments ?? post.commentCount ?? 0}
                             isAuthenticated={isAuthenticated}

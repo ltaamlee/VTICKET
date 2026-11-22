@@ -18,10 +18,10 @@ import {
 import { Alert } from "../../../components/common/Arlet";
 import Tabs from "../../../components/common/Tabs";
 
-import General from "../../admin/components/system/General";
-import Payment from "../../admin/components/system/PaymentSetting";
-import Security from "../../admin/components/system/Security";
-import Notification from "../../admin/components/system/Notification";
+import General from "../system/General";
+import Payment from "../system/PaymentSetting";
+import Security from "../system/Security";
+import Notification from "../system/Notification";
 
 const tabs = [
     { id: "general", label: "Tổng quan", icon: Settings, content: General },

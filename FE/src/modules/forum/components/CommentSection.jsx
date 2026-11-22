@@ -12,6 +12,7 @@ import CommentItem from "./CommentItem";
 
 function CommentSection({
     postId,
+    eventOrganizerId = null,
     comments = [],
     totalComments = 0,
     isAuthenticated = false,
@@ -74,12 +75,9 @@ function CommentSection({
             <div className="mt-5">
                 {isAuthenticated ? (
                     <CommentComposer
-                        label="Tham gia thảo luận"
-                        rows={3}
-                        placeholder="Viết bình luận của bạn... (Ctrl+Enter để gửi nhanh)"
+                        placeholder="Viết bình luận của bạn... (Enter để gửi)"
                         emptyErrorMessage="Vui lòng nhập nội dung bình luận."
                         fallbackErrorMessage="Không thể đăng bình luận."
-                        submitLabel="Gửi bình luận"
                         clearOnSuccess={true}
                         onSubmit={handleRootSubmit}
                     />
@@ -105,6 +103,8 @@ function CommentSection({
                         <CommentItem
                             key={comment.id}
                             comment={comment}
+                            postId={postId}
+                            eventOrganizerId={eventOrganizerId}
                             depth={0}
                             isAuthenticated={isAuthenticated}
                             onReplySubmit={handleReplySubmit}
