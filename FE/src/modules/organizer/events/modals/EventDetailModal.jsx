@@ -3,6 +3,7 @@ import DOMPurify from "dompurify";
 import {
     X,
     CalendarDays,
+    CalendarClock,
     MapPin,
     Tag,
     Clock,
@@ -169,6 +170,7 @@ function EventDetailModal({
     // Ưu tiên dữ liệu chi tiết, fallback về dữ liệu trong danh sách.
     const seatMapInfo = detail?.seatMap || event.seatMap;
     const zones = seatMapInfo?.zones || [];
+    const sessions = detail?.sessions || event.sessions || [];
 
     const statusMap = {
         DRAFT: {
@@ -542,6 +544,37 @@ function EventDetailModal({
                                 value={formatDate(event.endAt)}
                             />
                         </div>
+                    </div>
+
+                    {/* SESSIONS */}
+                    <div className="space-y-4">
+                        <SectionTitle icon={CalendarClock}>
+                            Suất diễn ({sessions.length})
+                        </SectionTitle>
+
+                        {sessions.length === 0 ? (
+                            <p className="rounded-xl bg-gray-50/80 p-5 text-sm text-gray-500">
+                                Sự kiện chưa có suất diễn riêng, diễn ra liên tục
+                                trong khoảng thời gian trên.
+                            </p>
+                        ) : (
+                            <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl bg-gray-50/80">
+                                {sessions.map((session, index) => (
+                                    <li
+                                        key={session.id}
+                                        className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm"
+                                    >
+                                        <span className="font-semibold text-gray-800">
+                                            Suất {index + 1}
+                                        </span>
+                                        <span className="text-gray-600">
+                                            {formatDate(session.startAt)} -{" "}
+                                            {formatDate(session.endAt)}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
                     </div>
 
                     {/* SALE TIME */}

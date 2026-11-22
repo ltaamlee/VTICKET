@@ -308,6 +308,7 @@ class EventQueryBuilder {
                 },
                 select: {
                     id: true,
+                    sessionId: true,
                     name: true,
                     price: true,
                     capacity: true,
@@ -356,6 +357,16 @@ class EventQueryBuilder {
                             shape: true,
                         },
                     },
+                },
+            },
+            sessions: {
+                select: {
+                    id: true,
+                    startAt: true,
+                    endAt: true,
+                },
+                orderBy: {
+                    startAt: "asc",
                 },
             },
             seatMap: {

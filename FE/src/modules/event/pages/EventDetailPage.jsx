@@ -6,16 +6,14 @@ import EventDetailHeader from "../components/detail/EventDetailHeader";
 import EventInfoTabs from "../components/detail/EventInfoTabs";
 import EventDescription from "../components/detail/EventDescription";
 import EventTicketList from "../components/detail/EventTicketList";
+import EventSessionList from "../components/detail/EventSessionList";
 import EventSeatMapPreview from "../components/detail/EventSeatMapPreview";
 import EventOrganizerCard from "../components/detail/EventOrganizerCard";
 import EventBookingSidebar from "../components/detail/EventBookingSidebar";
 import { getEventDetail } from "../services/eventService";
 import { AlertCircle, ArrowLeft } from "lucide-react";
 
-/**
- * EventDetailPage - Trang xem thông tin chi tiết sự kiện (/events/:idOrSlug)
- * Tách biệt từng khối chức năng thành các component con độc lập.
- */
+
 export default function EventDetailPage() {
     const { idOrSlug } = useParams();
 
@@ -23,6 +21,7 @@ export default function EventDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [activeTab, setActiveTab] = useState("overview");
+    const [selectedSessionId, setSelectedSessionId] = useState(null);
 
     useEffect(() => {
         let isMounted = true;
@@ -35,6 +34,12 @@ export default function EventDetailPage() {
                 const res = await getEventDetail(idOrSlug);
                 if (isMounted) {
                     setEvent(res.data);
+                    const sessions = res.data?.sessions || [];
+                    const now = new Date();
+                    const initialSession =
+                        sessions.find((session) => new Date(session.endAt) > now) ||
+                        sessions[0];
+                    setSelectedSessionId(initialSession?.id || null);
                 }
             } catch (err) {
                 if (isMounted) {
@@ -58,10 +63,11 @@ export default function EventDetailPage() {
 
     const handleBuyClick = () => {
         setActiveTab("tickets");
-        const element = document.getElementById("tickets-section");
-        if (element) {
-            element.scrollIntoView({ behavior: "smooth" });
-        }
+        window.setTimeout(() => {
+            document
+                .getElementById("tickets-section")
+                ?.scrollIntoView({ behavior: "smooth" });
+        }, 0);
     };
 
     if (loading) {
@@ -97,7 +103,7 @@ export default function EventDetailPage() {
                         <div className="mt-6">
                             <Link
                                 to="/events"
-                                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition"
+                                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-slate-800 transition"
                             >
                                 <ArrowLeft className="h-4 w-4" />
                                 Khám phá các sự kiện khác
@@ -109,6 +115,11 @@ export default function EventDetailPage() {
             </div>
         );
     }
+
+    const sessions = event.sessions || [];
+    const selectedSession =
+        sessions.find((session) => session.id === selectedSessionId) || null;
+    const ticketTypes = event.ticketTypes || [];
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -137,16 +148,24 @@ export default function EventDetailPage() {
                         )}
 
                         {activeTab === "tickets" && (
-                            <div id="tickets-section">
+                            <div id="tickets-section" className="space-y-6">
+                                {sessions.length > 0 && (
+                                    <EventSessionList
+                                        sessions={sessions}
+                                        selectedSessionId={selectedSession?.id}
+                                        ticketStatus={event.ticketStatus}
+                                        onSelectSession={(session) =>
+                                            setSelectedSessionId(session.id)
+                                        }
+                                    />
+                                )}
+                                {event.seatMap && (
+                                    <EventSeatMapPreview seatMap={event.seatMap} />
+                                )}
                                 <EventTicketList
-                                    ticketTypes={event.ticketTypes}
-                                    onSelectTicket={() => { }}
+                                    ticketTypes={ticketTypes}
                                 />
                             </div>
-                        )}
-
-                        {activeTab === "seatmap" && (
-                            <EventSeatMapPreview seatMap={event.seatMap} />
                         )}
 
                         {activeTab === "organizer" && (
@@ -159,6 +178,7 @@ export default function EventDetailPage() {
                         <EventBookingSidebar
                             event={event}
                             onBuyClick={handleBuyClick}
+                            selectedSession={selectedSession}
                         />
                     </div>
                 </div>
@@ -168,4 +188,3 @@ export default function EventDetailPage() {
         </div>
     );
 }
-
