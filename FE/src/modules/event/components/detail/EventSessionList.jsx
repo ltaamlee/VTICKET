@@ -20,6 +20,12 @@ function getSessionStatus(session, ticketStatus) {
     if (ticketStatus === "UPCOMING") {
         return { label: "Sắp mở bán", className: "bg-amber-50 text-amber-700", disabled: false };
     }
+    if (ticketStatus === "UNANNOUNCED") {
+        return { label: "Chưa công bố mở bán", className: "bg-slate-100 text-slate-500", disabled: false };
+    }
+    if (ticketStatus !== "SELLING") {
+        return { label: "Chưa công bố mở bán", className: "bg-slate-100 text-slate-500", disabled: false };
+    }
     return { label: "Đang mở bán", className: "bg-emerald-50 text-emerald-700", disabled: false };
 }
 
@@ -54,7 +60,7 @@ export default function EventSessionList({
             <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200">
                 {sortedSessions.map((session) => {
                     const date = new Date(session.startAt);
-                    const status = getSessionStatus(session, ticketStatus);
+                    const status = getSessionStatus(session, session.ticketStatus || ticketStatus);
                     const isSelected = session.id === selectedSessionId;
 
                     return (

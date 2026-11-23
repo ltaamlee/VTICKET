@@ -23,6 +23,7 @@ export default function EventDetailHeader({ event, onBuyClick }) {
 
     const isSoldOut = event.ticketStatus === "SOLD_OUT";
     const isEnded = event.ticketStatus === "ENDED";
+    const isUnannounced = event.ticketStatus === "UNANNOUNCED";
     const sessionCount = event.sessions?.length || 0;
 
     const handleShare = () => {
@@ -216,16 +217,16 @@ export default function EventDetailHeader({ event, onBuyClick }) {
                             {/* Nút MUA VÉ NGAY nổi bật */}
                             <button
                                 type="button"
-                                disabled={isSoldOut || isEnded}
+                                disabled={isSoldOut || isEnded || isUnannounced}
                                 onClick={onBuyClick}
                                 className={`w-full rounded-xl py-3.5 px-6 font-bold text-base transition flex items-center justify-center gap-2 ${
-                                    isSoldOut || isEnded
+                                    isSoldOut || isEnded || isUnannounced
                                         ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                                         : "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/25 active:scale-[0.99] cursor-pointer"
                                 }`}
                             >
                                 <Ticket className="h-5 w-5" />
-                                <span>{isSoldOut ? "Đã hết vé" : isEnded ? "Sự kiện đã kết thúc" : "Mua vé ngay"}</span>
+                                <span>{isSoldOut ? "Đã hết vé" : isEnded ? "Sự kiện đã kết thúc" : isUnannounced ? "Chưa công bố mở bán" : "Mua vé ngay"}</span>
                             </button>
                         </div>
                     </div>

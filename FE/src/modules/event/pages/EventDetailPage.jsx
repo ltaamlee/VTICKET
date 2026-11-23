@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import Header from "../../../layout/Header"
 import Footer from "../../../layout/Footer";
 import EventDetailHeader from "../components/detail/EventDetailHeader";
@@ -8,20 +8,31 @@ import EventDescription from "../components/detail/EventDescription";
 import EventTicketList from "../components/detail/EventTicketList";
 import EventSessionList from "../components/detail/EventSessionList";
 import EventSeatMapPreview from "../components/detail/EventSeatMapPreview";
+import EventSeatSelector from "../components/detail/EventSeatSelector";
 import EventOrganizerCard from "../components/detail/EventOrganizerCard";
 import EventBookingSidebar from "../components/detail/EventBookingSidebar";
 import { getEventDetail } from "../services/eventService";
 import { AlertCircle, ArrowLeft } from "lucide-react";
+import { useAuth } from "../../../contexts/AuthContext";
+import { createOrder } from "../../ticket/services/orderService";
 
 
 export default function EventDetailPage() {
     const { idOrSlug } = useParams();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { isAuthenticated } = useAuth();
 
     const [event, setEvent] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [activeTab, setActiveTab] = useState("overview");
+    const [activeTab, setActiveTab] = useState(() => new URLSearchParams(location.search).has("booking") ? "tickets" : "overview");
     const [selectedSessionId, setSelectedSessionId] = useState(null);
+    const [quantities, setQuantities] = useState({});
+    const [selectedSeats, setSelectedSeats] = useState({});
+    const [seatRefreshKey, setSeatRefreshKey] = useState(0);
+    const [buying, setBuying] = useState(false);
+    const [bookingError, setBookingError] = useState("");
 
     useEffect(() => {
         let isMounted = true;
@@ -34,6 +45,9 @@ export default function EventDetailPage() {
                 const res = await getEventDetail(idOrSlug);
                 if (isMounted) {
                     setEvent(res.data);
+                    setQuantities({});
+                    setSelectedSeats({});
+                    setBookingError("");
                     const sessions = res.data?.sessions || [];
                     const now = new Date();
                     const initialSession =
@@ -68,6 +82,45 @@ export default function EventDetailPage() {
                 .getElementById("tickets-section")
                 ?.scrollIntoView({ behavior: "smooth" });
         }, 0);
+    };
+
+    const handleOrder = async () => {
+        if (!isAuthenticated) {
+            navigate("/login", { state: { from: `${location.pathname}?booking=1` } });
+            return;
+        }
+        const availableTypes = event.sessions?.length
+            ? event.sessions.find((session) => session.id === selectedSessionId)?.ticketTypes || []
+            : event.ticketTypes || [];
+        const items = Object.entries(quantities).filter(([, quantity]) => quantity > 0)
+            .map(([ticketTypeId, quantity]) => ({
+                ticketTypeId,
+                quantity,
+                ...(event.seatSelectionMode === "MANUAL" && availableTypes.find((type) => type.id === ticketTypeId)?.zone?.type === "SEATED"
+                    ? { seatIds: selectedSeats[ticketTypeId] || [] }
+                    : {}),
+            }));
+        const maxTickets = Math.min(event.maxTicketsPerOrder ?? 10, 10);
+        if (items.reduce((sum, item) => sum + item.quantity, 0) > maxTickets) {
+            setBookingError(`Mỗi đơn được mua tối đa ${maxTickets} vé.`);
+            return;
+        }
+        setBuying(true);
+        setBookingError("");
+        try {
+            const response = await createOrder({ eventId: event.id, sessionId: selectedSessionId, items });
+            navigate(`/orders/${response.data.id}`);
+        } catch (err) {
+            setBookingError(err.message || "Không thể giữ vé, vui lòng thử lại.");
+            if (event.seatSelectionMode === "MANUAL") {
+                const seated = new Set(availableTypes.filter((type) => type.zone?.type === "SEATED").map((type) => type.id));
+                setSelectedSeats({});
+                setQuantities((current) => Object.fromEntries(Object.entries(current).filter(([id]) => !seated.has(id))));
+                setSeatRefreshKey((current) => current + 1);
+            }
+        } finally {
+            setBuying(false);
+        }
     };
 
     if (loading) {
@@ -119,7 +172,30 @@ export default function EventDetailPage() {
     const sessions = event.sessions || [];
     const selectedSession =
         sessions.find((session) => session.id === selectedSessionId) || null;
-    const ticketTypes = event.ticketTypes || [];
+    const ticketTypes = sessions.length ? selectedSession?.ticketTypes || [] : event.ticketTypes || [];
+    const bookingDisabled = event.ticketStatus !== "SELLING" || (selectedSession && selectedSession.ticketStatus !== "SELLING");
+    const maxTickets = Math.min(event.maxTicketsPerOrder ?? 10, 10);
+
+    const handleSeatToggle = (ticketTypeId, seatId) => {
+        const current = selectedSeats[ticketTypeId] || [];
+        const isSelected = current.includes(seatId);
+        const total = Object.values(quantities).reduce((sum, quantity) => sum + quantity, 0);
+        if (!isSelected && total >= maxTickets) {
+            setBookingError(`Mỗi đơn được mua tối đa ${maxTickets} vé.`);
+            return;
+        }
+        const next = isSelected ? current.filter((id) => id !== seatId) : [...current, seatId];
+        setSelectedSeats((value) => ({ ...value, [ticketTypeId]: next }));
+        setQuantities((value) => ({ ...value, [ticketTypeId]: next.length }));
+        setBookingError("");
+    };
+
+    const refreshSeats = () => {
+        const seated = new Set(ticketTypes.filter((type) => type.zone?.type === "SEATED").map((type) => type.id));
+        setSelectedSeats({});
+        setQuantities((current) => Object.fromEntries(Object.entries(current).filter(([id]) => !seated.has(id))));
+        setSeatRefreshKey((current) => current + 1);
+    };
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -154,16 +230,42 @@ export default function EventDetailPage() {
                                         sessions={sessions}
                                         selectedSessionId={selectedSession?.id}
                                         ticketStatus={event.ticketStatus}
-                                        onSelectSession={(session) =>
-                                            setSelectedSessionId(session.id)
-                                        }
+                                        onSelectSession={(session) => {
+                                            setSelectedSessionId(session.id);
+                                            setQuantities({});
+                                            setSelectedSeats({});
+                                            setBookingError("");
+                                        }}
                                     />
                                 )}
                                 {event.seatMap && (
                                     <EventSeatMapPreview seatMap={event.seatMap} />
                                 )}
+                                {event.seatSelectionMode === "MANUAL" && (!sessions.length || selectedSession) && (
+                                    <EventSeatSelector
+                                        key={`${event.id}-${selectedSessionId || "event"}-${seatRefreshKey}`}
+                                        eventId={event.id}
+                                        sessionId={selectedSessionId}
+                                        selected={selectedSeats}
+                                        onToggle={handleSeatToggle}
+                                        onRefresh={refreshSeats}
+                                        disabled={bookingDisabled || buying}
+                                        refreshKey={seatRefreshKey}
+                                    />
+                                )}
                                 <EventTicketList
                                     ticketTypes={ticketTypes}
+                                    quantities={quantities}
+                                    maxTickets={maxTickets}
+                                    disabled={bookingDisabled}
+                                    manualSeats={event.seatSelectionMode === "MANUAL"}
+                                    onQuantityChange={(id, quantity) => {
+                                        setQuantities((current) => ({ ...current, [id]: quantity }));
+                                        setBookingError("");
+                                    }}
+                                    onBuy={handleOrder}
+                                    buying={buying}
+                                    error={bookingError}
                                 />
                             </div>
                         )}

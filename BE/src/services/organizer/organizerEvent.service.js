@@ -42,6 +42,18 @@ class OrganizerEventService extends BaseService {
         }
     }
 
+    validateMaxTicketsPerOrder(value) {
+        if (value !== null && (!Number.isInteger(value) || value < 1 || value > 10)) {
+            this.throwError("Số vé tối đa mỗi lượt mua phải từ 1 đến 10");
+        }
+    }
+
+    validateSeatSelectionMode(value) {
+        if (!["AUTO", "MANUAL"].includes(value)) {
+            this.throwError("Cách chọn ghế không hợp lệ");
+        }
+    }
+
     async validateCategory(categoryId) {
         if (!categoryId) {
             this.throwError("Vui lòng chọn danh mục sự kiện");
@@ -308,11 +320,15 @@ class OrganizerEventService extends BaseService {
         location,
         saleStartAt,
         saleEndAt,
+        maxTicketsPerOrder = null,
+        seatSelectionMode = "AUTO",
         startAt,
         endAt,
         seatMapId,
     }) {
         this.validateOrganizer(organizerId);
+        this.validateMaxTicketsPerOrder(maxTicketsPerOrder);
+        this.validateSeatSelectionMode(seatSelectionMode);
 
         if (typeof name !== "string" || !name.trim()) {
             this.throwError("Tên sự kiện không được để trống");
@@ -386,6 +402,8 @@ class OrganizerEventService extends BaseService {
                         location: location.trim(),
                         saleStartAt: saleStartDate,
                         saleEndAt: saleEndDate,
+                        maxTicketsPerOrder,
+                        seatSelectionMode,
                         startAt: startDate,
                         endAt: endDate,
                         status: EventStatus.DRAFT,
@@ -407,7 +425,7 @@ class OrganizerEventService extends BaseService {
                         seatMap: { include: { zones: true } },
                     },
                 });
-            });
+            }, { maxWait: 10000, timeout: 20000 });
         } catch (error) {
             this.handlePrismaError(error);
         }
@@ -426,6 +444,8 @@ class OrganizerEventService extends BaseService {
         location,
         saleStartAt,
         saleEndAt,
+        maxTicketsPerOrder,
+        seatSelectionMode,
         startAt,
         endAt,
         seatMapId,
@@ -455,6 +475,16 @@ class OrganizerEventService extends BaseService {
         }
 
         const data = {};
+
+        if (seatSelectionMode !== undefined) {
+            this.validateSeatSelectionMode(seatSelectionMode);
+            data.seatSelectionMode = seatSelectionMode;
+        }
+
+        if (maxTicketsPerOrder !== undefined) {
+            this.validateMaxTicketsPerOrder(maxTicketsPerOrder);
+            data.maxTicketsPerOrder = maxTicketsPerOrder;
+        }
 
         if (name !== undefined) {
             if (typeof name !== "string" || !name.trim()) {
@@ -611,7 +641,7 @@ class OrganizerEventService extends BaseService {
                         seatMap: { include: { zones: true } },
                     },
                 });
-            });
+            }, { maxWait: 10000, timeout: 20000 });
         } catch (error) {
             this.handlePrismaError(error);
         }

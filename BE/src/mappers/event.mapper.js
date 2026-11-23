@@ -64,6 +64,10 @@ class EventMapper {
             return "ENDED";
         }
 
+        if (!event.saleStartAt) {
+            return "UNANNOUNCED";
+        }
+
         if (event.saleStartAt && new Date(event.saleStartAt) > now) {
             return "UPCOMING";
         }
@@ -95,7 +99,8 @@ class EventMapper {
 
         const ticketTypes = this.getEventTicketTypes(event);
         const priceRange = this.calculatePriceRange(ticketTypes);
-        const ticketStatus = this.determineTicketStatus(event, ticketTypes);
+        const sessionTicketTypes = (event.ticketTypes || []).filter((ticket) => ticket.sessionId);
+        const ticketStatus = this.determineTicketStatus(event, sessionTicketTypes.length ? sessionTicketTypes : ticketTypes);
         const organizerProfile = event.organizer?.organizerProfile;
 
         return {
@@ -109,6 +114,8 @@ class EventMapper {
             endAt: event.endAt,
             saleStartAt: event.saleStartAt,
             saleEndAt: event.saleEndAt,
+            maxTicketsPerOrder: event.maxTicketsPerOrder,
+            seatSelectionMode: event.seatSelectionMode || "AUTO",
             status: event.status,
             category: event.category
                 ? {
@@ -156,7 +163,7 @@ class EventMapper {
         const summary = this.toEventSummaryResponse(event);
         const organizerProfile = event.organizer?.organizerProfile;
 
-        const formattedTicketTypes = this.getEventTicketTypes(event).map((ticket) => {
+        const formatTicket = (ticket) => {
             const capacity = Number(ticket.capacity) || 0;
             const soldQuantity = Number(ticket.soldQuantity) || 0;
             const remainingQuantity = Math.max(0, capacity - soldQuantity);
@@ -166,6 +173,7 @@ class EventMapper {
                 name: ticket.name,
                 price: ticket.price,
                 isSoldOut: remainingQuantity <= 0,
+                remainingQuantity,
                 saleStartAt: ticket.saleStartAt,
                 saleEndAt: ticket.saleEndAt,
                 status: ticket.status,
@@ -179,7 +187,8 @@ class EventMapper {
                       }
                     : null,
             };
-        });
+        };
+        const formattedTicketTypes = this.getEventTicketTypes(event).map(formatTicket);
 
         const formattedSeatMap = event.seatMap
             ? {
@@ -230,6 +239,15 @@ class EventMapper {
             id: session.id,
             startAt: session.startAt,
             endAt: session.endAt,
+            saleStartAt: session.saleStartAt,
+            saleEndAt: session.saleEndAt,
+            ticketTypes: (event.ticketTypes || []).filter((ticket) => ticket.sessionId === session.id).map(formatTicket),
+            ticketStatus: ["UNANNOUNCED", "UPCOMING", "ENDED"].includes(summary.ticketStatus)
+                ? summary.ticketStatus
+                : this.determineTicketStatus(
+                    { ...event, ...session, saleStartAt: session.saleStartAt || event.saleStartAt, saleEndAt: session.saleEndAt || event.saleEndAt },
+                    (event.ticketTypes || []).filter((ticket) => ticket.sessionId === session.id)
+                ),
         }));
 
         return {

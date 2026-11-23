@@ -15,13 +15,14 @@ export default function EventBookingSidebar({
         (selectedSession && new Date(selectedSession.endAt) <= now);
     const isUpcoming = event.ticketStatus === "UPCOMING";
     const isSoldOut = event.ticketStatus === "SOLD_OUT";
+    const isUnannounced = event.ticketStatus === "UNANNOUNCED";
     const ticketStatus = isEnded
         ? "ENDED"
         : isUpcoming
           ? "UPCOMING"
           : isSoldOut
             ? "SOLD_OUT"
-            : "SELLING";
+            : isUnannounced ? "UNANNOUNCED" : "SELLING";
     const priceRange = event.priceRange;
 
     const formatPrice = (priceRange) => {
@@ -45,6 +46,7 @@ export default function EventBookingSidebar({
         if (isEnded) return "Sự kiện đã kết thúc";
         if (isSoldOut) return "Đã hết vé";
         if (isUpcoming) return "Sắp mở bán";
+        if (isUnannounced) return "Chưa công bố mở bán";
         return sessionCount > 1 ? "Chọn suất & vé" : "Chọn vé ngay";
     };
 
@@ -89,10 +91,10 @@ export default function EventBookingSidebar({
             {/* Nút hành động Mua vé */}
             <button
                 type="button"
-                disabled={isSoldOut || isEnded}
+                disabled={isSoldOut || isEnded || isUnannounced}
                 onClick={onBuyClick}
                 className={`w-full rounded-xl py-3.5 px-4 text-sm font-bold transition ${
-                    isSoldOut || isEnded
+                    isSoldOut || isEnded || isUnannounced
                         ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                         : "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/25 active:scale-[0.99] cursor-pointer"
                 }`}
@@ -108,7 +110,7 @@ export default function EventBookingSidebar({
                 </div>
                 <div className="flex items-center gap-2">
                     <Zap className="h-4 w-4 text-slate-600 shrink-0" />
-                    <span>Nhận mã vé điện tử QR Code tức thì qua Email</span>
+                    <span>Tra cứu vé trong đơn hàng sau khi thanh toán</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <HelpCircle className="h-4 w-4 text-slate-400 shrink-0" />

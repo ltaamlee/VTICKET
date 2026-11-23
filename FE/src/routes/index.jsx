@@ -20,6 +20,8 @@ import OrganizerRequestsPage from "../modules/admin/pages/OrganizerRequestsPage"
 import ProfilePage from "../modules/profile/pages/ProfilePage";
 import OrganizerRegisterPage from "../modules/organizer/pages/OrganizerRegisterPage";
 import MyTicketsPage from "../modules/ticket/pages/MyTicketsPage";
+import OrderPage from "../modules/ticket/pages/OrderPage";
+import MyOrdersPage from "../modules/ticket/pages/MyOrdersPage";
 import MembershipPage from "../modules/membership/pages/MembershipPage";
 import MyEventsPage from "../modules/event/pages/MyEventsPage";
 import EventListPage from "../modules/event/pages/EventListPage";
@@ -50,6 +52,8 @@ function AppRoutes() {
         <Route element={<ProtectedRoute />}>
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/my-tickets" element={<MyTicketsPage />} />
+          <Route path="/orders/:id" element={<OrderPage />} />
+          <Route path="/my-orders" element={<MyOrdersPage />} />
           <Route path="/membership" element={<MembershipPage />} />
           <Route path="/my-events" element={<MyEventsPage />} />
           <Route path="/organizer/register" element={<OrganizerRegisterPage />} />

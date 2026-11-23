@@ -3,7 +3,7 @@ import { Ticket, Clock } from "lucide-react";
 /**
  * EventTicketList - Bảng danh sách các loại vé đang phát hành của sự kiện
  */
-export default function EventTicketList({ ticketTypes: allTicketTypes = [] }) {
+export default function EventTicketList({ ticketTypes: allTicketTypes = [], quantities = {}, onQuantityChange, maxTickets = 10, disabled = false, onBuy, buying = false, error = "", manualSeats = false }) {
     // Khu vực sân khấu không bán vé nên không hiển thị giá.
     const ticketTypes = (allTicketTypes || []).filter(
         (ticket) => ticket.zone?.type !== "STAGE"
@@ -26,7 +26,7 @@ export default function EventTicketList({ ticketTypes: allTicketTypes = [] }) {
             <div>
                 <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                     <Ticket className="h-5 w-5 text-blue-600" />
-                    "Các hạng vé đang mở bán"
+                    Thông tin hạng vé
                 </h2>
                 <p className="mt-1 text-xs text-slate-500">
                     Bảng giá và thông tin các hạng vé tham dự sự kiện
@@ -79,12 +79,35 @@ export default function EventTicketList({ ticketTypes: allTicketTypes = [] }) {
                                     <span className="text-base sm:text-lg font-bold text-blue-600 tracking-tight">
                                         {priceFormatted}
                                     </span>
+                                    <p className="mt-1 text-xs text-slate-500">Còn {ticket.remainingQuantity} vé</p>
+                                    {manualSeats && ticket.zone?.type === "SEATED" ? (
+                                        <p className="mt-2 text-sm text-slate-600">Đã chọn {quantities[ticket.id] || 0} ghế</p>
+                                    ) : <label className="mt-2 flex items-center gap-2 text-sm text-slate-600">
+                                        Số lượng
+                                        <select
+                                            aria-label={`Số lượng ${ticket.name}`}
+                                            value={quantities[ticket.id] || 0}
+                                            disabled={disabled || isSoldOut || buying}
+                                            onChange={(e) => onQuantityChange(ticket.id, Number(e.target.value))}
+                                            className="rounded-lg border border-slate-300 px-2 py-1"
+                                        >
+                                            {Array.from({ length: maxTickets + 1 }, (_, count) => (
+                                                <option key={count} value={count}>{count}</option>
+                                            ))}
+                                        </select>
+                                    </label>}
                                 </div>
                             </div>
                         </div>
                     );
                 })}
             </div>
+            <p className="text-sm text-slate-500">Tối đa {maxTickets} vé mỗi đơn. Vé được giữ trong 15 phút.</p>
+            {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
+            <button type="button" disabled={disabled || buying || !Object.values(quantities).some(Boolean)} onClick={onBuy}
+                className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">
+                {buying ? "Đang giữ vé..." : "Tiếp tục đặt vé"}
+            </button>
         </div>
     );
 }

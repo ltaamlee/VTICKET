@@ -14,6 +14,7 @@ import {
     Ticket,
     Gem,
     Calendar,
+    ClipboardList,
 } from "lucide-react";
 
 export default function AccountLayout({ children }) {
@@ -53,6 +54,7 @@ export default function AccountLayout({ children }) {
     // Xác định tab đang active
     const getActiveTab = () => {
         if (location.pathname === "/my-tickets") return "tickets";
+        if (location.pathname === "/my-orders") return "orders";
         if (location.pathname === "/membership") return "membership";
         if (location.pathname === "/my-events") return "events";
         if (location.pathname === "/profile") {
@@ -83,6 +85,12 @@ export default function AccountLayout({ children }) {
             path: "/my-tickets",
             icon: Ticket,
             hideForAdmin: true,
+        },
+        {
+            id: "orders",
+            label: "Đơn hàng",
+            path: "/my-orders",
+            icon: ClipboardList,
         },
         {
             id: "membership",

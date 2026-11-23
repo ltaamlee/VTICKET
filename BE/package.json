@@ -29,7 +29,8 @@
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^7.7.0",
     "multer": "^2.4.0",
-    "nodemailer": "^10.0.15"
+    "nodemailer": "^10.0.15",
+    "sepay-pg-node": "^1.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",

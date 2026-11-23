@@ -69,6 +69,11 @@ enum SeatNumbering {
   COLUMN
 }
 
+enum SeatSelectionMode {
+  AUTO
+  MANUAL
+}
+
 enum TicketTypeStatus {
   ACTIVE
   INACTIVE
@@ -111,6 +116,7 @@ enum PaymentMethod {
   VNPAY
   ZALOPAY
   CASH
+  SEPAY
 }
 
 enum PaymentStatus {
@@ -119,6 +125,7 @@ enum PaymentStatus {
   FAILED
   CANCELLED
   REFUNDED
+  REVIEW_REQUIRED
 }
 
 enum PostStatus {
@@ -248,6 +255,8 @@ model Event {
   status       EventStatus @default(DRAFT)
   saleStartAt  DateTime?
   saleEndAt    DateTime?
+  maxTicketsPerOrder Int?
+  seatSelectionMode SeatSelectionMode?
   startAt      DateTime
   endAt        DateTime
 
@@ -436,6 +445,7 @@ model Order {
   user        User        @relation(fields: [userId], references: [id])
   totalAmount Float
   status      OrderStatus @default(PENDING_PAYMENT)
+  expiresAt   DateTime?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
@@ -444,8 +454,33 @@ model Order {
 
   @@index([userId])
   @@index([status])
+  @@index([status, expiresAt])
   @@index([createdAt])
   @@map("orders")
+}
+
+model SeatAllocation {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  key     String @unique
+  orderId String @db.ObjectId
+  seatId  String @db.ObjectId
+
+  @@index([orderId])
+  @@map("seatAllocations")
+}
+
+model SePayNotification {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  transactionId String   @unique
+  invoiceNumber String
+  amount        String?
+  currency      String?
+  outcome       String
+  reason        String?
+  createdAt     DateTime @default(now())
+
+  @@index([invoiceNumber])
+  @@map("sepayNotifications")
 }
 
 model OrderItem {

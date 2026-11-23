@@ -41,7 +41,7 @@ class EventSessionService extends BaseService {
             where: {
                 eventId,
                 ticketType: { sessionId },
-                status: { in: ["ISSUED", "CHECKED_IN"] },
+                status: { in: ["RESERVED", "ISSUED", "CHECKED_IN"] },
             },
             select: { id: true },
         });
@@ -256,7 +256,7 @@ class EventSessionService extends BaseService {
             await this.assertNoSoldTickets(
                 eventId,
                 sessionId,
-                "Không thể chỉnh sửa suất diễn khi sự kiện đã có vé được bán"
+                "Không thể chỉnh sửa suất diễn khi có vé đang giữ hoặc đã bán"
             );
 
             const updateData = {};
