@@ -5,6 +5,8 @@ export default function EventBookingSidebar({
     event,
     onBuyClick,
     selectedSession,
+    canBuy = true,
+    blocked = false,
 }) {
     if (!event) return null;
 
@@ -43,6 +45,8 @@ export default function EventBookingSidebar({
     };
 
     const getButtonText = () => {
+        if (!canBuy) return "Chỉ khách hàng được mua vé";
+        if (blocked) return "Cần xử lý lượt mua trước";
         if (isEnded) return "Sự kiện đã kết thúc";
         if (isSoldOut) return "Đã hết vé";
         if (isUpcoming) return "Sắp mở bán";
@@ -91,10 +95,10 @@ export default function EventBookingSidebar({
             {/* Nút hành động Mua vé */}
             <button
                 type="button"
-                disabled={isSoldOut || isEnded || isUnannounced}
+                disabled={!canBuy || blocked || isSoldOut || isEnded || isUnannounced}
                 onClick={onBuyClick}
                 className={`w-full rounded-xl py-3.5 px-4 text-sm font-bold transition ${
-                    isSoldOut || isEnded || isUnannounced
+                    !canBuy || blocked || isSoldOut || isEnded || isUnannounced
                         ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                         : "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/25 active:scale-[0.99] cursor-pointer"
                 }`}

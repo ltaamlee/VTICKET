@@ -7,6 +7,15 @@ input::-ms-clear {
   display: none;
 }
 
+.booking-zone:focus {
+  outline: none;
+}
+
+.booking-zone:focus-visible > * {
+  stroke: #d36434;
+  stroke-width: 4px;
+}
+
 /* Render overlay-based dialogs as right-side panels across the frontend. */
 [class~="fixed"][class~="inset-0"][class~="z-50"][class~="flex"][class~="items-center"][class~="justify-center"] {
   align-items: stretch !important;

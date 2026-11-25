@@ -4,6 +4,7 @@ const { BadRequestException, ConflictException, NotFoundException } = require(".
 const { pickSeats } = require("../../utils/seatPicker");
 const paymentService = require("../payment/payment.service");
 const ensurePaymentIndexes = require("../payment/paymentIndexes");
+const JwtUtils = require("../../utils/jwtUtils");
 
 const HOLD_MS = 15 * 60 * 1000;
 const objectId = (value) => typeof value === "string" && /^[a-f\d]{24}$/i.test(value);
@@ -12,10 +13,10 @@ function assertId(id) {
     if (!objectId(id)) throw new BadRequestException("Mã đơn hàng hoặc sự kiện không hợp lệ");
 }
 
-async function expireInTransaction(tx, orderId, now) {
+async function releaseInTransaction(tx, orderId, status, expiresAt) {
     const updated = await tx.order.updateMany({
-        where: { id: orderId, status: "PENDING_PAYMENT", expiresAt: { lte: now } },
-        data: { status: "EXPIRED" },
+        where: { id: orderId, status: "PENDING_PAYMENT", ...(expiresAt ? { expiresAt: { lte: expiresAt } } : {}) },
+        data: { status },
     });
     if (!updated.count) return false;
     const items = await tx.orderItem.findMany({ where: { orderId } });
@@ -26,11 +27,33 @@ async function expireInTransaction(tx, orderId, now) {
         });
         await tx.ticket.updateMany({
             where: { orderItemId: item.id, status: "RESERVED" },
-            data: { status: "EXPIRED" },
+            data: { status },
         });
     }
     await tx.seatAllocation.deleteMany({ where: { orderId } });
     return true;
+}
+
+async function expireInTransaction(tx, orderId, now) {
+    return releaseInTransaction(tx, orderId, "EXPIRED", now);
+}
+
+async function cancelOrder({ userId, orderId }) {
+    assertId(orderId);
+    const order = await prisma.$transaction(async (tx) => {
+        const owned = await tx.order.findFirst({ where: { id: orderId, userId }, select: { id: true, status: true } });
+        if (!owned) throw new NotFoundException("Không tìm thấy đơn hàng");
+        if (owned.status === "PENDING_PAYMENT") {
+            const released = await releaseInTransaction(tx, orderId, "CANCELLED");
+            if (!released) throw new ConflictException("Trạng thái đơn hàng đã thay đổi, vui lòng thử lại");
+            return { status: "CANCELLED" };
+        }
+        return { status: owned.status };
+    }).catch((error) => {
+        if (error.code === "P2034") throw new ConflictException("Trạng thái đơn hàng đang thay đổi, vui lòng thử lại");
+        throw error;
+    });
+    return order;
 }
 
 async function expireOrder(orderId) {
@@ -38,6 +61,7 @@ async function expireOrder(orderId) {
 }
 
 async function expireDueOrders(eventId) {
+    let expired = 0;
     for (;;) {
         const orders = await prisma.order.findMany({
             where: {
@@ -49,8 +73,11 @@ async function expireDueOrders(eventId) {
             take: 100,
         });
         if (!orders.length) break;
-        for (const order of orders) await expireOrder(order.id);
+        for (const order of orders) {
+            if (await expireOrder(order.id)) expired += 1;
+        }
     }
+    return expired;
 }
 
 function validateItems(items) {
@@ -81,6 +108,43 @@ function isOpen(start, end, now) {
     return (!start || start <= now) && (!end || end > now);
 }
 
+function sessionFilter(sessionId) {
+    return sessionId
+        ? { sessionId }
+        : { OR: [{ sessionId: null }, { sessionId: { isSet: false } }] };
+}
+
+async function startBooking({ userId, eventId }) {
+    assertId(userId);
+    assertId(eventId);
+    const event = await prisma.event.findFirst({ where: { id: eventId, status: "APPROVED" } });
+    if (!event) throw new NotFoundException("Không tìm thấy sự kiện");
+    const now = new Date();
+    if (!event.saleStartAt || event.endAt <= now || !isOpen(event.saleStartAt, event.saleEndAt, now)) {
+        throw new ConflictException("Sự kiện hiện không mở bán vé");
+    }
+    const expiresAt = new Date(Math.floor((now.getTime() + HOLD_MS) / 1000) * 1000);
+    return { token: JwtUtils.generateBookingToken({ userId, eventId }, expiresAt), expiresAt, serverTime: now };
+}
+
+function bookingDeadline(token, userId, eventId) {
+    if (typeof token !== "string" || !token) throw new BadRequestException("Vui lòng bắt đầu lại lượt mua vé");
+    let payload;
+    try {
+        payload = JwtUtils.verifyBookingToken(token);
+    } catch (error) {
+        if (error.name === "TokenExpiredError") throw new ConflictException("Lượt mua vé đã hết thời gian");
+        if (error.name === "JsonWebTokenError" || error.name === "NotBeforeError") {
+            throw new BadRequestException("Lượt mua vé không hợp lệ");
+        }
+        throw error;
+    }
+    if (payload.userId !== userId || payload.eventId !== eventId || !Number.isSafeInteger(payload.exp)) {
+        throw new BadRequestException("Lượt mua vé không hợp lệ");
+    }
+    return new Date(payload.exp * 1000);
+}
+
 async function hasValidReservation(tx, order) {
     if (!order.orderItems?.length) return false;
     const allocations = await tx.seatAllocation.findMany({ where: { orderId: order.id } });
@@ -108,16 +172,18 @@ async function hasValidReservation(tx, order) {
     return Number.isSafeInteger(total) && total === order.totalAmount && used.size === allocations.length;
 }
 
-async function createOrder({ userId, eventId, sessionId, items }) {
+async function createOrder({ userId, eventId, sessionId, items, bookingToken }) {
     assertId(userId);
     assertId(eventId);
     if (sessionId != null) assertId(sessionId);
     validateItems(items);
+    const expiresAt = bookingDeadline(bookingToken, userId, eventId);
     await ensurePaymentIndexes();
     await expireDueOrders(eventId);
 
     return prisma.$transaction(async (tx) => {
         const now = new Date();
+        if (expiresAt <= now) throw new ConflictException("Lượt mua vé đã hết thời gian");
         const event = await tx.event.findUnique({
             where: { id: eventId },
             include: { sessions: true },
@@ -139,7 +205,7 @@ async function createOrder({ userId, eventId, sessionId, items }) {
             throw new BadRequestException(`Mỗi đơn được mua tối đa ${maxTickets} vé`);
         }
         const types = await tx.ticketType.findMany({
-            where: { id: { in: items.map((item) => item.ticketTypeId) }, eventId, sessionId: sessionId || null },
+            where: { id: { in: items.map((item) => item.ticketTypeId) }, eventId, ...sessionFilter(sessionId) },
             include: { zone: true },
         });
         if (types.length !== items.length) throw new BadRequestException("Hạng vé không thuộc suất diễn đã chọn");
@@ -166,7 +232,7 @@ async function createOrder({ userId, eventId, sessionId, items }) {
                 orderCode: `VT${crypto.randomBytes(12).toString("hex").toUpperCase()}`,
                 totalAmount,
                 status: totalAmount === 0 ? "PAID" : "PENDING_PAYMENT",
-                expiresAt: totalAmount === 0 ? null : new Date(now.getTime() + HOLD_MS),
+                expiresAt: totalAmount === 0 ? null : expiresAt,
             },
         });
         for (const item of items) {
@@ -241,10 +307,11 @@ async function getAvailableSeats({ eventId, sessionId }) {
         (!event.sessions.length && sessionId)) {
         throw new BadRequestException("Suất diễn không hợp lệ");
     }
+    await expireDueOrders(eventId);
     const prefix = `${eventId}:${sessionId || "event"}:`;
     const [types, allocations] = await Promise.all([
         prisma.ticketType.findMany({
-            where: { eventId, sessionId: sessionId || null, status: "ACTIVE", zone: { type: "SEATED" } },
+            where: { eventId, ...sessionFilter(sessionId), status: "ACTIVE", zone: { type: "SEATED" } },
             include: { zone: { include: { seats: { orderBy: { order: "asc" } } } } },
         }),
         prisma.seatAllocation.findMany({ where: { key: { startsWith: prefix } }, select: { seatId: true } }),
@@ -274,10 +341,10 @@ async function getOrder({ userId, orderId }) {
     if (!order) throw new NotFoundException("Không tìm thấy đơn hàng");
     return {
         id: order.id, orderCode: order.orderCode, status: order.status,
-        expiresAt: order.expiresAt, totalAmount: order.totalAmount, createdAt: order.createdAt,
+        expiresAt: order.expiresAt, totalAmount: order.totalAmount, createdAt: order.createdAt, serverTime: new Date(),
         items: order.orderItems.map((item) => ({
             id: item.id, quantity: item.quantity, unitPrice: item.unitPrice, subtotal: item.subtotal,
-            ticketType: { name: item.ticketType.name, event: { name: item.ticketType.event.name, location: item.ticketType.event.location }, session: item.ticketType.session, zone: { name: item.ticketType.zone.name } },
+            ticketType: { name: item.ticketType.name, event: { id: item.ticketType.event.id, name: item.ticketType.event.name, location: item.ticketType.event.location }, session: item.ticketType.session, zone: { name: item.ticketType.zone.name } },
             tickets: order.status === "PAID" ? item.tickets.map((ticket) => ({ ticketCode: ticket.ticketCode, qrToken: ticket.qrToken, seat: ticket.seat ? { rowLabel: ticket.seat.rowLabel, seatNumber: ticket.seat.seatNumber } : null })) : [],
         })),
     };
@@ -327,4 +394,4 @@ async function checkout({ userId, orderId }) {
     return paymentService.checkoutFields(order);
 }
 
-module.exports = { createOrder, getOrder, listOrders, checkout, expireDueOrders, expireInTransaction, hasValidReservation, getAvailableSeats };
+module.exports = { startBooking, createOrder, cancelOrder, getOrder, listOrders, checkout, expireDueOrders, expireInTransaction, hasValidReservation, getAvailableSeats };

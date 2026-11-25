@@ -39,7 +39,7 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/events" element={<EventListPage />} />
-        <Route path="/events/:idOrSlug" element={<EventDetailPage />} />
+        <Route path="/events/:idOrSlug" element={<EventDetailPage key="event-detail" />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -57,6 +57,10 @@ function AppRoutes() {
           <Route path="/membership" element={<MembershipPage />} />
           <Route path="/my-events" element={<MyEventsPage />} />
           <Route path="/organizer/register" element={<OrganizerRegisterPage />} />
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={["USER"]} />}>
+          <Route path="/events/:idOrSlug/booking" element={<EventDetailPage key="event-booking" booking />} />
         </Route>
 
         <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>

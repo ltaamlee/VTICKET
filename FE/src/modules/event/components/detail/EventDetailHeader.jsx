@@ -16,7 +16,7 @@ import EventBadge from "../common/EventBadge";
 /**
  * EventDetailHeader - Banner và thông tin tổng quan đầu trang chi tiết sự kiện
  */
-export default function EventDetailHeader({ event, onBuyClick }) {
+export default function EventDetailHeader({ event, onBuyClick, canBuy = true, blocked = false }) {
     const [copied, setCopied] = useState(false);
 
     if (!event) return null;
@@ -217,16 +217,16 @@ export default function EventDetailHeader({ event, onBuyClick }) {
                             {/* Nút MUA VÉ NGAY nổi bật */}
                             <button
                                 type="button"
-                                disabled={isSoldOut || isEnded || isUnannounced}
+                                disabled={!canBuy || blocked || isSoldOut || isEnded || isUnannounced}
                                 onClick={onBuyClick}
                                 className={`w-full rounded-xl py-3.5 px-6 font-bold text-base transition flex items-center justify-center gap-2 ${
-                                    isSoldOut || isEnded || isUnannounced
+                                    !canBuy || blocked || isSoldOut || isEnded || isUnannounced
                                         ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                                         : "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/25 active:scale-[0.99] cursor-pointer"
                                 }`}
                             >
                                 <Ticket className="h-5 w-5" />
-                                <span>{isSoldOut ? "Đã hết vé" : isEnded ? "Sự kiện đã kết thúc" : isUnannounced ? "Chưa công bố mở bán" : "Mua vé ngay"}</span>
+                                <span>{!canBuy ? "Chỉ khách hàng được mua vé" : blocked ? "Cần xử lý lượt mua trước" : isSoldOut ? "Đã hết vé" : isEnded ? "Sự kiện đã kết thúc" : isUnannounced ? "Chưa công bố mở bán" : "Mua vé ngay"}</span>
                             </button>
                         </div>
                     </div>

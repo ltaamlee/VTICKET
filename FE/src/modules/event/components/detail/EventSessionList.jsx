@@ -38,6 +38,7 @@ export default function EventSessionList({
     selectedSessionId,
     onSelectSession,
     ticketStatus,
+    disabled = false,
 }) {
     if (sessions.length === 0) return null;
 
@@ -102,7 +103,7 @@ export default function EventSessionList({
 
                             <button
                                 type="button"
-                                disabled={status.disabled}
+                                disabled={disabled || status.disabled}
                                 onClick={() => onSelectSession?.(session)}
                                 className={`inline-flex min-w-28 items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
                                     isSelected

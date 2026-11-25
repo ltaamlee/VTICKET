@@ -162,13 +162,22 @@ class EventService {
             ? { id: cleanIdentifier, status: "APPROVED" }
             : { slug: cleanIdentifier, status: "APPROVED" };
 
-        const event = await this.prisma.event.findFirst({
+        let event = await this.prisma.event.findFirst({
             where,
             include: this.QueryBuilder.getDetailInclude(),
         });
 
         if (!event) {
             throw new NotFoundException("Không tìm thấy thông tin sự kiện hoặc sự kiện chưa được công bố");
+        }
+
+        const { expireDueOrders } = require("../user/order.service");
+        if (await expireDueOrders(event.id)) {
+            event = await this.prisma.event.findFirst({
+                where,
+                include: this.QueryBuilder.getDetailInclude(),
+            });
+            if (!event) throw new NotFoundException("Không tìm thấy thông tin sự kiện hoặc sự kiện chưa được công bố");
         }
 
         return this.mapper.toEventDetailResponse(event);

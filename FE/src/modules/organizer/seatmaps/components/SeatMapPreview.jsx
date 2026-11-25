@@ -21,6 +21,7 @@ export default function SeatMapPreview({
     seatMap,
     className = "",
     showCapacity = true,
+    bookingInteraction,
 }) {
     const canvasWidth = Number(seatMap?.canvasWidth) || 900;
     const canvasHeight = Number(seatMap?.canvasHeight) || 600;
@@ -64,11 +65,13 @@ export default function SeatMapPreview({
             const y = Number(zone.posY) || 0;
             const w = Number(zone.width) || 120;
             const h = Number(zone.height) || 60;
-
-            minX = Math.min(minX, x);
-            minY = Math.min(minY, y);
-            maxX = Math.max(maxX, x + w);
-            maxY = Math.max(maxY, y + h);
+            const angle = (Number(zone.rotation) || 0) * Math.PI / 180;
+            const halfWidth = (Math.abs(Math.cos(angle)) * w + Math.abs(Math.sin(angle)) * h) / 2;
+            const halfHeight = (Math.abs(Math.sin(angle)) * w + Math.abs(Math.cos(angle)) * h) / 2;
+            minX = Math.min(minX, x + w / 2 - halfWidth);
+            minY = Math.min(minY, y + h / 2 - halfHeight);
+            maxX = Math.max(maxX, x + w / 2 + halfWidth);
+            maxY = Math.max(maxY, y + h / 2 + halfHeight);
         });
 
         const boxWidth = Math.max(maxX - minX, 1);
@@ -99,7 +102,7 @@ export default function SeatMapPreview({
             <svg
                 viewBox={viewBox}
                 className="block h-auto w-full"
-                role="img"
+                role={bookingInteraction ? "group" : "img"}
                 aria-label="Sơ đồ ghế"
             >
                 {levels.map(([, levelZones]) =>
@@ -202,6 +205,8 @@ export default function SeatMapPreview({
 
                         // Id của vùng cắt (clip) cho khu vực này.
                         const clipId = `seat-clip-${zone.id}`;
+                        const bookingZone = bookingInteraction?.zones[zone.id];
+                        const zoneEnabled = bookingZone?.enabled && !bookingInteraction.disabled;
 
                         return (
                             <g
@@ -243,6 +248,20 @@ export default function SeatMapPreview({
                                             ? `url(#${clipId})`
                                             : undefined
                                     }
+                                    role={bookingZone ? "button" : undefined}
+                                    tabIndex={zoneEnabled ? 0 : undefined}
+                                    aria-label={bookingZone ? `Khu vực ${zone.name}` : undefined}
+                                    aria-pressed={bookingZone ? Boolean(bookingZone.active) : undefined}
+                                    aria-disabled={bookingZone ? !zoneEnabled : undefined}
+                                    className={bookingZone ? "booking-zone" : undefined}
+                                    onClick={zoneEnabled ? () => bookingInteraction.onZoneSelect(zone.id) : undefined}
+                                    onKeyDown={zoneEnabled ? (event) => {
+                                        if (event.key === "Enter" || event.key === " ") {
+                                            event.preventDefault();
+                                            bookingInteraction.onZoneSelect(zone.id);
+                                        }
+                                    } : undefined}
+                                    style={zoneEnabled ? { cursor: "pointer" } : undefined}
                                 >
                                 {shape.holes?.length ? (
                                     <path
@@ -253,8 +272,8 @@ export default function SeatMapPreview({
                                         fillRule="evenodd"
                                         fill={color}
                                         fillOpacity={0.85}
-                                        stroke="rgba(255,255,255,0.9)"
-                                        strokeWidth={2}
+                                        stroke={bookingZone?.active ? "#34d399" : "rgba(255,255,255,0.9)"}
+                                        strokeWidth={bookingZone?.active ? 4 : 2}
                                     />
                                 ) : (
                                     <>
@@ -268,8 +287,8 @@ export default function SeatMapPreview({
                                                 ry={shape.ry}
                                                 fill={color}
                                                 fillOpacity={0.85}
-                                                stroke="rgba(255,255,255,0.9)"
-                                                strokeWidth={2}
+                                                stroke={bookingZone?.active ? "#34d399" : "rgba(255,255,255,0.9)"}
+                                                strokeWidth={bookingZone?.active ? 4 : 2}
                                             />
                                         )}
 
@@ -281,8 +300,8 @@ export default function SeatMapPreview({
                                                 ry={shape.ry}
                                                 fill={color}
                                                 fillOpacity={0.85}
-                                                stroke="rgba(255,255,255,0.9)"
-                                                strokeWidth={2}
+                                                stroke={bookingZone?.active ? "#34d399" : "rgba(255,255,255,0.9)"}
+                                                strokeWidth={bookingZone?.active ? 4 : 2}
                                             />
                                         )}
 
@@ -298,8 +317,8 @@ export default function SeatMapPreview({
                                                 )}
                                                 fill={color}
                                                 fillOpacity={0.85}
-                                                stroke="rgba(255,255,255,0.9)"
-                                                strokeWidth={2}
+                                                stroke={bookingZone?.active ? "#34d399" : "rgba(255,255,255,0.9)"}
+                                                strokeWidth={bookingZone?.active ? 4 : 2}
                                             />
                                         )}
                                     </>
@@ -307,8 +326,32 @@ export default function SeatMapPreview({
                                 </g>
 
                                 {/* Lưới ghế bên trong khu vực */}
-                                {seatRects.map((cell) => (
-                                    <rect
+                                {seatRects.map((cell) => {
+                                    if (bookingInteraction) {
+                                        if (bookingInteraction.mode !== "MANUAL") return null;
+                                        const seat = bookingZone?.seats?.[cell.key];
+                                        const canSelect = seat && !bookingInteraction.disabled && !bookingInteraction.seatsDisabled && seat.canSelect;
+                                        const label = seat ? `Ghế ${seat.label}, ${seat.selected ? "đã chọn" : seat.available ? "còn trống" : "không khả dụng"}` : "";
+                                        return <circle key={cell.key}
+                                            cx={posX + cell.x + cell.width / 2}
+                                            cy={posY + cell.y + cell.height / 2}
+                                            r={Math.max(1, Math.min(cell.width, cell.height) * 0.35)}
+                                            fill={seat?.selected ? "#10b981" : canSelect ? "#ffffff" : "#ef4444"}
+                                            role={seat ? "button" : undefined} tabIndex={canSelect ? 0 : undefined}
+                                            aria-label={seat ? label : undefined} aria-pressed={seat ? Boolean(seat.selected) : undefined}
+                                            aria-disabled={seat ? !canSelect : undefined}
+                                            onClick={canSelect ? () => bookingInteraction.onSeatToggle(seat) : undefined}
+                                            onKeyDown={canSelect ? (event) => {
+                                                if (event.key === "Enter" || event.key === " ") {
+                                                    event.preventDefault();
+                                                    bookingInteraction.onSeatToggle(seat);
+                                                }
+                                            } : undefined}
+                                            style={canSelect ? { cursor: "pointer" } : undefined}>
+                                            {seat && <title>{label}</title>}
+                                        </circle>;
+                                    }
+                                    return <rect
                                         key={cell.key}
                                         x={posX + cell.x}
                                         y={posY + cell.y}
@@ -319,20 +362,14 @@ export default function SeatMapPreview({
                                             cell.width / 4,
                                             cell.height / 4
                                         )}
-                                        fill={
-                                            cell.blocked
-                                                ? "#0f172a"
-                                                : "#ffffff"
-                                        }
-                                        fillOpacity={
-                                            cell.blocked ? 0.45 : 0.35
-                                        }
+                                        fill={cell.blocked ? "#0f172a" : "#ffffff"}
+                                        fillOpacity={cell.blocked ? 0.45 : 0.35}
                                         stroke="rgba(255,255,255,0.75)"
                                         strokeWidth={1}
-                                    />
-                                ))}
+                                    />;
+                                })}
 
-                                <text
+                                {(!bookingInteraction || bookingInteraction.mode !== "MANUAL" || isStage || zone.type !== "SEATED") && <text
                                     x={cx}
                                     y={cy}
                                     textAnchor="middle"
@@ -348,7 +385,7 @@ export default function SeatMapPreview({
                                     }}
                                 >
                                     {truncate(zone.name)}
-                                </text>
+                                </text>}
 
                                 {/* Capacity */}
                                 {showCapacity && !isStage && (
