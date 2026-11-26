@@ -55,8 +55,6 @@ export default function AccountLayout({ children }) {
     const getActiveTab = () => {
         if (location.pathname === "/my-tickets") return "tickets";
         if (location.pathname === "/my-orders") return "orders";
-        if (location.pathname === "/membership") return "membership";
-        if (location.pathname === "/my-events") return "events";
         if (location.pathname === "/profile") {
             return currentTabParam === "security" ? "security" : "info";
         }
@@ -84,26 +82,6 @@ export default function AccountLayout({ children }) {
             label: "Vé đã mua",
             path: "/my-tickets",
             icon: Ticket,
-            hideForAdmin: true,
-        },
-        {
-            id: "orders",
-            label: "Đơn hàng",
-            path: "/my-orders",
-            icon: ClipboardList,
-        },
-        {
-            id: "membership",
-            label: "Thẻ thành viên",
-            path: "/membership",
-            icon: Gem,
-            hideForAdmin: true,
-        },
-        {
-            id: "events",
-            label: "Sự kiện của tôi",
-            path: "/my-events",
-            icon: Calendar,
             hideForAdmin: true,
         },
     ];

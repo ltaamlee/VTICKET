@@ -378,10 +378,10 @@ function CheckInManagementPage() {
         setKeyword(nextKeyword);
     };
 
-    const soldCount = stats?.sold ?? 0;
+    const totalCount = stats?.total ?? 0;
     const checkedInCount = stats?.checkedIn ?? 0;
     const issuedCount = stats?.issued ?? 0;
-    const checkInRate = soldCount ? Math.round((checkedInCount / soldCount) * 100) : 0;
+    const checkInRate = totalCount ? Math.round((checkedInCount / totalCount) * 100) : 0;
 
     return (
         <div className="space-y-6">

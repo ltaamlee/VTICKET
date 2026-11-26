@@ -1,8 +1,5 @@
 import { Ticket } from "lucide-react";
 
-/**
- * EventTicketList - Bảng danh sách các loại vé đang phát hành của sự kiện
- */
 export default function EventTicketList({ ticketTypes: allTicketTypes = [], quantities = {}, onQuantityChange, maxTickets = 10, disabled = false, onBuy, buying = false, error = "", manualSeats = false, readOnly = false, now }) {
     // Khu vực sân khấu không bán vé nên không hiển thị giá.
     const ticketTypes = (allTicketTypes || []).filter(

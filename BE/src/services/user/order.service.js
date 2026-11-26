@@ -1,5 +1,6 @@
 const crypto = require("node:crypto");
 const prisma = require("../../config/prisma");
+const { getRedisClient } = require("../../config/redis");
 const { BadRequestException, ConflictException, NotFoundException } = require("../../exceptions");
 const { pickSeats } = require("../../utils/seatPicker");
 const paymentService = require("../payment/payment.service");
@@ -165,10 +166,47 @@ function sessionFilter(sessionId) {
         : { OR: [{ sessionId: null }, { sessionId: { isSet: false } }] };
 }
 
+const EVENT_CACHE_TTL_SECONDS = 45;
+
+async function getApprovedEventForBooking(eventId) {
+    const redis = getRedisClient();
+    const cacheKey = `booking:event:${eventId}`;
+    if (redis) {
+        try {
+            const cached = await redis.get(cacheKey);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                return {
+                    ...parsed,
+                    saleStartAt: parsed.saleStartAt ? new Date(parsed.saleStartAt) : null,
+                    saleEndAt: parsed.saleEndAt ? new Date(parsed.saleEndAt) : null,
+                    endAt: parsed.endAt ? new Date(parsed.endAt) : null,
+                };
+            }
+        } catch {
+            // Fall back to MongoDB if Redis read fails
+        }
+    }
+
+    const event = await prisma.event.findFirst({
+        where: { id: eventId, status: "APPROVED" },
+        select: { id: true, status: true, saleStartAt: true, saleEndAt: true, endAt: true },
+    });
+
+    if (event && redis) {
+        try {
+            await redis.set(cacheKey, JSON.stringify(event), "EX", EVENT_CACHE_TTL_SECONDS);
+        } catch {
+            // Ignore Redis write failure
+        }
+    }
+    return event;
+}
+
 async function startBooking({ userId, eventId }) {
     assertId(userId);
     assertId(eventId);
-    const event = await prisma.event.findFirst({ where: { id: eventId, status: "APPROVED" } });
+    const event = await getApprovedEventForBooking(eventId);
     if (!event) throw new NotFoundException("Không tìm thấy sự kiện");
     const now = new Date();
     if (!event.saleStartAt || event.endAt <= now || !isOpen(event.saleStartAt, event.saleEndAt, now)) {
@@ -311,6 +349,29 @@ async function createOrder({ userId, eventId, sessionId, items, bookingToken }) 
     await ensurePaymentIndexes();
     await expireDueOrders(eventId);
 
+    const preCheckNow = new Date();
+    if (expiresAt <= preCheckNow) throw new ConflictException("Lượt mua vé đã hết thời gian");
+    const event = await prisma.event.findUnique({
+        where: { id: eventId },
+        include: { sessions: true },
+    });
+    if (!event || event.status !== "APPROVED") throw new NotFoundException("Không tìm thấy sự kiện đang mở bán");
+    if (!event.saleStartAt || event.endAt <= preCheckNow || !isOpen(event.saleStartAt, event.saleEndAt, preCheckNow)) {
+        throw new ConflictException("Sự kiện hiện không mở bán vé");
+    }
+    const session = event.sessions.find((entry) => entry.id === sessionId);
+    if ((event.sessions.length && !session) || (!event.sessions.length && sessionId)) {
+        throw new BadRequestException("Vui lòng chọn suất diễn hợp lệ");
+    }
+    if (session && (session.endAt <= preCheckNow || !isOpen(session.saleStartAt, session.saleEndAt, preCheckNow))) {
+        throw new ConflictException("Suất diễn hiện không mở bán vé");
+    }
+    const quantity = items.reduce((sum, item) => sum + item.quantity, 0);
+    const maxTickets = Math.min(event.maxTicketsPerOrder ?? 10, 10);
+    if (quantity > maxTickets) {
+        throw new BadRequestException(`Mỗi đơn được mua tối đa ${maxTickets} vé`);
+    }
+
     let attempts = 0;
     for (;;) {
     let freeOrder = false;
@@ -318,26 +379,6 @@ async function createOrder({ userId, eventId, sessionId, items, bookingToken }) 
     return await prisma.$transaction(async (tx) => {
         const now = new Date();
         if (expiresAt <= now) throw new ConflictException("Lượt mua vé đã hết thời gian");
-        const event = await tx.event.findUnique({
-            where: { id: eventId },
-            include: { sessions: true },
-        });
-        if (!event || event.status !== "APPROVED") throw new NotFoundException("Không tìm thấy sự kiện đang mở bán");
-        if (!event.saleStartAt || event.endAt <= now || !isOpen(event.saleStartAt, event.saleEndAt, now)) {
-            throw new ConflictException("Sự kiện hiện không mở bán vé");
-        }
-        const session = event.sessions.find((entry) => entry.id === sessionId);
-        if ((event.sessions.length && !session) || (!event.sessions.length && sessionId)) {
-            throw new BadRequestException("Vui lòng chọn suất diễn hợp lệ");
-        }
-        if (session && (session.endAt <= now || !isOpen(session.saleStartAt, session.saleEndAt, now))) {
-            throw new ConflictException("Suất diễn hiện không mở bán vé");
-        }
-        const quantity = items.reduce((sum, item) => sum + item.quantity, 0);
-        const maxTickets = Math.min(event.maxTicketsPerOrder ?? 10, 10);
-        if (quantity > maxTickets) {
-            throw new BadRequestException(`Mỗi đơn được mua tối đa ${maxTickets} vé`);
-        }
         const types = await tx.ticketType.findMany({
             where: { id: { in: items.map((item) => item.ticketTypeId) }, eventId, ...sessionFilter(sessionId) },
             include: { zone: true },
@@ -503,6 +544,12 @@ async function getOrder({ userId, orderId, sync = false }) {
     const order = await prisma.order.findFirst({
         where: { id: orderId, userId },
         include: {
+            user: {
+                select: {
+                    email: true,
+                    profile: { select: { fullName: true, phone: true } },
+                },
+            },
             orderItems: { include: { ticketType: { include: { event: true, session: true, zone: true } }, tickets: { include: { seat: true } } } },
         },
     });
@@ -510,10 +557,35 @@ async function getOrder({ userId, orderId, sync = false }) {
     return {
         id: order.id, orderCode: order.orderCode, status: order.status,
         expiresAt: order.expiresAt, totalAmount: order.totalAmount, createdAt: order.createdAt, serverTime: new Date(),
+        buyer: order.user ? {
+            fullName: order.user.profile?.fullName || null,
+            email: order.user.email,
+            phone: order.user.profile?.phone || null,
+        } : null,
         items: order.orderItems.map((item) => ({
             id: item.id, quantity: item.quantity, unitPrice: item.unitPrice, subtotal: item.subtotal,
-            ticketType: { name: item.ticketType.name, event: { id: item.ticketType.event.id, name: item.ticketType.event.name, location: item.ticketType.event.location }, session: item.ticketType.session, zone: { name: item.ticketType.zone.name } },
-            tickets: order.status === "PAID" ? item.tickets.map((ticket) => ({ ticketCode: ticket.ticketCode, qrToken: ticket.qrToken, seat: ticket.seat ? { rowLabel: ticket.seat.rowLabel, seatNumber: ticket.seat.seatNumber } : null })) : [],
+            ticketType: {
+                id: item.ticketType.id,
+                name: item.ticketType.name,
+                price: item.ticketType.price,
+                event: {
+                    id: item.ticketType.event.id,
+                    name: item.ticketType.event.name,
+                    location: item.ticketType.event.location,
+                    thumbnailUrl: item.ticketType.event.thumbnailUrl,
+                    bannerUrl: item.ticketType.event.bannerUrl,
+                    startAt: item.ticketType.event.startAt,
+                    endAt: item.ticketType.event.endAt,
+                },
+                session: item.ticketType.session,
+                zone: { name: item.ticketType.zone.name },
+            },
+            tickets: order.status === "PAID" ? item.tickets.map((ticket) => ({
+                ticketCode: ticket.ticketCode,
+                qrToken: ticket.qrToken,
+                status: ticket.status,
+                seat: ticket.seat ? { rowLabel: ticket.seat.rowLabel, seatNumber: ticket.seat.seatNumber } : null,
+            })) : [],
         })),
     };
 }
@@ -534,7 +606,18 @@ async function listOrders({ userId, page = "1" }) {
             select: {
                 id: true, orderCode: true, totalAmount: true, status: true,
                 expiresAt: true, createdAt: true,
-                orderItems: { select: { quantity: true, ticketType: { select: { name: true, event: { select: { name: true } } } } } },
+                orderItems: {
+                    select: {
+                        quantity: true,
+                        ticketType: {
+                            select: {
+                                name: true,
+                                session: { select: { startAt: true } },
+                                event: { select: { name: true, thumbnailUrl: true, location: true, startAt: true } },
+                            },
+                        },
+                    },
+                },
             },
         }),
         prisma.order.count({ where: { userId, status: { in: ["PAID", "REFUNDED"] } } }),

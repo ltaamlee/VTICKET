@@ -29,10 +29,7 @@ function getSessionStatus(session, ticketStatus) {
     return { label: "Đang mở bán", className: "bg-emerald-50 text-emerald-700", disabled: false };
 }
 
-/**
- * EventSessionList - Danh sách suất diễn của sự kiện để người dùng chọn suất
- * trước khi chọn vé (cách trình bày tương tự Ticketbox).
- */
+
 export default function EventSessionList({
     sessions = [],
     selectedSessionId,
@@ -67,9 +64,8 @@ export default function EventSessionList({
                     return (
                         <li
                             key={session.id}
-                            className={`flex flex-wrap items-center gap-4 p-4 transition ${
-                                isSelected ? "bg-blue-50/60" : "bg-white"
-                            }`}
+                            className={`flex flex-wrap items-center gap-4 p-4 transition ${isSelected ? "bg-blue-50/60" : "bg-white"
+                                }`}
                         >
                             <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-blue-600 text-white">
                                 <span className="text-[10px] font-medium uppercase">
@@ -105,11 +101,10 @@ export default function EventSessionList({
                                 type="button"
                                 disabled={disabled || status.disabled}
                                 onClick={() => onSelectSession?.(session)}
-                                className={`inline-flex min-w-28 items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                                    isSelected
+                                className={`inline-flex min-w-28 items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${isSelected
                                         ? "bg-blue-600 text-white"
                                         : "border border-blue-600 text-blue-600 hover:bg-blue-50"
-                                }`}
+                                    }`}
                             >
                                 {isSelected && <Check className="h-4 w-4" />}
                                 {isSelected ? "Đã chọn" : "Chọn suất"}

@@ -84,9 +84,6 @@ function Header() {
                     <Link to="/forum" className="text-sm font-medium text-gray-700 transition hover:text-blue-600">
                         Diễn đàn
                     </Link>
-                    <Link to="/blog" className="text-sm font-medium text-gray-700 transition hover:text-blue-600">
-                        Blog
-                    </Link>
                 </nav>
 
                 {/* Khu vực Xác thực & Menu Người dùng */}
@@ -216,26 +213,6 @@ function Header() {
                                                 >
                                                     <Ticket className="h-4 w-4 text-gray-500" />
                                                     <span>Vé đã mua</span>
-                                                </Link>
-
-                                                {/* Thẻ thành viên */}
-                                                <Link
-                                                    to="/membership"
-                                                    onClick={() => setShowMenu(false)}
-                                                    className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-gray-100 hover:text-gray-900"
-                                                >
-                                                    <Gem className="h-4 w-4 text-gray-500" />
-                                                    <span>Thẻ thành viên</span>
-                                                </Link>
-
-                                                {/* Sự kiện của tôi */}
-                                                <Link
-                                                    to="/my-events"
-                                                    onClick={() => setShowMenu(false)}
-                                                    className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-gray-100 hover:text-gray-900"
-                                                >
-                                                    <Calendar className="h-4 w-4 text-gray-500" />
-                                                    <span>Sự kiện của tôi</span>
                                                 </Link>
 
                                                 {/* Trang cá nhân */}

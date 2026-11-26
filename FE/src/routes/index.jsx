@@ -23,8 +23,6 @@ import MyTicketsPage from "../modules/ticket/pages/MyTicketsPage";
 import OrderPage from "../modules/ticket/pages/OrderPage";
 import OrderSuccessPage from "../modules/ticket/pages/OrderSuccessPage";
 import MyOrdersPage from "../modules/ticket/pages/MyOrdersPage";
-import MembershipPage from "../modules/membership/pages/MembershipPage";
-import MyEventsPage from "../modules/event/pages/MyEventsPage";
 import EventListPage from "../modules/event/pages/EventListPage";
 import EventDetailPage from "../modules/event/pages/EventDetailPage";
 
@@ -57,8 +55,6 @@ function AppRoutes() {
           <Route path="/orders/:id" element={<OrderPage />} />
           <Route path="/orders/:id/success" element={<OrderSuccessPage />} />
           <Route path="/my-orders" element={<MyOrdersPage />} />
-          <Route path="/membership" element={<MembershipPage />} />
-          <Route path="/my-events" element={<MyEventsPage />} />
           <Route path="/organizer/register" element={<OrganizerRegisterPage />} />
         </Route>
 

@@ -254,7 +254,6 @@ class OrganizerEventService extends BaseService {
 
     async getEventDetail({ eventId, organizerId }) {
         this.validateOrganizer(organizerId);
-        await syncCompletedEvents();
 
         const event = await prisma.event.findFirst({
             where: {
@@ -423,8 +422,8 @@ class OrganizerEventService extends BaseService {
                 return tx.event.findUnique({
                     where: { id: event.id },
                     include: {
-                        category: true,
-                        seatMap: { include: { zones: true } },
+                        category: { select: { id: true, name: true, slug: true } },
+                        seatMap: { select: { id: true, name: true, status: true } },
                     },
                 });
             }, { maxWait: 10000, timeout: 20000 });
@@ -639,8 +638,8 @@ class OrganizerEventService extends BaseService {
                 return tx.event.findUnique({
                     where: { id: event.id },
                     include: {
-                        category: true,
-                        seatMap: { include: { zones: true } },
+                        category: { select: { id: true, name: true, slug: true } },
+                        seatMap: { select: { id: true, name: true, status: true } },
                     },
                 });
             }, { maxWait: 10000, timeout: 20000 });
@@ -712,12 +711,8 @@ class OrganizerEventService extends BaseService {
                 reviewedAt: null,
             },
             include: {
-                category: true,
-                seatMap: {
-                    include: {
-                        zones: true,
-                    },
-                },
+                category: { select: { id: true, name: true, slug: true } },
+                seatMap: { select: { id: true, name: true, status: true } },
             },
         });
     }
