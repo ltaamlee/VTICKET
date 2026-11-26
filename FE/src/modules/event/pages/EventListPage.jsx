@@ -6,7 +6,7 @@ import EventFilterBar from "../components/list/EventFilterBar";
 import EventFilterSidebar from "../components/list/EventFilterSidebar";
 import ActiveFilters from "../components/list/ActiveFilters";
 import EventGrid from "../components/list/EventGrid";
-import EventPagination from "../components/list/EventPagination";
+import Pagination from "../../../components/common/Pagination";
 import EventSkeleton from "../components/common/EventSkeleton";
 import { getEvents, getCategories } from "../services/eventService";
 
@@ -233,10 +233,13 @@ export default function EventListPage() {
                                 />
 
                                 {/* Phân trang */}
-                                <EventPagination
-                                    pagination={pagination}
-                                    onPageChange={handlePageChange}
-                                />
+                                <div className="mt-8">
+                                    <Pagination
+                                        page={pagination?.currentPage || 1}
+                                        totalPages={pagination?.totalPages || 1}
+                                        onPageChange={handlePageChange}
+                                    />
+                                </div>
                             </>
                         )}
                     </div>

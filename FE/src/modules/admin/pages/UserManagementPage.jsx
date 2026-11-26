@@ -128,10 +128,6 @@ function UserPage() {
                 <h1 className="text-2xl font-bold text-gray-900">
                     Quản lý người dùng
                 </h1>
-
-                <p className="mt-1 text-sm text-gray-500">
-                    Quản lý tài khoản người dùng và ban tổ chức trên VTICKET.
-                </p>
             </div>
 
             <UserStats />

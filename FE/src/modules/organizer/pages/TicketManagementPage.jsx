@@ -262,9 +262,6 @@ function TicketManagementPage() {
                     <h1 className="text-2xl font-bold text-slate-900">
                         Quản lý vé
                     </h1>
-                    <p className="mt-1 text-sm text-slate-500">
-                        Tra cứu thông tin vé và check-in khách tham dự.
-                    </p>
                 </div>
                 <label className="w-full sm:max-w-sm">
                     <span className="mb-1.5 block text-xs font-semibold text-slate-600">

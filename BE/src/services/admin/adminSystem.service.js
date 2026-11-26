@@ -11,16 +11,6 @@ const DEFAULT_SETTINGS = {
         defaultPageSize: 10,
     },
 
-    payment: {
-        platformFeeRate: 2,
-        environment: "SANDBOX",
-        providers: {
-            momo: { enabled: true },
-            vnpay: { enabled: true },
-            payos: { enabled: false },
-        },
-    },
-
     localization: {
         defaultLanguage: "vi",
         supportedLanguages: ["vi", "en"],

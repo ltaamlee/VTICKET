@@ -4,8 +4,8 @@ const rateLimit = require('express-rate-limit');
  * Rate Limiter Middleware for API protection against spam & DDoS
  */
 const apiLimiter = rateLimit({
-  windowMs: 10000 * 60 * 1000, // 1 hour
-  max: 10000, // Limit each IP to 100 requests per hour
+  windowMs: 100000 * 60 * 1000, // 1 hour
+  max: 100000, // Limit each IP to 100 requests per hour
   standardHeaders: true,
   legacyHeaders: false,
   message: {

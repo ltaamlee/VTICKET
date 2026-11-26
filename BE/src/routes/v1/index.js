@@ -8,7 +8,9 @@ const uploadRoutes = require('./upload.routes');
 const organizerRoutes = require('./organizer.route');
 const eventRoutes = require('./event.route');
 const categoryRoutes = require('./category.route');
+const settingRoutes = require('./setting.route');
 
+router.use('/settings', settingRoutes);
 router.use('/auth', authRoutes);
 router.use('/admin', adminRoutes);
 router.use('/users', userRoutes);

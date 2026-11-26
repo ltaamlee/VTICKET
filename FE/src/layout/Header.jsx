@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { useSystemSettings } from "../contexts/SystemSettingsContext";
 import {
     User,
     LayoutDashboard,
@@ -17,6 +18,7 @@ import {
 
 function Header() {
     const { user, isAuthenticated, logout } = useAuth();
+    const { settings } = useSystemSettings();
     const [showMenu, setShowMenu] = useState(false);
     const [searchKeyword, setSearchKeyword] = useState("");
     const dropdownRef = useRef(null);
@@ -53,9 +55,16 @@ function Header() {
     return (
         <header className="sticky top-0 z-40 bg-blue-100/90 backdrop-blur-md shadow-sm">
             <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2.5 sm:px-6 gap-3 sm:gap-6">
-                {/* Logo VTICKET */}
-                <Link to="/" className="text-2xl font-black tracking-tight text-blue-600 transition hover:opacity-90 shrink-0">
-                    VTICKET
+                {/* Logo */}
+                <Link to="/" className="flex items-center gap-2 text-2xl font-black tracking-tight text-blue-600 transition hover:opacity-90 shrink-0" style={{ color: settings.primaryColor || undefined }}>
+                    {settings.logoUrl ? (
+                        <img
+                            src={settings.logoUrl}
+                            alt={settings.title || "Logo"}
+                            className="h-8 w-auto max-w-[140px] object-contain"
+                        />
+                    ) : null}
+                    <span>{settings.title || "VTICKET"}</span>
                 </Link>
 
                 {/* Thanh tìm kiếm */}
