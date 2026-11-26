@@ -137,6 +137,18 @@ class ForumController {
         );
         return sendResponse(res, 200, "Tương tác bài viết thành công", result);
     });
+
+    /**
+     * Lấy danh sách hoạt động trên bài viết của chính user
+     * GET /api/v1/forum/activity
+     */
+    getMyActivity = asyncHandler(async (req, res) => {
+        const result = await this.forumService.getMyActivity(
+            req.user.id,
+            req.query
+        );
+        return sendResponse(res, 200, "Lấy hoạt động thành công", result);
+    });
 }
 
 module.exports = new ForumController();

@@ -17,8 +17,6 @@ function PostFormBody({
     onSuccess,
 }) {
     const eventSelectId = useId();
-    const titleInputId = useId();
-    const titleErrorId = useId();
     const contentInputId = useId();
     const contentErrorId = useId();
     const statusLiveId = useId();
@@ -31,7 +29,6 @@ function PostFormBody({
             : defaultEventId || "";
 
     const [eventId, setEventId] = useState(initialEventId);
-    const [title, setTitle] = useState(editingPost?.title || "");
     const [content, setContent] = useState(editingPost?.content || "");
     const [fieldErrors, setFieldErrors] = useState({});
     const [submitError, setSubmitError] = useState("");
@@ -53,13 +50,9 @@ function PostFormBody({
         e.preventDefault();
         if (submitting) return;
 
-        const trimmedTitle = title.trim();
         const trimmedContent = content.trim();
         const errors = {};
 
-        if (trimmedTitle.length < 3) {
-            errors.title = "Tiêu đề bài viết cần ít nhất 3 ký tự.";
-        }
         if (trimmedContent.length < 5) {
             errors.content = "Nội dung bài viết cần ít nhất 5 ký tự.";
         }
@@ -74,8 +67,9 @@ function PostFormBody({
             setFieldErrors({});
             setSubmitError("");
 
+            const autoTitle = trimmedContent.split(/\r?\n/)[0].trim().slice(0, 120);
             const payload = {
-                title: trimmedTitle,
+                title: autoTitle,
                 content: trimmedContent,
                 eventId: lockedEvent?.id ? lockedEvent.id : eventId || null,
             };
@@ -153,42 +147,6 @@ function PostFormBody({
                                 </option>
                             ))}
                         </select>
-                    )}
-                </div>
-
-                <div>
-                    <label
-                        htmlFor={titleInputId}
-                        className="mb-1.5 block text-sm font-medium text-slate-700"
-                    >
-                        Tiêu đề bài viết <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                        id={titleInputId}
-                        type="text"
-                        value={title}
-                        onChange={(e) => {
-                            setTitle(e.target.value);
-                            if (fieldErrors.title) {
-                                setFieldErrors((prev) => ({ ...prev, title: "" }));
-                            }
-                        }}
-                        disabled={submitting}
-                        maxLength={180}
-                        required
-                        aria-invalid={Boolean(fieldErrors.title)}
-                        aria-describedby={fieldErrors.title ? titleErrorId : undefined}
-                        placeholder="Ví dụ: Hỏi về chỗ gửi xe và check-in sự kiện..."
-                        className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 aria-invalid:border-red-500"
-                    />
-                    {fieldErrors.title && (
-                        <p
-                            id={titleErrorId}
-                            aria-live="polite"
-                            className="mt-1.5 text-xs font-medium text-red-600"
-                        >
-                            {fieldErrors.title}
-                        </p>
                     )}
                 </div>
 

@@ -15,6 +15,7 @@ router.get("/posts", optionalAuthenticate, forumController.getPosts);
 router.get("/posts/:id", optionalAuthenticate, forumController.getPostDetail);
 
 // Các thao tác yêu cầu đăng nhập
+router.get("/activity", authenticate, forumController.getMyActivity);
 router.post("/posts", authenticate, forumController.createPost);
 router.put("/posts/:id", authenticate, forumController.updatePost);
 router.delete("/posts/:id", authenticate, forumController.deletePost);

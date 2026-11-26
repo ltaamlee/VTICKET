@@ -1,8 +1,11 @@
-import { useCallback, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { Heart, MessageCircle, MessagesSquare, User } from "lucide-react";
 import Header from "../../../layout/Header";
 import Footer from "../../../layout/Footer";
 import { useAuth } from "../../../contexts/AuthContext";
+import { getProfile } from "../../profile/services/profileService";
+import { getMyActivity } from "../services/forumService";
 import ForumPostFeed from "../components/ForumPostFeed";
 import ForumSidebar from "../components/ForumSidebar";
 import ForumNotice from "../components/ForumNotice";
@@ -10,8 +13,10 @@ import { useTaggableEvents } from "../hooks/useTaggableEvents";
 
 function ForumListPage() {
     const [searchParams, setSearchParams] = useSearchParams();
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user, updateUser } = useAuth();
     const feedRef = useRef(null);
+    const [profileAvatar, setProfileAvatar] = useState("");
+    const [profileName, setProfileName] = useState("");
 
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
     const keyword = searchParams.get("keyword") || "";
@@ -19,8 +24,12 @@ function ForumListPage() {
     const sortBy = searchParams.get("sortBy") || "newest";
     const mine = isAuthenticated && searchParams.get("mine") === "true";
     const liked = isAuthenticated && searchParams.get("liked") === "true";
+    const isActivityTab = isAuthenticated && searchParams.get("tab") === "activity";
 
     const [pageNotice, setPageNotice] = useState(null);
+    const [activityItems, setActivityItems] = useState([]);
+    const [activityLoading, setActivityLoading] = useState(false);
+    const [activityError, setActivityError] = useState("");
 
     // Trạng thái mở / ẩn của sidebar (lưu trong localStorage để ghi nhớ)
     const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
@@ -37,6 +46,54 @@ function ForumListPage() {
     }, []);
 
     const { events: taggableEvents } = useTaggableEvents({ limit: 50 });
+
+    useEffect(() => {
+        if (!mine || !isAuthenticated) return;
+        let cancelled = false;
+        getProfile()
+            .then((res) => {
+                if (cancelled) return;
+                const data = res?.data || res;
+                if (data?.avatar) {
+                    setProfileAvatar(data.avatar);
+                    if (data.avatar !== user?.avatar) {
+                        updateUser?.({ avatar: data.avatar });
+                    }
+                }
+                if (data?.fullName) {
+                    setProfileName(data.fullName);
+                }
+            })
+            .catch(() => { });
+        return () => {
+            cancelled = true;
+        };
+    }, [mine, isAuthenticated, user?.avatar, updateUser]);
+
+    const resolvedAvatar = profileAvatar || user?.avatarUrl || user?.avatar || "";
+    const resolvedName = profileName || user?.fullName || user?.name || "Thành viên";
+
+    useEffect(() => {
+        if (!isActivityTab) return;
+        let cancelled = false;
+        setActivityLoading(true);
+        setActivityError("");
+        getMyActivity({ limit: 30 })
+            .then((res) => {
+                if (cancelled) return;
+                setActivityItems(res?.data?.items || []);
+            })
+            .catch((err) => {
+                if (cancelled) return;
+                setActivityError(err.message || "Không thể tải danh sách hoạt động.");
+            })
+            .finally(() => {
+                if (!cancelled) setActivityLoading(false);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [isActivityTab]);
 
     const showNotice = useCallback((message, type = "info") => {
         setPageNotice({ message, type });
@@ -110,10 +167,188 @@ function ForumListPage() {
                     <div className="mx-auto w-full max-w-4xl space-y-4">
                         <ForumNotice notice={pageNotice} onDismiss={dismissNotice} />
 
-                        {/* Feed bài viết */}
+                        {/* Khung Profile khi ở tab Bài của tôi */}
+                        {mine && user && (
+                            <section
+                                aria-label="Thông tin trang cá nhân"
+                                className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs sm:p-6"
+                            >
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="min-w-0">
+                                        <h1 className="truncate text-xl font-bold text-slate-900 sm:text-2xl">
+                                            {resolvedName}
+                                        </h1>
+                                        <p className="mt-0.5 truncate text-sm text-slate-500">
+                                            {user.username ? `@${user.username}` : user.email}
+                                        </p>
+                                    </div>
 
-                        {/* Feed bài viết */}
-                        <section>
+                                    {resolvedAvatar ? (
+                                        <img
+                                            src={resolvedAvatar}
+                                            alt={resolvedName}
+                                            className="h-14 w-14 shrink-0 rounded-full object-cover ring-1 ring-slate-200 sm:h-16 sm:w-16"
+                                        />
+                                    ) : (
+                                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 ring-1 ring-slate-200 sm:h-16 sm:w-16">
+                                            <User className="h-7 w-7" aria-hidden="true" />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => feedRef.current?.openCreate()}
+                                        className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
+                                    >
+                                        {resolvedAvatar ? (
+                                            <img
+                                                src={resolvedAvatar}
+                                                alt=""
+                                                className="h-8 w-8 shrink-0 rounded-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+                                                <User className="h-4 w-4" aria-hidden="true" />
+                                            </div>
+                                        )}
+                                        <span className="truncate text-sm text-slate-400">
+                                            Có gì mới?
+                                        </span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => feedRef.current?.openCreate()}
+                                        className="shrink-0 cursor-pointer rounded-xl border border-slate-200 bg-white px-4 py-1.5 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-50"
+                                    >
+                                        Đăng
+                                    </button>
+                                </div>
+                            </section>
+                        )}
+
+                        {/* Hoạt động hoặc Feed bài viết */}
+                        {isActivityTab ? (
+                            <section
+                                aria-label="Hoạt động trên bài viết của bạn"
+                                className="rounded-2xl border border-slate-200/80 bg-white shadow-2xs"
+                            >
+                                <div className="border-b border-slate-100 px-5 py-4">
+                                    <h1 className="text-lg font-bold text-slate-900">
+                                        Hoạt động
+                                    </h1>
+                                </div>
+
+                                {activityLoading ? (
+                                    <div className="divide-y divide-slate-100 p-5">
+                                        {[1, 2, 3].map((i) => (
+                                            <div key={i} className="flex items-center gap-3 py-3 animate-pulse">
+                                                <div className="h-10 w-10 rounded-full bg-slate-200" />
+                                                <div className="flex-1 space-y-2">
+                                                    <div className="h-3.5 w-1/3 rounded bg-slate-200" />
+                                                    <div className="h-3 w-2/3 rounded bg-slate-100" />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : activityError ? (
+                                    <div className="p-8 text-center text-sm text-red-600">
+                                        {activityError}
+                                    </div>
+                                ) : activityItems.length === 0 ? (
+                                    <div className="p-10 text-center">
+                                        <MessagesSquare
+                                            className="mx-auto h-10 w-10 text-slate-300"
+                                            aria-hidden="true"
+                                        />
+                                        <h3 className="mt-3 text-base font-semibold text-slate-800">
+                                            Chưa có hoạt động nào
+                                        </h3>
+                                        <p className="mt-1 text-sm text-slate-500">
+                                            Khám phá thêm các bài đăng khác và tương tác cùng cộng đồng nhé.
+                                        </p>
+                                        <div className="mt-5 flex justify-center">
+                                            <Link
+                                                to="/forum"
+                                                className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                                            >
+                                                Khám phá bài viết
+                                            </Link>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="divide-y divide-slate-100">
+                                        {activityItems.map((item) => (
+                                            <Link
+                                                key={item.id}
+                                                to={`/forum/${item.post?.id}`}
+                                                className="flex items-start gap-3.5 px-5 py-4 transition-colors hover:bg-slate-50"
+                                            >
+                                                <div className="relative shrink-0">
+                                                    {item.actor?.avatar ? (
+                                                        <img
+                                                            src={item.actor.avatar}
+                                                            alt={item.actor.name}
+                                                            className="h-10 w-10 rounded-full object-cover ring-1 ring-slate-200"
+                                                        />
+                                                    ) : (
+                                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500 ring-1 ring-slate-200">
+                                                            <User className="h-5 w-5" aria-hidden="true" />
+                                                        </div>
+                                                    )}
+                                                    <span
+                                                        className={`absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full text-white ring-2 ring-white ${
+                                                            item.activityType === "REACTION"
+                                                                ? "bg-pink-500"
+                                                                : "bg-blue-500"
+                                                        }`}
+                                                    >
+                                                        {item.activityType === "REACTION" ? (
+                                                            <Heart className="h-2.5 w-2.5 fill-current" />
+                                                        ) : (
+                                                            <MessageCircle className="h-2.5 w-2.5 fill-current" />
+                                                        )}
+                                                    </span>
+                                                </div>
+
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2 text-sm">
+                                                        <span className="truncate font-semibold text-slate-900">
+                                                            {item.actor?.name}
+                                                        </span>
+                                                        <span className="shrink-0 text-xs text-slate-400">
+                                                            {new Date(item.createdAt).toLocaleDateString("vi-VN")}
+                                                        </span>
+                                                    </div>
+                                                    <p className="mt-0.5 text-sm text-slate-600">
+                                                        {item.activityType === "REACTION"
+                                                            ? "Đã thích bài viết của bạn"
+                                                            : `Đã bình luận: "${item.commentContent}"`}
+                                                    </p>
+                                                    {item.post?.content && (
+                                                        <p className="mt-1 line-clamp-1 text-xs text-slate-400">
+                                                            {item.post.content}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                )}
+                            </section>
+                        ) : (
+                        <section
+                            aria-label="Danh sách bài viết"
+                            className="rounded-2xl border border-slate-200/80 bg-white shadow-2xs"
+                        >
+                            {!mine && !liked && (
+                                <div className="border-b border-slate-100 px-5 py-4">
+                                    <h1 className="text-lg font-bold text-slate-900">
+                                        Dành cho bạn
+                                    </h1>
+                                </div>
+                            )}
                             <ForumPostFeed
                                 ref={feedRef}
                                 filters={{
@@ -144,15 +379,26 @@ function ForumListPage() {
                                 }
                                 emptyDescription={
                                     liked
-                                        ? "Thả tim những bài viết bạn yêu thích để dễ dàng xem lại tại đây!"
+                                        ? "Khám phá thêm các bài đăng khác và thả tim những bài viết bạn yêu thích nhé."
                                         : mine
                                             ? "Hãy chia sẻ cảm nghĩ hoặc đặt câu hỏi đầu tiên cùng cộng đồng nhé."
                                             : hasActiveFilters
                                                 ? "Thử thay đổi từ khóa hoặc bộ lọc chủ đề để xem thêm bài viết."
                                                 : "Hãy mở đầu cuộc trò chuyện bằng bài viết đầu tiên của bạn!"
                                 }
+                                emptyAction={
+                                    liked ? (
+                                        <Link
+                                            to="/forum"
+                                            className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                                        >
+                                            Khám phá bài viết
+                                        </Link>
+                                    ) : null
+                                }
                             />
                         </section>
+                        )}
                     </div>
                 </main>
             </div>

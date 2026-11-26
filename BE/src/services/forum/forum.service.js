@@ -675,6 +675,113 @@ class ForumService {
             reactions: this.mapper.formatReactions(updatedReactions, userId),
         };
     }
+
+    /**
+     * Lấy danh sách hoạt động (tim / bình luận) trên các bài viết của chính user
+     */
+    async getMyActivity(userId, query = {}) {
+        if (!userId) {
+            throw new UnauthorizedException(
+                "Vui lòng đăng nhập để xem hoạt động"
+            );
+        }
+
+        const limit = Math.min(50, Math.max(1, Number(query.limit) || 30));
+
+        const [reactions, comments] = await Promise.all([
+            this.prisma.reaction.findMany({
+                where: {
+                    post: {
+                        authorId: userId,
+                        status: "VISIBLE",
+                    },
+                    userId: { not: userId },
+                },
+                orderBy: { createdAt: "desc" },
+                take: limit,
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            username: true,
+                            profile: { select: { fullName: true, avatar: true } },
+                        },
+                    },
+                    post: {
+                        select: {
+                            id: true,
+                            title: true,
+                            content: true,
+                        },
+                    },
+                },
+            }),
+            this.prisma.comment.findMany({
+                where: {
+                    post: {
+                        authorId: userId,
+                        status: "VISIBLE",
+                    },
+                    authorId: { not: userId },
+                    status: "VISIBLE",
+                },
+                orderBy: { createdAt: "desc" },
+                take: limit,
+                include: {
+                    author: {
+                        select: {
+                            id: true,
+                            username: true,
+                            profile: { select: { fullName: true, avatar: true } },
+                        },
+                    },
+                    post: {
+                        select: {
+                            id: true,
+                            title: true,
+                            content: true,
+                        },
+                    },
+                },
+            }),
+        ]);
+
+        const reactionItems = reactions.map((r) => ({
+            id: `reaction-${r.id}`,
+            activityType: "REACTION",
+            reactionType: r.type,
+            actor: {
+                id: r.user?.id,
+                name: r.user?.profile?.fullName || r.user?.username || "Thành viên",
+                username: r.user?.username || null,
+                avatar: r.user?.profile?.avatar || null,
+            },
+            post: r.post,
+            commentContent: null,
+            createdAt: r.createdAt,
+        }));
+
+        const commentItems = comments.map((c) => ({
+            id: `comment-${c.id}`,
+            activityType: "COMMENT",
+            reactionType: null,
+            actor: {
+                id: c.author?.id,
+                name: c.author?.profile?.fullName || c.author?.username || "Thành viên",
+                username: c.author?.username || null,
+                avatar: c.author?.profile?.avatar || null,
+            },
+            post: c.post,
+            commentContent: c.content,
+            createdAt: c.createdAt,
+        }));
+
+        const items = [...reactionItems, ...commentItems]
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .slice(0, limit);
+
+        return { items };
+    }
 }
 
 module.exports = new ForumService();

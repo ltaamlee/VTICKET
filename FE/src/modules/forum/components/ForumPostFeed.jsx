@@ -21,6 +21,7 @@ function ForumPostFeed({
     onResetFilters,
     emptyTitle = "Chưa tìm thấy bài viết nào",
     emptyDescription = "Hãy mở đầu cuộc trò chuyện bằng bài viết đầu tiên của bạn!",
+    emptyAction = null,
     createButtonLabel = "Đăng bài viết",
     createSuccessMessage = "Đã đăng bài viết mới!",
     skeletonCount = 3,
@@ -133,23 +134,15 @@ function ForumPostFeed({
                     </h3>
                     <p className="mt-1 text-sm text-slate-500">{emptyDescription}</p>
                     <div className="mt-5 flex justify-center gap-3">
-                        {hasActiveFilters && onResetFilters && (
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                onClick={onResetFilters}
-                            >
-                                Xóa bộ lọc
+                        {emptyAction || (
+                            <Button type="button" size="sm" onClick={handleOpenCreateModal}>
+                                {createButtonLabel}
                             </Button>
                         )}
-                        <Button type="button" size="sm" onClick={handleOpenCreateModal}>
-                            {createButtonLabel}
-                        </Button>
                     </div>
                 </div>
             ) : (
-                <div className="space-y-4">
+                <div className="divide-y divide-slate-100">
                     {posts.map((post) => (
                         <PostCard
                             key={post.id}

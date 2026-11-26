@@ -23,6 +23,13 @@ export function getTaggableEvents({ keyword = "", limit = 30 } = {}) {
     });
 }
 
+export function getMyActivity({ limit = 30 } = {}) {
+    const query = buildQuery({ limit });
+    return apiRequest(`/forum/activity${query}`, {
+        method: "GET",
+    });
+}
+
 export function getPosts({
     page = 1,
     limit = 10,

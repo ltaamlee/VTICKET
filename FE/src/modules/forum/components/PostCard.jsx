@@ -32,7 +32,7 @@ function PostCard({
     return (
         <article
             onClick={handleCardClick}
-            className="cursor-pointer rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs transition-shadow hover:shadow-md sm:p-6"
+            className="cursor-pointer px-5 py-5 transition-colors hover:bg-slate-50/60 sm:px-6"
         >
             <div className="flex flex-wrap items-start justify-between gap-3">
                 {/* Header tác giả phong cách Threads: [Avatar] Tên tác giả > Tên sự kiện  Thời gian */}
@@ -82,10 +82,6 @@ function PostCard({
             </div>
 
             <div className="mt-4">
-                <h2 className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
-                    <span>{post.title}</span>
-                </h2>
-
                 {post.excerpt && (
                     <p className="mt-2 line-clamp-3 whitespace-pre-line text-sm leading-relaxed text-slate-700">
                         {post.excerpt}

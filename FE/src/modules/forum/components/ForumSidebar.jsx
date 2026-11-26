@@ -68,12 +68,9 @@ function ForumSidebar({
             id: "activity",
             label: "Hoạt động",
             icon: Bell,
-            to: "#",
+            to: "/forum?tab=activity",
             isActive: isActivityActive,
-            onClick: (e) => {
-                e.preventDefault();
-                onNotify?.("Tính năng thông báo Hoạt động đang được phát triển!", "info");
-            },
+            requireAuth: true,
         },
         {
             id: "liked",
@@ -85,14 +82,14 @@ function ForumSidebar({
         },
         ...(isAuthenticated
             ? [
-                  {
-                      id: "mine",
-                      label: "Bài của tôi",
-                      icon: User,
-                      to: "/forum?mine=true",
-                      isActive: isMineActive,
-                  },
-              ]
+                {
+                    id: "mine",
+                    label: "Trang cá nhân",
+                    icon: User,
+                    to: "/forum?mine=true",
+                    isActive: isMineActive,
+                },
+            ]
             : []),
     ];
 
@@ -100,9 +97,8 @@ function ForumSidebar({
         <>
             {/* Desktop Sidebar sát mép trái toàn màn hình */}
             <aside
-                className={`sticky top-16 hidden md:flex h-[calc(100vh-4rem)] shrink-0 flex-col justify-between border-r border-slate-200/80 bg-white/95 px-3 py-4 backdrop-blur-md transition-all duration-300 z-20 ${
-                    isOpen ? "w-60" : "w-0 p-0 overflow-hidden border-none"
-                }`}
+                className={`sticky top-16 hidden md:flex h-[calc(100vh-4rem)] shrink-0 flex-col justify-between border-r border-slate-200/80 bg-white/95 px-3 py-4 backdrop-blur-md transition-all duration-300 z-20 ${isOpen ? "w-60" : "w-0 p-0 overflow-hidden border-none"
+                    }`}
             >
                 {isOpen && (
                     <div className="flex h-full flex-col justify-between">
@@ -152,13 +148,10 @@ function ForumSidebar({
                                             className={`flex items-center gap-3.5 rounded-2xl px-4 py-3 text-sm transition-colors ${activeClass}`}
                                         >
                                             <Icon
-                                                className={`h-5 w-5 shrink-0 ${
-                                                    item.isActive && item.id === "liked"
-                                                        ? "fill-red-500 text-red-500"
-                                                        : item.isActive
-                                                        ? "text-slate-900"
-                                                        : "text-slate-500"
-                                                }`}
+                                                className={`h-5 w-5 shrink-0 ${item.isActive
+                                                    ? "text-slate-900"
+                                                    : "text-slate-500"
+                                                    }`}
                                             />
                                             <span className="truncate">{item.label}</span>
                                         </Link>
@@ -200,18 +193,16 @@ function ForumSidebar({
                                     handleProtectedClick(e);
                                 }
                             }}
-                            className={`flex flex-col items-center gap-1 p-2 text-xs transition-colors ${
-                                item.isActive ? "font-bold text-slate-900" : "text-slate-500"
-                            }`}
+                            className={`flex flex-col items-center gap-1 p-2 text-xs transition-colors ${item.isActive ? "font-bold text-slate-900" : "text-slate-500"
+                                }`}
                         >
                             <Icon
-                                className={`h-5 w-5 ${
-                                    item.isActive && item.id === "liked"
-                                        ? "fill-red-500 text-red-500"
-                                        : item.isActive
+                                className={`h-5 w-5 ${item.isActive && item.id === "liked"
+                                    ? "fill-red-500 text-red-500"
+                                    : item.isActive
                                         ? "text-slate-900"
                                         : "text-slate-500"
-                                }`}
+                                    }`}
                             />
                             <span className="text-[11px]">{item.label}</span>
                         </Link>

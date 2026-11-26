@@ -208,11 +208,7 @@ function PostDetailPage() {
                                 </div>
                             </div>
 
-                            <h1 className="mt-5 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                                {post.title}
-                            </h1>
-
-                            <div className="mt-6 whitespace-pre-wrap wrap-break-word text-base leading-relaxed text-slate-800">
+                            <div className="mt-5 whitespace-pre-wrap wrap-break-word text-base leading-relaxed text-slate-800">
                                 {post.content}
                             </div>
 

@@ -3,14 +3,6 @@ import { Link } from "react-router-dom";
 import { Heart, MessageCircle, Repeat, Send, Check } from "lucide-react";
 import { formatSocialCount } from "../utils/forumHelpers";
 
-/**
- * PostActionBar - Cụm 4 nút hành động phong cách Threads
- * Sử dụng chung cho cả Bài viết (Post) và Bình luận / Câu trả lời (Comment)
- * - Nút Tim: đổi màu đỏ tươi khi đã thích, ẩn số lượng nếu bằng 0
- * - Nút Bình luận: mở khung trả lời hoặc chuyển đến bình luận, ẩn số nếu bằng 0
- * - Nút Đăng lại: sao chép liên kết bài viết / bình luận để chia sẻ
- * - Nút Chia sẻ: chia sẻ nhanh
- */
 function PostActionBar({
     postId,
     shareUrl,
@@ -81,19 +73,17 @@ function PostActionBar({
             >
                 <span className={`flex ${buttonPadClass} items-center justify-center rounded-full transition-colors group-hover:bg-red-50`}>
                     <Heart
-                        className={`${iconClass} transition-colors ${
-                            isLiked
+                        className={`${iconClass} transition-colors ${isLiked
                                 ? "fill-red-500 text-red-500"
                                 : "text-slate-600 group-hover:text-red-500"
-                        }`}
+                            }`}
                         aria-hidden="true"
                     />
                 </span>
                 {formattedLikes && (
                     <span
-                        className={`tabular-nums font-semibold ${
-                            isLiked ? "text-red-500" : "text-slate-700"
-                        }`}
+                        className={`tabular-nums font-semibold ${isLiked ? "text-red-500" : "text-slate-700"
+                            }`}
                     >
                         {formattedLikes}
                     </span>
