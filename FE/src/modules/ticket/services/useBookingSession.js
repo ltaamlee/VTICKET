@@ -25,6 +25,7 @@ export function resetBookingOnEventPage(eventId, userId) {
 export default function useBookingSession(eventId, userId, now) {
     const [session, setSession] = useState(null);
     const [orderStatus, setOrderStatus] = useState(null);
+    const [queueState, setQueueState] = useState(null);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(true);
     const [attempt, setAttempt] = useState(0);
@@ -33,6 +34,7 @@ export default function useBookingSession(eventId, userId, now) {
     useEffect(() => {
         if (!key) return;
         let cancelled = false;
+        let retryTimer = null;
         async function load() {
             try {
                 const stored = sessionStorage.getItem(key);
@@ -40,6 +42,19 @@ export default function useBookingSession(eventId, userId, now) {
                 if (!value) {
                     const response = await startBookingSession(eventId);
                     if (cancelled) return;
+                    if (response.data.status === "QUEUED") {
+                        setQueueState({
+                            position: response.data.position,
+                            totalInQueue: response.data.totalInQueue,
+                        });
+                        setError("");
+                        setLoading(false);
+                        retryTimer = setTimeout(() => {
+                            if (!cancelled) setAttempt((v) => v + 1);
+                        }, 3000);
+                        return;
+                    }
+                    setQueueState(null);
                     value = {
                         token: response.data.token,
                         expiresAt: response.data.expiresAt,
@@ -78,7 +93,10 @@ export default function useBookingSession(eventId, userId, now) {
             }
         }
         load();
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+            if (retryTimer) clearTimeout(retryTimer);
+        };
     }, [key, eventId, attempt]);
 
     const clockNow = Math.max(now, session?.observedAt || 0);
@@ -125,5 +143,5 @@ export default function useBookingSession(eventId, userId, now) {
         setOrderStatus(order.status);
     }
 
-    return { session, orderStatus, error, loading, expired, restart, rememberOrder, clockNow };
+    return { session, orderStatus, queueState, error, loading, expired, restart, rememberOrder, clockNow };
 }

@@ -117,9 +117,11 @@ async function processOrderPaid(payload) {
     const prisma = require("../../config/prisma");
     const ensurePaymentIndexes = require("./paymentIndexes");
     const { expireInTransaction, hasValidReservation, releaseReservationInTransaction, validateBookingReservation, finalizeBookingReservation } = require("../user/order.service");
+    const { releaseWaitingRoomSlot } = require("../user/waitingRoom.service");
     await ensurePaymentIndexes();
     for (let attempt = 0; ; attempt += 1) {
     try {
+        let paidContext = null;
         const result = await prisma.$transaction(async (tx) => {
             const existing = await tx.sePayNotification.findUnique({ where: { transactionId } });
             if (existing) {
@@ -166,6 +168,7 @@ async function processOrderPaid(payload) {
                     return tx.sePayNotification.create({ data: receipt });
                 }
                 const order = await finalizeBookingReservation(tx, reservation, now);
+                paidContext = { eventId: reservation.eventId, userId: reservation.userId };
                 await tx.payment.create({
                     data: { orderId: order.id, transactionCode: transactionId, amount: reservation.totalAmount, method: "SEPAY", status: "SUCCESS", paidAt: now },
                 });
@@ -198,6 +201,12 @@ async function processOrderPaid(payload) {
                 return tx.sePayNotification.create({ data: receipt });
             }
             const validReservations = await hasValidReservation(tx, order);
+            if (validReservations) {
+                paidContext = {
+                    eventId: order.orderItems?.[0]?.ticketType?.eventId || null,
+                    userId: order.userId,
+                };
+            }
             if (!validReservations) {
                 receipt.reason = "INVALID_RESERVATION";
                 await tx.payment.create({
@@ -227,6 +236,9 @@ async function processOrderPaid(payload) {
         });
         if (result.outcome === "REVIEW_REQUIRED") {
             console.error("[SePay] Giao dịch cần đối soát thủ công:", result.transactionId, result.invoiceNumber, result.reason);
+        }
+        if (paidContext?.eventId && paidContext?.userId) {
+            releaseWaitingRoomSlot(paidContext.eventId, paidContext.userId).catch(() => {});
         }
         return result;
     } catch (error) {

@@ -7,6 +7,7 @@ const paymentService = require("../payment/payment.service");
 const ensurePaymentIndexes = require("../payment/paymentIndexes");
 const JwtUtils = require("../../utils/jwtUtils");
 const generateOrderCode = require("../../utils/orderCode");
+const { enterWaitingRoom } = require("./waitingRoom.service");
 
 const HOLD_MS = 15 * 60 * 1000;
 const objectId = (value) => typeof value === "string" && /^[a-f\d]{24}$/i.test(value);
@@ -212,8 +213,17 @@ async function startBooking({ userId, eventId }) {
     if (!event.saleStartAt || event.endAt <= now || !isOpen(event.saleStartAt, event.saleEndAt, now)) {
         throw new ConflictException("Sự kiện hiện không mở bán vé");
     }
+    const admission = await enterWaitingRoom(eventId, userId);
+    if (admission.status === "QUEUED") {
+        return {
+            status: "QUEUED",
+            position: admission.position,
+            totalInQueue: admission.total,
+            serverTime: now,
+        };
+    }
     const expiresAt = new Date(Math.floor((now.getTime() + HOLD_MS) / 1000) * 1000);
-    return { token: JwtUtils.generateBookingToken({ userId, eventId }, expiresAt), expiresAt, serverTime: now };
+    return { status: "ADMITTED", token: JwtUtils.generateBookingToken({ userId, eventId }, expiresAt), expiresAt, serverTime: now };
 }
 
 function bookingDeadline(token, userId, eventId) {
@@ -346,8 +356,6 @@ async function createOrder({ userId, eventId, sessionId, items, bookingToken }) 
     if (sessionId != null) assertId(sessionId);
     validateItems(items);
     const expiresAt = bookingDeadline(bookingToken, userId, eventId);
-    await ensurePaymentIndexes();
-    await expireDueOrders(eventId);
 
     const preCheckNow = new Date();
     if (expiresAt <= preCheckNow) throw new ConflictException("Lượt mua vé đã hết thời gian");
@@ -372,36 +380,49 @@ async function createOrder({ userId, eventId, sessionId, items, bookingToken }) 
         throw new BadRequestException(`Mỗi đơn được mua tối đa ${maxTickets} vé`);
     }
 
+    const types = await prisma.ticketType.findMany({
+        where: { id: { in: items.map((item) => item.ticketTypeId) }, eventId, ...sessionFilter(sessionId) },
+        include: { zone: true },
+    });
+    if (types.length !== items.length) throw new BadRequestException("Hạng vé không thuộc suất diễn đã chọn");
+    let totalAmount = 0;
+    for (const item of items) {
+        const type = types.find((entry) => entry.id === item.ticketTypeId);
+        if (type.status !== "ACTIVE" || type.zone.type === "STAGE" ||
+            !isOpen(type.saleStartAt, type.saleEndAt, preCheckNow)) {
+            throw new ConflictException(`Hạng vé ${type.name} hiện không mở bán`);
+        }
+        const manual = event.seatSelectionMode === "MANUAL" && type.zone.type === "SEATED";
+        if (manual ? !Array.isArray(item.seatIds) || item.seatIds.length !== item.quantity : item.seatIds?.length) {
+            throw new BadRequestException(manual ? `Vui lòng chọn đủ ghế cho hạng vé ${type.name}` : "Hạng vé này không cho chọn ghế");
+        }
+        if (!Number.isSafeInteger(type.price) || type.price < 0 ||
+            !Number.isSafeInteger(totalAmount + type.price * item.quantity)) {
+            throw new BadRequestException("Giá vé không hợp lệ");
+        }
+        totalAmount += type.price * item.quantity;
+    }
+
+    const seatedZoneIds = [...new Set(types.filter((t) => t.zone.type === "SEATED").map((t) => t.zoneId))];
+    const seatsByZoneId = new Map();
+    if (seatedZoneIds.length > 0) {
+        const allZoneSeats = await prisma.seat.findMany({
+            where: { zoneId: { in: seatedZoneIds }, status: "AVAILABLE" },
+        });
+        for (const seat of allZoneSeats) {
+            const list = seatsByZoneId.get(seat.zoneId) || [];
+            list.push(seat);
+            seatsByZoneId.set(seat.zoneId, list);
+        }
+    }
+
+    const freeOrder = totalAmount === 0;
     let attempts = 0;
     for (;;) {
-    let freeOrder = false;
     try {
     return await prisma.$transaction(async (tx) => {
         const now = new Date();
         if (expiresAt <= now) throw new ConflictException("Lượt mua vé đã hết thời gian");
-        const types = await tx.ticketType.findMany({
-            where: { id: { in: items.map((item) => item.ticketTypeId) }, eventId, ...sessionFilter(sessionId) },
-            include: { zone: true },
-        });
-        if (types.length !== items.length) throw new BadRequestException("Hạng vé không thuộc suất diễn đã chọn");
-        let totalAmount = 0;
-        for (const item of items) {
-            const type = types.find((entry) => entry.id === item.ticketTypeId);
-            if (type.status !== "ACTIVE" || type.zone.type === "STAGE" ||
-                !isOpen(type.saleStartAt, type.saleEndAt, now)) {
-                throw new ConflictException(`Hạng vé ${type.name} hiện không mở bán`);
-            }
-            const manual = event.seatSelectionMode === "MANUAL" && type.zone.type === "SEATED";
-            if (manual ? !Array.isArray(item.seatIds) || item.seatIds.length !== item.quantity : item.seatIds?.length) {
-                throw new BadRequestException(manual ? `Vui lòng chọn đủ ghế cho hạng vé ${type.name}` : "Hạng vé này không cho chọn ghế");
-            }
-            if (!Number.isSafeInteger(type.price) || type.price < 0 ||
-                !Number.isSafeInteger(totalAmount + type.price * item.quantity)) {
-                throw new BadRequestException("Giá vé không hợp lệ");
-            }
-            totalAmount += type.price * item.quantity;
-        }
-        freeOrder = totalAmount === 0;
         const reservation = await tx.bookingReservation.create({
             data: {
                 userId,
@@ -427,10 +448,11 @@ async function createOrder({ userId, eventId, sessionId, items, bookingToken }) 
             let seats = [];
             if (type.zone.type === "SEATED") {
                 const prefix = `${eventId}:${sessionId || "event"}:`;
-                const [allSeats, allocations] = await Promise.all([
-                    tx.seat.findMany({ where: { zoneId: type.zoneId, status: "AVAILABLE" } }),
-                    tx.seatAllocation.findMany({ where: { key: { startsWith: prefix } }, select: { seatId: true } }),
-                ]);
+                const allSeats = seatsByZoneId.get(type.zoneId) || [];
+                const allocations = await tx.seatAllocation.findMany({
+                    where: { key: { startsWith: prefix } },
+                    select: { seatId: true },
+                });
                 const occupied = new Set(allocations.map((entry) => entry.seatId));
                 const available = allSeats.filter((seat) => !occupied.has(seat.id));
                 if (event.seatSelectionMode === "MANUAL") {
@@ -460,10 +482,10 @@ async function createOrder({ userId, eventId, sessionId, items, bookingToken }) 
             return { id: order.id, orderCode: order.orderCode, totalAmount: order.totalAmount, status: order.status, expiresAt: null };
         }
         return { id: reservation.id, totalAmount, status: reservation.status, expiresAt };
-    });
+    }, { maxWait: 15000, timeout: 20000 });
     } catch (error) {
         if (error.code === "P2002" && freeOrder && attempts++ < 4) continue;
-        if (error.code === "P2002" || error.code === "P2034") {
+        if (error.code === "P2002" || error.code === "P2034" || error.code === "P2028") {
             throw new ConflictException("Vé hoặc ghế vừa được người khác giữ, vui lòng chọn lại");
         }
         throw error;

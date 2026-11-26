@@ -8,9 +8,9 @@ function getRedisClient() {
     try {
         redisClient = new Redis(process.env.REDIS_URL, {
             maxRetriesPerRequest: 1,
-            enableOfflineQueue: false,
+            enableOfflineQueue: true,
         });
-        redisClient.on("error", () => {});
+        redisClient.on("error", () => { });
         return redisClient;
     } catch {
         return null;

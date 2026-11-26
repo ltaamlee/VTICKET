@@ -3,11 +3,15 @@ const { RedisStore } = require('rate-limit-redis');
 const { getRedisClient } = require('../config/redis');
 
 const redisClient = getRedisClient();
-const store = redisClient
-  ? new RedisStore({
-      sendCommand: (...args) => redisClient.call(...args),
-    })
-  : undefined;
+const createRedisStore = (prefix) =>
+  redisClient
+    ? new RedisStore({
+        sendCommand: (...args) => redisClient.call(...args),
+        prefix,
+      })
+    : undefined;
+
+const store = createRedisStore('rl:api:');
 
 /**
  * Rate Limiter Middleware for API protection against spam & DDoS
@@ -26,4 +30,36 @@ const apiLimiter = rateLimit({
   },
 });
 
-module.exports = { apiLimiter };
+const bookingSessionStore = createRedisStore('rl:booking-session:');
+const bookingSessionLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user?.id || req.ip,
+  ...(bookingSessionStore ? { store: bookingSessionStore } : {}),
+  message: {
+    success: false,
+    statusCode: 429,
+    message: 'Bạn thao tác quá nhanh. Vui lòng thử lại sau ít phút.',
+    data: null,
+  },
+});
+
+const createOrderStore = createRedisStore('rl:create-order:');
+const createOrderLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user?.id || req.ip,
+  ...(createOrderStore ? { store: createOrderStore } : {}),
+  message: {
+    success: false,
+    statusCode: 429,
+    message: 'Bạn đang tạo đơn quá nhanh. Vui lòng chờ một chút rồi thử lại.',
+    data: null,
+  },
+});
+
+module.exports = { apiLimiter, bookingSessionLimiter, createOrderLimiter };

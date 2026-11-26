@@ -6,6 +6,7 @@ const { ForbiddenException } = require("../../exceptions");
 const asyncHandler = require("../../utils/asyncHandler");
 const controller = require("../../controllers/v1/user/order.controller");
 const orderError = require("../../middlewares/order-error.middleware");
+const { bookingSessionLimiter, createOrderLimiter } = require("../../middlewares/rate-limit.middleware");
 
 const CUSTOMER_CACHE_TTL_SECONDS = 60;
 const router = express.Router();
@@ -46,8 +47,8 @@ const customerOnly = [
     }),
 ];
 router.use(authenticate);
-router.post("/booking-session", customerOnly, controller.startBooking);
-router.post("/", customerOnly, controller.create);
+router.post("/booking-session", bookingSessionLimiter, customerOnly, controller.startBooking);
+router.post("/", createOrderLimiter, customerOnly, controller.create);
 router.get("/", controller.list);
 router.get("/:id", controller.get);
 router.post("/:id/cancel", customerOnly, controller.cancel);

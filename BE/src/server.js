@@ -1,7 +1,12 @@
 const app = require('./app');
 const { expireDueOrders } = require('./services/user/order.service');
+const ensurePaymentIndexes = require('./services/payment/paymentIndexes');
 const { syncCompletedEvents } = require('./shared/eventStatus');
 const PORT = process.env.PORT || 5000;
+
+ensurePaymentIndexes().catch((error) => {
+  console.error("Không thể khởi tạo payment indexes:", error.code || error.name || error.message);
+});
 
 const server = app.listen(PORT, () => {
   console.log(`🚀 VTicket Server running on port ${PORT}`);

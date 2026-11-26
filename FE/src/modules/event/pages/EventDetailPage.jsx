@@ -256,6 +256,66 @@ export default function EventDetailPage({ booking = false }) {
 
     if (booking) {
         if (bookingSession.loading) return <div className="min-h-screen bg-slate-50"><Header /><p className="p-8">Đang bắt đầu lượt mua vé...</p></div>;
+        if (bookingSession.queueState) {
+            const { position, totalInQueue } = bookingSession.queueState;
+            const progress = totalInQueue > 0
+                ? Math.min(100, Math.max(6, Math.round(((totalInQueue - position + 1) / totalInQueue) * 100)))
+                : 15;
+            return (
+                <div className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50/40">
+                    <Header />
+                    <div className="mx-auto max-w-lg px-4 py-14">
+                        <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-8 text-center shadow-lg shadow-blue-900/5">
+                            <div className="mx-auto mb-4 w-36 overflow-hidden rounded-2xl bg-slate-50/50">
+                                <iframe
+                                    src="https://tenor.com/embed/16188376"
+                                    title="Đang chờ lượt mua vé"
+                                    className="pointer-events-none h-28 w-full border-0"
+                                    loading="lazy"
+                                />
+                            </div>
+
+                            <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+                                <span className="h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
+                                Đang tự động cập nhật lượt vào
+                            </div>
+
+                            <h2 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">
+                                Bạn đang ở trong phòng chờ
+                            </h2>
+                            <p className="mt-2 text-sm text-slate-500">
+                                Hiện có nhiều người đang chọn vé. Hệ thống sẽ tự động đưa bạn vào trang đặt vé ngay khi đến lượt.
+                            </p>
+
+                            <div className="mt-6 rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/80 to-indigo-50/60 p-5">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-blue-600/80">
+                                    Số thứ tự của bạn
+                                </p>
+                                <p className="mt-1 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-5xl font-extrabold text-transparent tabular-nums">
+                                    #{position}
+                                </p>
+                                {totalInQueue > 0 && (
+                                    <p className="mt-2 text-xs text-slate-500">
+                                        Tổng số người đang chờ: <span className="font-semibold text-slate-700">{totalInQueue}</span>
+                                    </p>
+                                )}
+
+                                <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-blue-100">
+                                    <div
+                                        className="h-full rounded-full bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 transition-all duration-700 ease-out animate-pulse"
+                                        style={{ width: `${progress}%` }}
+                                    />
+                                </div>
+                            </div>
+
+                            <p className="mt-5 text-xs text-slate-400">
+                                Sắp đến lượt của bạn rồi. Vui lòng giữ nguyên trang này nhé.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
         if (!bookingSession.session) return <div className="min-h-screen bg-slate-50"><Header /><div className="p-8"><p role="alert" className="text-rose-600">{bookingSession.error}</p><button type="button" onClick={bookingSession.restart} className="mt-4 text-blue-600">Thử lại</button></div></div>;
         const orderLocked = Boolean(bookingSession.session.orderId && !bookingSession.expired);
         return (
