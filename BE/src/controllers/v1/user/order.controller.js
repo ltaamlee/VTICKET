@@ -18,7 +18,11 @@ exports.create = asyncHandler(async (req, res) => {
 });
 
 exports.get = asyncHandler(async (req, res) => {
-    const result = await orderService.getOrder({ userId: req.user.id, orderId: req.params.id });
+    const result = await orderService.getOrder({
+        userId: req.user.id,
+        orderId: req.params.id,
+        sync: req.query.sync === "1" || req.query.sync === "true",
+    });
     return sendResponse(res, 200, "Lấy thông tin đơn hàng thành công", result);
 });
 

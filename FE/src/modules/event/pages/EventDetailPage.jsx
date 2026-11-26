@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import Header from "../../../layout/Header"
 import Footer from "../../../layout/Footer";
@@ -17,6 +17,7 @@ import { useAuth } from "../../../contexts/AuthContext";
 import { createOrder } from "../../ticket/services/orderService";
 import useBookingSession, { resetBookingOnEventPage } from "../../ticket/services/useBookingSession";
 import BookingCountdown from "../../ticket/components/BookingCountdown";
+import { Alert } from "../../../components/common/Arlet";
 
 
 export default function EventDetailPage({ booking = false }) {
@@ -40,6 +41,8 @@ export default function EventDetailPage({ booking = false }) {
     const [buying, setBuying] = useState(false);
     const buyingRef = useRef(false);
     const [bookingError, setBookingError] = useState("");
+    const [showTicketLimit, setShowTicketLimit] = useState(false);
+    const closeTicketLimit = useCallback(() => setShowTicketLimit(false), []);
     const [now, setNow] = useState(() => Date.now());
     const bookingSession = useBookingSession(booking ? event?.id : null, user?.id, now);
 
@@ -138,7 +141,7 @@ export default function EventDetailPage({ booking = false }) {
             }));
         const maxTickets = Math.min(event.maxTicketsPerOrder ?? 10, 10);
         if (items.reduce((sum, item) => sum + item.quantity, 0) > maxTickets) {
-            setBookingError(`Mỗi đơn được mua tối đa ${maxTickets} vé.`);
+            setShowTicketLimit(true);
             return;
         }
         buyingRef.current = true;
@@ -152,7 +155,8 @@ export default function EventDetailPage({ booking = false }) {
             } catch (err) {
                 storageError = `Không thể lưu lượt mua trên trình duyệt: ${err.message}. Hãy dùng trang đơn hàng để tiếp tục.`;
             }
-            navigate(`/orders/${response.data.id}`, { state: { storageError } });
+            const orderPath = `/orders/${encodeURIComponent(response.data.id)}`;
+            navigate(response.data.status === "PAID" ? `${orderPath}/success` : orderPath, { state: { storageError } });
         } catch (err) {
             setBookingError(err.message || "Không thể giữ vé, vui lòng thử lại.");
             if (event.seatSelectionMode === "MANUAL") {
@@ -229,12 +233,12 @@ export default function EventDetailPage({ booking = false }) {
             return;
         }
         const type = ticketTypes.find((entry) => entry.id === ticketTypeId);
-        if (!isSelected && current.length >= (type?.remainingQuantity || 0)) {
-            setBookingError("Hạng vé này không còn đủ số lượng.");
+        if (!isSelected && total >= maxTickets) {
+            setShowTicketLimit(true);
             return;
         }
-        if (!isSelected && total >= maxTickets) {
-            setBookingError(`Mỗi đơn được mua tối đa ${maxTickets} vé.`);
+        if (!isSelected && current.length >= (type?.remainingQuantity || 0)) {
+            setBookingError("Hạng vé này không còn đủ số lượng.");
             return;
         }
         const next = isSelected ? current.filter((id) => id !== seatId) : [...current, seatId];
@@ -257,6 +261,14 @@ export default function EventDetailPage({ booking = false }) {
         return (
             <div className="min-h-screen flex flex-col">
                 <Header />
+                {showTicketLimit && (
+                    <div className="fixed right-5 top-5 z-[60] w-[calc(100%-2.5rem)] max-w-sm">
+                        <Alert variant="warning" title="Giới hạn số lượng vé" icon={AlertCircle}
+                            duration={5000} onClose={closeTicketLimit} className="shadow-lg">
+                            Mỗi đơn được mua tối đa {maxTickets} vé.
+                        </Alert>
+                    </div>
+                )}
                 {bookingSession.orderStatus !== "PAID" && <BookingCountdown expiresAt={bookingSession.session.expiresAt} now={bookingSession.clockNow + bookingSession.session.offset} />}
                 <EventBookingWorkspace key={`${event.id}-${selectedSessionId || "event"}-${seatRefreshKey}-${bookingSession.expired}`}
                     event={event} eventPath={`/events/${encodeURIComponent(idOrSlug)}`}
@@ -266,9 +278,15 @@ export default function EventDetailPage({ booking = false }) {
                         setQuantities({});
                         setSelectedSeats({});
                         setBookingError("");
+                        setShowTicketLimit(false);
                     }}
                     ticketTypes={ticketTypes} quantities={bookingSession.expired ? {} : quantities} selectedSeats={bookingSession.expired ? {} : selectedSeats}
                     onQuantityChange={(id, quantity) => {
+                        const total = Object.values(quantities).reduce((sum, value) => sum + value, 0);
+                        if (total - (quantities[id] || 0) + quantity > maxTickets) {
+                            setShowTicketLimit(true);
+                            return;
+                        }
                         setQuantities((current) => ({ ...current, [id]: quantity }));
                         setBookingError("");
                     }}

@@ -1,7 +1,8 @@
 const prisma = require("../../config/prisma");
+const { parseDateRange, toVnDateString } = require("../../utils/dateRange");
 
 class OrganizerDashboardService {
-    async getDashboardData(organizerId) {
+    async getDashboardData(organizerId, { startDate, endDate } = {}) {
         if (!organizerId) {
             const error = new Error("Không xác định được tài khoản Ban tổ chức");
             error.statusCode = 401;
@@ -9,9 +10,7 @@ class OrganizerDashboardService {
         }
 
         const now = new Date();
-        const startDate = new Date(now);
-        startDate.setUTCHours(0, 0, 0, 0);
-        startDate.setUTCDate(startDate.getUTCDate() - 6);
+        const range = parseDateRange(startDate, endDate, 7);
 
         const [
             totalEvents,
@@ -41,7 +40,7 @@ class OrganizerDashboardService {
                         payments: {
                             some: {
                                 status: "SUCCESS",
-                                paidAt: { gte: startDate },
+                                paidAt: { gte: range.rangeStart, lte: range.rangeEnd },
                             },
                         },
                     },
@@ -55,7 +54,7 @@ class OrganizerDashboardService {
                             payments: {
                                 where: {
                                     status: "SUCCESS",
-                                    paidAt: { gte: startDate },
+                                    paidAt: { gte: range.rangeStart, lte: range.rangeEnd },
                                 },
                                 select: { paidAt: true },
                             },
@@ -79,24 +78,25 @@ class OrganizerDashboardService {
             }),
         ]);
 
-        const revenueByDay = Array.from({ length: 7 }, (_, index) => {
-            const day = new Date(startDate);
-            day.setUTCDate(startDate.getUTCDate() + index);
-            return {
-                date: day.toISOString().slice(0, 10),
-                revenue: 0,
-            };
-        });
+        const revenueByDay = range.days.map((date) => ({
+            date,
+            revenue: 0,
+        }));
         const revenueByDate = new Map(
             revenueByDay.map((entry) => [entry.date, entry])
         );
 
         for (const item of paidOrderItems) {
             const paidAt = item.order.payments[0]?.paidAt || item.createdAt;
-            const date = paidAt.toISOString().slice(0, 10);
+            const date = toVnDateString(paidAt);
             const entry = revenueByDate.get(date);
             if (entry) entry.revenue += item.subtotal;
         }
+
+        const rangeRevenue = paidOrderItems.reduce(
+            (total, item) => total + item.subtotal,
+            0
+        );
 
         return {
             statistics: {
@@ -104,10 +104,12 @@ class OrganizerDashboardService {
                 upcomingEvents,
                 issuedTickets,
                 checkedInTickets,
-                revenue7Days: paidOrderItems.reduce(
-                    (total, item) => total + item.subtotal,
-                    0
-                ),
+                revenue: rangeRevenue,
+                revenue7Days: rangeRevenue,
+            },
+            dateRange: {
+                startDate: range.startDate,
+                endDate: range.endDate,
             },
             revenueByDay,
             recentEvents,

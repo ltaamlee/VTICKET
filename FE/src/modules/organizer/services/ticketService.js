@@ -6,9 +6,15 @@ export function getEventTicketStats(eventId) {
     });
 }
 
+export function getEventSessions(eventId) {
+    return apiRequest(`/organizer/events/${eventId}/sessions`, {
+        method: "GET",
+    });
+}
+
 export function getEventTickets(
     eventId,
-    { page = 1, pageSize = 20, keyword = "", status = "" } = {}
+    { page = 1, pageSize = 20, keyword = "", status = "", sessionId = "" } = {}
 ) {
     const params = new URLSearchParams({
         page: String(page),
@@ -16,6 +22,7 @@ export function getEventTickets(
         keyword,
         status,
     });
+    if (sessionId) params.set("sessionId", sessionId);
 
     return apiRequest(
         `/organizer/events/${eventId}/tickets?${params.toString()}`,
@@ -27,8 +34,16 @@ export function getTicketDetail(ticketId) {
     return apiRequest(`/organizer/tickets/${ticketId}`, { method: "GET" });
 }
 
-export function checkInTicket(ticketId) {
+export function checkInTicket(ticketId, sessionId) {
     return apiRequest(`/organizer/tickets/${ticketId}/check-in`, {
         method: "POST",
+        body: JSON.stringify({ sessionId }),
+    });
+}
+
+export function checkInByQr(eventId, { sessionId, qrToken }) {
+    return apiRequest(`/organizer/events/${eventId}/check-in`, {
+        method: "POST",
+        body: JSON.stringify({ sessionId, qrToken }),
     });
 }

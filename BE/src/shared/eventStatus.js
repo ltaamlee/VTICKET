@@ -11,8 +11,23 @@ const isValidEventStatus = (
     return allowedStatuses.includes(status);
 };
 
+// Tự động chuyển các sự kiện đã duyệt nhưng đã qua thời gian kết thúc sang COMPLETED
+const syncCompletedEvents = async () => {
+    const result = await prisma.event.updateMany({
+        where: {
+            status: EventStatus.APPROVED,
+            endAt: { lte: new Date() },
+        },
+        data: {
+            status: EventStatus.COMPLETED,
+        },
+    });
+    return result.count;
+};
+
 // Thống kê số lượng Event theo trạng thái
 const getEventStatus = async (where = {}) => {
+    await syncCompletedEvents();
     const [totalEvents, ...counts] = await Promise.all([
         prisma.event.count({ where }),
 
@@ -42,4 +57,5 @@ module.exports = {
     EventStatusValues,
     isValidEventStatus,
     getEventStatus,
+    syncCompletedEvents,
 };

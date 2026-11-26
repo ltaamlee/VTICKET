@@ -1,5 +1,5 @@
 const prisma = require("../../config/prisma");
-const { EventStatus, isValidEventStatus, getEventStatus, } = require("../../shared/eventStatus");
+const { EventStatus, isValidEventStatus, getEventStatus, syncCompletedEvents } = require("../../shared/eventStatus");
 const BaseService = require("../public/base.service");
 
 const notDraft = {
@@ -20,6 +20,7 @@ class AdminEventService extends BaseService {
         status = "",
         categoryId = "",
     } = {}) {
+        await syncCompletedEvents();
         const currentPage = Math.max(1, Number(page) || 1);
         const pageSize = 10;
         const skip = (currentPage - 1) * pageSize;
@@ -383,6 +384,12 @@ class AdminEventService extends BaseService {
         if (event.status !== EventStatus.PENDING) {
             this.throwError(
                 "Chỉ có thể duyệt sự kiện đang chờ duyệt"
+            );
+        }
+
+        if (event.endAt <= new Date()) {
+            this.throwError(
+                "Không thể duyệt sự kiện đã quá thời gian kết thúc"
             );
         }
 

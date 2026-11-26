@@ -1,7 +1,7 @@
 const prisma = require("../../config/prisma");
 const { EventType } = require("@prisma/client");
 const generateSlug = require("../../utils/generateSlug");
-const { EventStatus, isValidEventStatus, getEventStatus, } = require("../../shared/eventStatus");
+const { EventStatus, isValidEventStatus, getEventStatus, syncCompletedEvents } = require("../../shared/eventStatus");
 const BaseService = require("../public/base.service");
 const organizerZoneService = require("./zone/organizerZone.service");
 
@@ -168,6 +168,7 @@ class OrganizerEventService extends BaseService {
         status = "",
     }) {
         this.validateOrganizer(organizerId);
+        await syncCompletedEvents();
 
         const currentPage = Math.max(1, Number(page) || 1);
         const pageSize = 10;
@@ -253,6 +254,7 @@ class OrganizerEventService extends BaseService {
 
     async getEventDetail({ eventId, organizerId }) {
         this.validateOrganizer(organizerId);
+        await syncCompletedEvents();
 
         const event = await prisma.event.findFirst({
             where: {

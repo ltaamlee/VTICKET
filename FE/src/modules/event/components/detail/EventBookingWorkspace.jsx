@@ -49,9 +49,6 @@ export default function EventBookingWorkspace({
     const activeType = types.find((type) => type.id === activeTypeId);
     const totalCount = Object.values(quantities).reduce((sum, quantity) => sum + quantity, 0);
     const total = types.reduce((sum, type) => sum + (quantities[type.id] || 0) * Number(type.price), 0);
-    const otherCount = totalCount - (quantities[activeTypeId] || 0);
-    const limit = activeType ? Math.max(0, Math.min(maxTickets - otherCount, activeType.remainingQuantity)) : 0;
-    const selectedGroup = groups.find((group) => group.ticketTypeId === activeTypeId);
 
     const zones = {};
     for (const zone of event.seatMap?.zones || []) {
@@ -148,54 +145,44 @@ export default function EventBookingWorkspace({
                     <div className="space-y-2">
                         {types.map((type) => {
                             const available = isAvailable(type, now);
-                            return <button key={type.id} type="button" disabled={disabled || buying || !available}
-                                onClick={() => setActiveTypeId(type.id)}
-                                className={`flex w-full items-center gap-2 rounded p-2 text-left text-xs transition disabled:opacity-50 ${activeTypeId === type.id ? "bg-white/15 ring-1 ring-emerald-400" : "hover:bg-white/10"}`}>
-                                <span className="h-5 w-8 shrink-0 rounded" style={{ backgroundColor: type.zone?.color || event.seatMap?.zones?.find((zone) => zone.id === type.zoneId)?.color || "#64748b" }} />
-                                <span className="min-w-0 flex-1 font-semibold">{type.name}{!available ? " · Không mở bán" : ""}</span>
-                                <span className="font-semibold text-emerald-400">{money(type.price)}</span>
-                            </button>;
-                        })}
-                    </div>
-                    {activeType && (
-                        <div className="mt-5 rounded-lg bg-[#222226] p-4 text-sm">
-                            <p className="font-bold">{activeType.name}</p>
-                            {manual && activeType.zone?.type === "SEATED" ? (
-                                <>
-                                    <p className="mt-2 text-xs text-slate-300">Chọn ghế trên sơ đồ hoặc trong danh sách bên dưới.</p>
-                                    <details className="mt-3">
-                                        <summary className="cursor-pointer text-xs text-emerald-400">Danh sách ghế · {activeType.zone?.name}</summary>
-                                        <div className="mt-3 flex max-h-48 flex-wrap gap-2 overflow-auto">
-                                            {(selectedGroup?.seats || []).map((seat) => {
-                                                const selected = (selectedSeats[activeType.id] || []).includes(seat.id);
-                                                return <button key={seat.id} type="button" aria-pressed={selected}
-                                                    disabled={disabled || buying || !isAvailable(activeType, now) || (!seat.available && !selected)}
-                                                    onClick={() => onSeatToggle(activeType.id, seat.id)}
-                                                    className={`rounded border px-2 py-1 text-xs disabled:opacity-40 ${selected ? "border-emerald-400 bg-emerald-600" : "border-slate-500"}`}>
-                                                    {seat.rowLabel}{seat.seatNumber}
-                                                </button>;
-                                            })}
-                                        </div>
-                                    </details>
-                                </>
-                            ) : (
-                                <div className="mt-3 flex items-center justify-between gap-2">
-                                    <span>Số lượng</span>
-                                    <div className="flex items-center gap-3">
-                                        <button type="button" aria-label={`Giảm số lượng ${activeType.name}`}
-                                            disabled={disabled || buying || !isAvailable(activeType, now) || !(quantities[activeType.id] > 0)}
-                                            onClick={() => onQuantityChange(activeType.id, (quantities[activeType.id] || 0) - 1)}
+                            const quantity = quantities[type.id] || 0;
+                            const selectSeats = manual && type.zone?.type === "SEATED";
+                            const selectedForType = selectedSeats[type.id] || [];
+                            const nextSeat = selectSeats && groups.find((group) => group.ticketTypeId === type.id)?.seats?.find(
+                                (seat) => seat.available && !Object.values(selectedSeats).some((seats) => seats.includes(seat.id))
+                            );
+                            return <div key={type.id} className={`rounded p-2 text-xs transition ${activeTypeId === type.id ? "bg-white/15 ring-1 ring-emerald-400" : "hover:bg-white/10"}`}>
+                                <button type="button" disabled={disabled || buying || !available}
+                                    onClick={() => setActiveTypeId(type.id)}
+                                    className="flex w-full items-center gap-2 text-left disabled:opacity-50">
+                                    <span className="h-5 w-8 shrink-0 rounded" style={{ backgroundColor: type.zone?.color || event.seatMap?.zones?.find((zone) => zone.id === type.zoneId)?.color || "#64748b" }} />
+                                    <span className="min-w-0 flex-1 font-semibold">{type.name}{!available ? " · Không mở bán" : ""}</span>
+                                    <span className="font-semibold text-emerald-400">{money(type.price)}</span>
+                                </button>
+                                <div className="mt-3 flex justify-end">
+                                    <div className="flex items-center gap-2">
+                                        <button type="button" aria-label={`Giảm số lượng ${type.name}`}
+                                            disabled={disabled || buying || !available || quantity === 0}
+                                            onClick={() => {
+                                                setActiveTypeId(type.id);
+                                                if (selectSeats) onSeatToggle(type.id, selectedForType[selectedForType.length - 1]);
+                                                else onQuantityChange(type.id, quantity - 1);
+                                            }}
                                             className="rounded border border-slate-500 p-1 disabled:opacity-40"><Minus size={16} /></button>
-                                        <span aria-label={`Số lượng ${activeType.name}`}>{quantities[activeType.id] || 0}</span>
-                                        <button type="button" aria-label={`Tăng số lượng ${activeType.name}`}
-                                            disabled={disabled || buying || !isAvailable(activeType, now) || (quantities[activeType.id] || 0) >= limit}
-                                            onClick={() => onQuantityChange(activeType.id, (quantities[activeType.id] || 0) + 1)}
-                                            className="rounded border border-slate-500 p-1 disabled:opacity-40"><Plus size={16} /></button>
+                                        <span aria-label={`Số lượng ${type.name}`} className="min-w-6 text-center">{quantity}</span>
+                                        <button type="button" aria-label={`Tăng số lượng ${type.name}`}
+                                            disabled={disabled || buying || !available || (selectSeats && (loadingSeats || Boolean(seatError) || !nextSeat)) || (quantity >= type.remainingQuantity && totalCount < maxTickets)}
+                                            onClick={() => {
+                                                setActiveTypeId(type.id);
+                                                if (selectSeats) onSeatToggle(type.id, nextSeat.id);
+                                                else onQuantityChange(type.id, quantity + 1);
+                                            }}
+                                            className="rounded border border-emerald-500 bg-emerald-600 p-1 disabled:opacity-40"><Plus size={16} /></button>
                                     </div>
                                 </div>
-                            )}
-                        </div>
-                    )}
+                            </div>;
+                        })}
+                    </div>
                     <div className="mt-5 space-y-2 border-t border-white/10 pt-4 text-sm">
                         {types.filter((type) => quantities[type.id] > 0).map((type) => {
                             const group = groups.find((entry) => entry.ticketTypeId === type.id);
@@ -207,19 +194,18 @@ export default function EventBookingWorkspace({
                         })}
                         {totalCount > 0 && <div className="flex justify-between border-t border-white/10 pt-3 font-bold"><span>Tổng cộng</span><span>{money(total)}</span></div>}
                     </div>
-                    <p className="mt-4 text-xs text-slate-300">Tối đa {maxTickets} vé mỗi đơn. Vé chỉ được giữ sau khi tiếp tục đặt vé.</p>
                     {pendingOrderId && !expired && <p className="mt-3 text-sm text-amber-300">{orderStatus === "PAID" ? "Đơn hàng đã hoàn tất." : "Bạn đã có đơn đang giữ vé. Tiếp tục thanh toán đơn này trước khi chọn lại."}</p>}
                     {expired && <p role="alert" className="mt-3 text-sm text-amber-300">Lượt mua vé đã hết thời gian. Hãy bắt đầu lại.</p>}
                     {error && <p role="alert" className="mt-3 text-sm text-red-400">{error}</p>}
                 </div>
                 <div className="bg-[#222226] p-4">
                     {expired ? <button type="button" onClick={onRestart} className="w-full rounded bg-emerald-500 px-4 py-3 text-sm font-bold text-white">Bắt đầu lại</button>
-                    : pendingOrderId ? <><Link to={`/orders/${encodeURIComponent(pendingOrderId)}`} className="block w-full rounded bg-emerald-500 px-4 py-3 text-center text-sm font-bold text-white">{orderStatus === "PAID" ? "Xem đơn hàng ›" : "Tiếp tục thanh toán ›"}</Link>
-                        {orderStatus === "PAID" && <button type="button" onClick={onRestart} className="mt-3 w-full text-sm text-emerald-400">Mua vé khác</button>}</>
-                    : <button type="button" onClick={onBuy} disabled={disabled || buying || totalCount === 0}
-                        className="w-full rounded bg-emerald-500 px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-300">
-                        {buying ? "Đang giữ vé..." : totalCount ? "Tiếp tục đặt vé ›" : "Vui lòng chọn vé ›"}
-                    </button>}
+                        : pendingOrderId ? <><Link to={`/orders/${encodeURIComponent(pendingOrderId)}`} className="block w-full rounded bg-emerald-500 px-4 py-3 text-center text-sm font-bold text-white">{orderStatus === "PAID" ? "Xem đơn hàng ›" : "Tiếp tục thanh toán ›"}</Link>
+                            {orderStatus === "PAID" && <button type="button" onClick={onRestart} className="mt-3 w-full text-sm text-emerald-400">Mua vé khác</button>}</>
+                            : <button type="button" onClick={onBuy} disabled={disabled || buying || totalCount === 0}
+                                className="w-full rounded bg-emerald-500 px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-300">
+                                {buying ? "Đang giữ vé..." : totalCount ? "Tiếp tục đặt vé ›" : "Vui lòng chọn vé ›"}
+                            </button>}
                 </div>
             </aside>
         </main>

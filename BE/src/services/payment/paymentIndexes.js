@@ -2,7 +2,7 @@ const prisma = require("../../config/prisma");
 const { AppException } = require("../../exceptions");
 
 async function ensurePaymentIndexes() {
-    for (const [collection, field] of [["seatAllocations", "key"], ["sepayNotifications", "transactionId"]]) {
+    for (const [collection, field] of [["seatAllocations", "key"], ["sepayNotifications", "transactionId"], ["ticketEmailDeliveries", "orderId"], ["bookingReservations", "reference"], ["orders", "orderCode"]]) {
         let result;
         try {
             result = await prisma.$runCommandRaw({ listIndexes: collection });

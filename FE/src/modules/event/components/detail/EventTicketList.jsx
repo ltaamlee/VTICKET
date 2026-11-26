@@ -1,4 +1,4 @@
-import { Ticket, Clock } from "lucide-react";
+import { Ticket } from "lucide-react";
 
 /**
  * EventTicketList - Bảng danh sách các loại vé đang phát hành của sự kiện
@@ -65,15 +65,6 @@ export default function EventTicketList({ ticketTypes: allTicketTypes = [], quan
                                     ) : (
                                         <span className="inline-flex items-center rounded-md bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-600/20">
                                             Còn vé
-                                        </span>
-                                    )}
-                                </div>
-
-                                <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
-                                    {ticket.saleEndAt && (
-                                        <span className="flex items-center gap-1.5">
-                                            <Clock className="h-3.5 w-3.5 text-slate-400" />
-                                            Đóng bán: {new Date(ticket.saleEndAt).toLocaleDateString("vi-VN")}
                                         </span>
                                     )}
                                 </div>

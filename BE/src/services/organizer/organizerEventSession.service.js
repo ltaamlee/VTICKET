@@ -37,16 +37,19 @@ class EventSessionService extends BaseService {
     }
 
     async assertNoSoldTickets(eventId, sessionId, message) {
-        const soldTicket = await prisma.ticket.findFirst({
+        const [soldTicket, heldType] = await Promise.all([prisma.ticket.findFirst({
             where: {
                 eventId,
                 ticketType: { sessionId },
                 status: { in: ["RESERVED", "ISSUED", "CHECKED_IN"] },
             },
             select: { id: true },
-        });
+        }), prisma.ticketType.findFirst({
+            where: { eventId, sessionId, soldQuantity: { gt: 0 } },
+            select: { id: true },
+        })]);
 
-        if (soldTicket) {
+        if (soldTicket || heldType) {
             this.throwError(message, 400);
         }
     }

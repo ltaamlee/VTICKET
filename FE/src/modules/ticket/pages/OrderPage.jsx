@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import Header from "../../../layout/Header";
 import Footer from "../../../layout/Footer";
 import { createCheckout, getOrder } from "../services/orderService";
@@ -13,6 +13,7 @@ function money(amount) {
 export default function OrderPage() {
     const { id } = useParams();
     const location = useLocation();
+    const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const [order, setOrder] = useState(null);
     const [error, setError] = useState("");
@@ -42,12 +43,16 @@ export default function OrderPage() {
         let timeout;
         async function refresh() {
             try {
-                const response = await getOrder(id);
+                const response = await getOrder(id, { sync: searchParams.get("payment") === "success" });
                 if (!cancelled) {
                     setNow(Date.now());
                     if (response.data.serverTime) setOffset(new Date(response.data.serverTime).getTime() - Date.now());
                     setOrder(response.data);
                     setError("");
+                    if (response.data.status === "PAID" && (searchParams.get("payment") === "success" || response.data.id !== id)) {
+                        navigate(`/orders/${encodeURIComponent(response.data.id)}/success`, { replace: true });
+                        return;
+                    }
                     if (response.data.status === "PENDING_PAYMENT") timeout = setTimeout(refresh, 5000);
                 }
             } catch (err) {
@@ -66,7 +71,7 @@ export default function OrderPage() {
             clearTimeout(timeout);
             clearInterval(timer);
         };
-    }, [id]);
+    }, [id, navigate, searchParams]);
 
     const remaining = order?.expiresAt && now !== null ? Math.max(0, Math.ceil((new Date(order.expiresAt).getTime() - now - offset) / 1000)) : 0;
     const minutes = Math.floor(remaining / 60);
@@ -118,14 +123,14 @@ export default function OrderPage() {
             <Header />
             {order?.status === "PENDING_PAYMENT" && <BookingCountdown expiresAt={order.expiresAt} now={now === null ? null : now + offset} />}
             <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10">
-                <h1 className="text-2xl font-bold text-slate-900">Đơn hàng của bạn</h1>
+                <h1 className="text-2xl font-bold text-slate-900">{order && !order.orderCode ? "Thông tin giữ vé" : "Đơn hàng của bạn"}</h1>
                 {loading && <p className="mt-4 text-slate-500">Đang tải đơn hàng...</p>}
                 {error && <p role="alert" className="mt-4 text-sm text-rose-600">{error}</p>}
                 {location.state?.storageError && <p role="alert" className="mt-4 text-sm text-amber-700">{location.state.storageError}</p>}
                 {order && (
                     <div className="mt-6 space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                         <div className="flex flex-wrap justify-between gap-3">
-                            <span className="font-semibold">Mã đơn: {order.orderCode}</span>
+                            <span className="font-semibold">{order.orderCode ? `Mã đơn: ${order.orderCode}` : "Lượt giữ vé"}</span>
                             <span className="font-bold text-blue-700">
                                 {order.status === "PAID" ? "Đã thanh toán" : order.status === "PENDING_PAYMENT" ? "Chờ thanh toán" : order.status === "EXPIRED" ? "Đã hết hạn" : order.status === "CANCELLED" ? "Đã hủy" : order.status}
                             </span>
@@ -139,7 +144,7 @@ export default function OrderPage() {
                             <p className="text-sm text-slate-600">Đang chờ xác nhận từ SePay. Nếu giao dịch chưa hoàn tất, bạn có thể thử thanh toán lại.</p>
                         )}
                         {order.status === "EXPIRED" && (
-                            <p className="text-sm text-rose-700">Đơn đã hết hạn. Nếu bạn đã chuyển tiền, vui lòng liên hệ hỗ trợ để đối soát. {order.items[0]?.ticketType.event.id && <Link className="underline" to={`/events/${encodeURIComponent(order.items[0].ticketType.event.id)}`}>Bắt đầu mua lại</Link>}</p>
+                            <p className="text-sm text-rose-700">Lượt giữ vé đã hết hạn. Nếu bạn đã chuyển tiền, vui lòng liên hệ hỗ trợ để đối soát. {(order.eventId || order.items[0]?.ticketType.event.id) && <Link className="underline" to={`/events/${encodeURIComponent(order.eventId || order.items[0].ticketType.event.id)}`}>Bắt đầu mua lại</Link>}</p>
                         )}
                         {order.status === "CANCELLED" && <p className="text-sm text-rose-700">Đơn đã bị hủy và vé đã được trả lại. Nếu bạn đã chuyển tiền, vui lòng liên hệ hỗ trợ để đối soát.</p>}
                         <section className="rounded-xl border border-slate-200 p-4">

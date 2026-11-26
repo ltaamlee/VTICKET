@@ -8,8 +8,9 @@ export function createOrder(data) {
     return apiRequest("/orders", { method: "POST", body: JSON.stringify(data) });
 }
 
-export function getOrder(id) {
-    return apiRequest(`/orders/${encodeURIComponent(id)}`);
+export function getOrder(id, options = {}) {
+    const query = options.sync ? "?sync=1" : "";
+    return apiRequest(`/orders/${encodeURIComponent(id)}${query}`);
 }
 
 export function cancelOrder(id) {

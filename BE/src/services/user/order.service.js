@@ -5,6 +5,7 @@ const { pickSeats } = require("../../utils/seatPicker");
 const paymentService = require("../payment/payment.service");
 const ensurePaymentIndexes = require("../payment/paymentIndexes");
 const JwtUtils = require("../../utils/jwtUtils");
+const generateOrderCode = require("../../utils/orderCode");
 
 const HOLD_MS = 15 * 60 * 1000;
 const objectId = (value) => typeof value === "string" && /^[a-f\d]{24}$/i.test(value);
@@ -38,11 +39,40 @@ async function expireInTransaction(tx, orderId, now) {
     return releaseInTransaction(tx, orderId, "EXPIRED", now);
 }
 
+async function releaseReservationInTransaction(tx, reservationId, status, now) {
+    const reservation = await tx.bookingReservation.findUnique({ where: { id: reservationId } });
+    if (!reservation || reservation.status !== "PENDING_PAYMENT" ||
+        (now && reservation.expiresAt > now)) return false;
+    const updated = await tx.bookingReservation.updateMany({
+        where: { id: reservationId, status: "PENDING_PAYMENT", ...(now ? { expiresAt: { lte: now } } : {}) },
+        data: { status, items: [] },
+    });
+    if (!updated.count) return false;
+    for (const item of reservation.items) {
+        await tx.ticketType.update({
+            where: { id: item.ticketTypeId },
+            data: { soldQuantity: { decrement: item.quantity } },
+        });
+    }
+    await tx.seatAllocation.deleteMany({ where: { orderId: reservationId } });
+    return true;
+}
+
 async function cancelOrder({ userId, orderId }) {
     assertId(orderId);
     const order = await prisma.$transaction(async (tx) => {
         const owned = await tx.order.findFirst({ where: { id: orderId, userId }, select: { id: true, status: true } });
-        if (!owned) throw new NotFoundException("Không tìm thấy đơn hàng");
+        if (!owned) {
+            const reservation = await tx.bookingReservation.findFirst({ where: { id: orderId, userId } });
+            if (!reservation) throw new NotFoundException("Không tìm thấy lượt giữ vé");
+            if (reservation.status === "PENDING_PAYMENT") {
+                if (!await releaseReservationInTransaction(tx, orderId, "CANCELLED")) {
+                    throw new ConflictException("Trạng thái lượt giữ vé đã thay đổi, vui lòng thử lại");
+                }
+                return { status: "CANCELLED" };
+            }
+            return { status: reservation.status === "PAID" ? "PAID" : reservation.status };
+        }
         if (owned.status === "PENDING_PAYMENT") {
             const released = await releaseInTransaction(tx, orderId, "CANCELLED");
             if (!released) throw new ConflictException("Trạng thái đơn hàng đã thay đổi, vui lòng thử lại");
@@ -57,7 +87,17 @@ async function cancelOrder({ userId, orderId }) {
 }
 
 async function expireOrder(orderId) {
-    return prisma.$transaction((tx) => expireInTransaction(tx, orderId, new Date()));
+    for (let attempt = 0; ; attempt += 1) {
+        try {
+            return await prisma.$transaction(async (tx) => {
+                const now = new Date();
+                return await expireInTransaction(tx, orderId, now) ||
+                    await releaseReservationInTransaction(tx, orderId, "EXPIRED", now);
+            });
+        } catch (error) {
+            if (error.code !== "P2034" || attempt >= 4) throw error;
+        }
+    }
 }
 
 async function expireDueOrders(eventId) {
@@ -75,6 +115,17 @@ async function expireDueOrders(eventId) {
         if (!orders.length) break;
         for (const order of orders) {
             if (await expireOrder(order.id)) expired += 1;
+        }
+    }
+    for (;;) {
+        const reservations = await prisma.bookingReservation.findMany({
+            where: { status: "PENDING_PAYMENT", expiresAt: { lte: new Date() }, ...(eventId ? { eventId } : {}) },
+            select: { id: true },
+            take: 100,
+        });
+        if (!reservations.length) break;
+        for (const reservation of reservations) {
+            if (await expireOrder(reservation.id)) expired += 1;
         }
     }
     return expired;
@@ -172,6 +223,85 @@ async function hasValidReservation(tx, order) {
     return Number.isSafeInteger(total) && total === order.totalAmount && used.size === allocations.length;
 }
 
+async function validateBookingReservation(tx, reservation) {
+    if (!Array.isArray(reservation.items) || !reservation.items.length) {
+        throw new ConflictException("Thông tin giữ vé không hợp lệ");
+    }
+    const types = await tx.ticketType.findMany({
+        where: { id: { in: reservation.items.map((item) => item.ticketTypeId) }, eventId: reservation.eventId, ...sessionFilter(reservation.sessionId) },
+        include: { zone: true },
+    });
+    const allocations = await tx.seatAllocation.findMany({ where: { orderId: reservation.id } });
+    const keys = new Set(allocations.map((entry) => entry.key));
+    const used = new Set();
+    let total = 0;
+    for (const item of reservation.items) {
+        const type = types.find((entry) => entry.id === item.ticketTypeId);
+        if (!type?.zone || !Number.isSafeInteger(item.quantity) || item.quantity < 1 ||
+            !Number.isSafeInteger(item.unitPrice) || item.unitPrice < 0 ||
+            item.subtotal !== item.unitPrice * item.quantity || !Array.isArray(item.seatIds)) {
+            throw new ConflictException("Thông tin giữ vé không hợp lệ");
+        }
+        total += item.subtotal;
+        if (type.zone.type === "SEATED") {
+            if (item.seatIds.length !== item.quantity) throw new ConflictException("Thông tin giữ ghế không hợp lệ");
+            const seats = await tx.seat.findMany({ where: { id: { in: item.seatIds }, zoneId: type.zoneId, status: "AVAILABLE" }, select: { id: true } });
+            if (seats.length !== item.quantity) throw new ConflictException("Thông tin giữ ghế không hợp lệ");
+            for (const seatId of item.seatIds) {
+                const key = `${reservation.eventId}:${reservation.sessionId || "event"}:${seatId}`;
+                if (!keys.has(key) || used.has(key)) throw new ConflictException("Thông tin giữ ghế không hợp lệ");
+                used.add(key);
+            }
+        } else if (type.zone.type !== "STANDING" || item.seatIds.length) {
+            throw new ConflictException("Thông tin giữ vé không hợp lệ");
+        }
+    }
+    if (types.length !== reservation.items.length || !Number.isSafeInteger(total) ||
+        total !== reservation.totalAmount || used.size !== allocations.length) {
+        throw new ConflictException("Thông tin giữ vé không hợp lệ");
+    }
+}
+
+async function finalizeBookingReservation(tx, reservation, now) {
+    await validateBookingReservation(tx, reservation);
+    const claimed = await tx.bookingReservation.updateMany({
+        where: { id: reservation.id, status: "PENDING_PAYMENT", expiresAt: { gt: now } },
+        data: { status: "PAID" },
+    });
+    if (!claimed.count) throw new ConflictException("Lượt giữ vé không còn hiệu lực");
+    const order = await tx.order.create({
+        data: {
+            userId: reservation.userId,
+            orderCode: generateOrderCode(reservation.createdAt),
+            totalAmount: reservation.totalAmount,
+            status: "PAID",
+            expiresAt: null,
+        },
+    });
+    for (const item of reservation.items) {
+        const orderItem = await tx.orderItem.create({
+            data: { orderId: order.id, ticketTypeId: item.ticketTypeId, quantity: item.quantity, unitPrice: item.unitPrice, subtotal: item.subtotal },
+        });
+        await tx.ticket.createMany({
+            data: Array.from({ length: item.quantity }, (_, index) => ({
+                ticketCode: `T${crypto.randomBytes(16).toString("hex").toUpperCase()}`,
+                qrToken: crypto.randomBytes(32).toString("hex"),
+                userId: reservation.userId,
+                eventId: reservation.eventId,
+                ticketTypeId: item.ticketTypeId,
+                orderItemId: orderItem.id,
+                seatId: item.seatIds[index] || null,
+                status: "ISSUED",
+                issuedAt: now,
+            })),
+        });
+    }
+    await tx.seatAllocation.updateMany({ where: { orderId: reservation.id }, data: { orderId: order.id } });
+    await tx.ticketEmailDelivery.create({ data: { orderId: order.id } });
+    await tx.bookingReservation.update({ where: { id: reservation.id }, data: { orderId: order.id, items: [] } });
+    return order;
+}
+
 async function createOrder({ userId, eventId, sessionId, items, bookingToken }) {
     assertId(userId);
     assertId(eventId);
@@ -181,7 +311,11 @@ async function createOrder({ userId, eventId, sessionId, items, bookingToken }) 
     await ensurePaymentIndexes();
     await expireDueOrders(eventId);
 
-    return prisma.$transaction(async (tx) => {
+    let attempts = 0;
+    for (;;) {
+    let freeOrder = false;
+    try {
+    return await prisma.$transaction(async (tx) => {
         const now = new Date();
         if (expiresAt <= now) throw new ConflictException("Lượt mua vé đã hết thời gian");
         const event = await tx.event.findUnique({
@@ -226,15 +360,20 @@ async function createOrder({ userId, eventId, sessionId, items, bookingToken }) 
             }
             totalAmount += type.price * item.quantity;
         }
-        const order = await tx.order.create({
+        freeOrder = totalAmount === 0;
+        const reservation = await tx.bookingReservation.create({
             data: {
                 userId,
-                orderCode: `VT${crypto.randomBytes(12).toString("hex").toUpperCase()}`,
+                eventId,
+                sessionId: sessionId || null,
+                reference: `VT${crypto.randomBytes(12).toString("hex").toUpperCase()}`,
                 totalAmount,
-                status: totalAmount === 0 ? "PAID" : "PENDING_PAYMENT",
-                expiresAt: totalAmount === 0 ? null : expiresAt,
+                status: "PENDING_PAYMENT",
+                expiresAt,
+                items: [],
             },
         });
+        const reservationItems = [];
         for (const item of items) {
             const type = types.find((entry) => entry.id === item.ticketTypeId);
             const reserved = await tx.ticketType.updateMany({
@@ -265,33 +404,30 @@ async function createOrder({ userId, eventId, sessionId, items, bookingToken }) 
                     throw new ConflictException(`Hạng vé ${type.name} không còn đủ ${item.quantity} ghế`);
                 }
                 await tx.seatAllocation.createMany({
-                    data: seats.map((seat) => ({ key: `${prefix}${seat.id}`, orderId: order.id, seatId: seat.id })),
+                    data: seats.map((seat) => ({ key: `${prefix}${seat.id}`, orderId: reservation.id, seatId: seat.id })),
                 });
             }
-            const orderItem = await tx.orderItem.create({
-                data: { orderId: order.id, ticketTypeId: type.id, quantity: item.quantity, unitPrice: type.price, subtotal: type.price * item.quantity },
-            });
-            await tx.ticket.createMany({
-                data: Array.from({ length: item.quantity }, (_, index) => ({
-                    ticketCode: `T${crypto.randomBytes(16).toString("hex").toUpperCase()}`,
-                    qrToken: crypto.randomBytes(32).toString("hex"),
-                    userId,
-                    eventId,
-                    ticketTypeId: type.id,
-                    orderItemId: orderItem.id,
-                    seatId: seats[index]?.id || null,
-                    status: totalAmount === 0 ? "ISSUED" : "RESERVED",
-                    issuedAt: totalAmount === 0 ? now : null,
-                })),
+            reservationItems.push({
+                ticketTypeId: type.id, quantity: item.quantity, unitPrice: type.price,
+                subtotal: type.price * item.quantity, seatIds: seats.map((seat) => seat.id),
             });
         }
-        return { id: order.id, orderCode: order.orderCode, totalAmount: order.totalAmount, status: order.status, expiresAt: order.expiresAt };
-    }).catch((error) => {
+        reservation.items = reservationItems;
+        await tx.bookingReservation.update({ where: { id: reservation.id }, data: { items: reservationItems } });
+        if (totalAmount === 0) {
+            const order = await finalizeBookingReservation(tx, reservation, now);
+            return { id: order.id, orderCode: order.orderCode, totalAmount: order.totalAmount, status: order.status, expiresAt: null };
+        }
+        return { id: reservation.id, totalAmount, status: reservation.status, expiresAt };
+    });
+    } catch (error) {
+        if (error.code === "P2002" && freeOrder && attempts++ < 4) continue;
         if (error.code === "P2002" || error.code === "P2034") {
             throw new ConflictException("Vé hoặc ghế vừa được người khác giữ, vui lòng chọn lại");
         }
         throw error;
-    });
+    }
+    }
 }
 
 async function getAvailableSeats({ eventId, sessionId }) {
@@ -327,10 +463,42 @@ async function getAvailableSeats({ eventId, sessionId }) {
     }));
 }
 
-async function getOrder({ userId, orderId }) {
+async function getOrder({ userId, orderId, sync = false }) {
     assertId(orderId);
     const owned = await prisma.order.findFirst({ where: { id: orderId, userId }, select: { id: true } });
-    if (!owned) throw new NotFoundException("Không tìm thấy đơn hàng");
+    if (!owned) {
+        let reservation = await prisma.bookingReservation.findFirst({ where: { id: orderId, userId } });
+        if (!reservation) throw new NotFoundException("Không tìm thấy lượt giữ vé");
+        if (reservation.status === "PENDING_PAYMENT" && reservation.expiresAt <= new Date()) {
+            await expireOrder(orderId);
+            reservation = await prisma.bookingReservation.findFirst({ where: { id: orderId, userId } });
+        }
+        if (sync && reservation.status === "PENDING_PAYMENT" && reservation.expiresAt > new Date()) {
+            await paymentService.syncOrderWithSePay(reservation.reference);
+            reservation = await prisma.bookingReservation.findFirst({ where: { id: orderId, userId } });
+        }
+        if (reservation.status === "PAID" && reservation.orderId) {
+            return getOrder({ userId, orderId: reservation.orderId });
+        }
+        const types = reservation.items.length ? await prisma.ticketType.findMany({
+            where: { id: { in: reservation.items.map((item) => item.ticketTypeId) } },
+            include: { event: true, session: true, zone: true },
+        }) : [];
+        return {
+            id: reservation.id, eventId: reservation.eventId, orderCode: null,
+            status: reservation.status, expiresAt: reservation.expiresAt,
+            totalAmount: reservation.totalAmount, createdAt: reservation.createdAt, serverTime: new Date(),
+            items: reservation.items.map((item) => {
+                const type = types.find((entry) => entry.id === item.ticketTypeId);
+                if (!type) throw new ConflictException("Thông tin hạng vé không còn hợp lệ");
+                return {
+                    id: item.ticketTypeId, quantity: item.quantity, unitPrice: item.unitPrice, subtotal: item.subtotal,
+                    ticketType: { name: type.name, event: { id: type.event.id, name: type.event.name, location: type.event.location }, session: type.session, zone: { name: type.zone.name } },
+                    tickets: [],
+                };
+            }),
+        };
+    }
     await expireOrder(orderId);
     const order = await prisma.order.findFirst({
         where: { id: orderId, userId },
@@ -359,7 +527,7 @@ async function listOrders({ userId, page = "1" }) {
     const pageSize = 20;
     const [orders, total] = await Promise.all([
         prisma.order.findMany({
-            where: { userId },
+            where: { userId, status: { in: ["PAID", "REFUNDED"] } },
             orderBy: { createdAt: "desc" },
             skip: (currentPage - 1) * pageSize,
             take: pageSize,
@@ -369,7 +537,7 @@ async function listOrders({ userId, page = "1" }) {
                 orderItems: { select: { quantity: true, ticketType: { select: { name: true, event: { select: { name: true } } } } } },
             },
         }),
-        prisma.order.count({ where: { userId } }),
+        prisma.order.count({ where: { userId, status: { in: ["PAID", "REFUNDED"] } } }),
     ]);
     return { orders, currentPage, totalPages: Math.ceil(total / pageSize) };
 }
@@ -378,7 +546,19 @@ async function checkout({ userId, orderId }) {
     assertId(orderId);
     await ensurePaymentIndexes();
     const owned = await prisma.order.findFirst({ where: { id: orderId, userId }, select: { id: true } });
-    if (!owned) throw new NotFoundException("Không tìm thấy đơn hàng");
+    if (!owned) {
+        let reservation = await prisma.bookingReservation.findFirst({ where: { id: orderId, userId } });
+        if (!reservation) throw new NotFoundException("Không tìm thấy lượt giữ vé");
+        if (reservation.status === "PENDING_PAYMENT" && reservation.expiresAt <= new Date()) {
+            await expireOrder(orderId);
+            reservation = await prisma.bookingReservation.findFirst({ where: { id: orderId, userId } });
+        }
+        if (reservation.status !== "PENDING_PAYMENT" || reservation.expiresAt <= new Date()) {
+            throw new ConflictException("Lượt giữ vé không còn trong thời gian thanh toán");
+        }
+        await validateBookingReservation(prisma, reservation);
+        return paymentService.checkoutFields({ ...reservation, orderCode: reservation.reference });
+    }
     await expireOrder(orderId);
     const order = await prisma.order.findFirst({
         where: { id: orderId, userId },
@@ -394,4 +574,4 @@ async function checkout({ userId, orderId }) {
     return paymentService.checkoutFields(order);
 }
 
-module.exports = { startBooking, createOrder, cancelOrder, getOrder, listOrders, checkout, expireDueOrders, expireInTransaction, hasValidReservation, getAvailableSeats };
+module.exports = { startBooking, createOrder, cancelOrder, getOrder, listOrders, checkout, expireDueOrders, expireInTransaction, hasValidReservation, getAvailableSeats, releaseReservationInTransaction, validateBookingReservation, finalizeBookingReservation };

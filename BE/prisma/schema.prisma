@@ -459,6 +459,26 @@ model Order {
   @@map("orders")
 }
 
+model BookingReservation {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  reference   String   @unique
+  userId      String   @db.ObjectId
+  eventId     String   @db.ObjectId
+  sessionId   String?  @db.ObjectId
+  orderId     String?  @db.ObjectId
+  totalAmount Float
+  status      String
+  expiresAt   DateTime
+  items       Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status, expiresAt])
+  @@index([eventId, status])
+  @@map("bookingReservations")
+}
+
 model SeatAllocation {
   id      String @id @default(auto()) @map("_id") @db.ObjectId
   key     String @unique
@@ -481,6 +501,18 @@ model SePayNotification {
 
   @@index([invoiceNumber])
   @@map("sepayNotifications")
+}
+
+model TicketEmailDelivery {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  orderId   String   @unique @db.ObjectId
+  status    String   @default("PENDING")
+  lastError String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@map("ticketEmailDeliveries")
 }
 
 model OrderItem {

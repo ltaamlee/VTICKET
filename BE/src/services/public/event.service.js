@@ -32,6 +32,7 @@ class EventService {
      * @returns {Promise<{ events: Array, pagination: Object }>}
      */
     async getEvents(queryParams = {}) {
+        await EventStatus.syncCompletedEvents();
         const {
             page = 1,
             limit = 10,

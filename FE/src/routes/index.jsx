@@ -21,6 +21,7 @@ import ProfilePage from "../modules/profile/pages/ProfilePage";
 import OrganizerRegisterPage from "../modules/organizer/pages/OrganizerRegisterPage";
 import MyTicketsPage from "../modules/ticket/pages/MyTicketsPage";
 import OrderPage from "../modules/ticket/pages/OrderPage";
+import OrderSuccessPage from "../modules/ticket/pages/OrderSuccessPage";
 import MyOrdersPage from "../modules/ticket/pages/MyOrdersPage";
 import MembershipPage from "../modules/membership/pages/MembershipPage";
 import MyEventsPage from "../modules/event/pages/MyEventsPage";
@@ -31,6 +32,7 @@ import OrganizerLayout from "../layout/organizer/OrganizerLayout";
 import OrganizerEventPage from "../modules/organizer/pages/EventManagementPage";
 import OrganizerDashboardPage from "../modules/organizer/pages/DashboardPage";
 import OrganizerTicketPage from "../modules/organizer/pages/TicketManagementPage";
+import OrganizerCheckInPage from "../modules/organizer/pages/CheckInManagementPage";
 import SeatMapEditorPage from "../modules/organizer/pages/SeatMapEditorPage";
 
 function AppRoutes() {
@@ -53,6 +55,7 @@ function AppRoutes() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/my-tickets" element={<MyTicketsPage />} />
           <Route path="/orders/:id" element={<OrderPage />} />
+          <Route path="/orders/:id/success" element={<OrderSuccessPage />} />
           <Route path="/my-orders" element={<MyOrdersPage />} />
           <Route path="/membership" element={<MembershipPage />} />
           <Route path="/my-events" element={<MyEventsPage />} />
@@ -81,6 +84,7 @@ function AppRoutes() {
             <Route path="dashboard" element={<OrganizerDashboardPage />} />
             <Route path="events" element={<OrganizerEventPage />} />
             <Route path="tickets" element={<OrganizerTicketPage />} />
+            <Route path="check-in" element={<OrganizerCheckInPage />} />
           </Route>
           <Route path="/organizer/seat-maps/new" element={<SeatMapEditorPage />} />
           <Route path="/organizer/seat-maps/:seatMapId/edit" element={<SeatMapEditorPage />} />

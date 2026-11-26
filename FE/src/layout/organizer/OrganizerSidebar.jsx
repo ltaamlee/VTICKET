@@ -29,6 +29,15 @@ const menuItems = [
             </svg>
         ),
     },
+    {
+        label: "Quản lý check-in",
+        path: "/organizer/check-in",
+        icon: (
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 7V5a1 1 0 0 1 1-1h2m10 0h2a1 1 0 0 1 1 1v2m0 10v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M9 12l2 2 4-4" />
+            </svg>
+        ),
+    },
 ];
 
 function OrganizerSidebar({ sidebarOpen, setSidebarOpen, onLogout }) {

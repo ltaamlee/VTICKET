@@ -237,11 +237,11 @@ function TicketManagementPage() {
         setSelectedTicketId(ticketId);
     };
 
-    const handleCheckIn = async (ticketId) => {
+    const handleCheckIn = async (ticketId, sessionId) => {
         setProcessingTicketId(ticketId);
         setActionError("");
         try {
-            await checkInTicket(ticketId);
+            await checkInTicket(ticketId, sessionId || null);
             setLoading(true);
             setRefreshKey((current) => current + 1);
         } catch (requestError) {
@@ -498,37 +498,15 @@ function TicketManagementPage() {
                                                         : "Không chọn ghế"}
                                                 </td>
                                                 <td className="px-5 py-4 text-right">
-                                                    {ticket.status === "ISSUED" ? (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() =>
-                                                                handleCheckIn(ticket.id)
-                                                            }
-                                                            disabled={
-                                                                processingTicketId ===
-                                                                ticket.id
-                                                            }
-                                                            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
-                                                        >
-                                                            {processingTicketId ===
-                                                            ticket.id ? (
-                                                                <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
-                                                            ) : (
-                                                                <Check className="h-3.5 w-3.5" />
-                                                            )}
-                                                            Check-in
-                                                        </button>
-                                                    ) : (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() =>
-                                                                openTicketDetails(ticket.id)
-                                                            }
-                                                            className="rounded-lg px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50"
-                                                        >
-                                                            Chi tiết
-                                                        </button>
-                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            openTicketDetails(ticket.id)
+                                                        }
+                                                        className="rounded-lg px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50"
+                                                    >
+                                                        Chi tiết
+                                                    </button>
                                                 </td>
                                             </tr>
                                         ))
@@ -683,7 +661,7 @@ function TicketManagementPage() {
                                 <button
                                     type="button"
                                     onClick={() =>
-                                        handleCheckIn(selectedTicket.id)
+                                        handleCheckIn(selectedTicket.id, selectedTicket.ticketType?.sessionId)
                                     }
                                     disabled={
                                         processingTicketId === selectedTicket.id

@@ -56,10 +56,11 @@ export default function useBookingSession(eventId, userId, now) {
                     const response = await getOrder(value.orderId);
                     if (cancelled) return;
                     const order = response.data;
-                    if (!order.items.some((item) => item.ticketType.event.id === eventId)) {
+                    if (order.eventId ? order.eventId !== eventId : !order.items.some((item) => item.ticketType.event.id === eventId)) {
                         throw new Error("Đơn hàng không thuộc sự kiện này.");
                     }
                     status = order.status;
+                    if (order.status === "PAID") value.orderId = order.id;
                     if (order.serverTime) value.offset = new Date(order.serverTime).getTime() - Date.now();
                     sessionStorage.setItem(key, JSON.stringify(value));
                 }

@@ -1,6 +1,6 @@
 const crypto = require("node:crypto");
 const { SePayPgClient } = require("sepay-pg-node");
-const { AppException, BadRequestException, UnauthorizedException } = require("../../exceptions");
+const { AppException, BadRequestException, ConflictException, UnauthorizedException } = require("../../exceptions");
 
 function getConfig() {
     const { SEPAY_ENV, SEPAY_MERCHANT_ID, SEPAY_SECRET_KEY, SEPAY_IPN_SECRET, FRONTEND_URL } = process.env;
@@ -103,8 +103,7 @@ function validatePaidIpn(payload, order) {
     return { transactionId: transaction.transaction_id };
 }
 
-async function handleIpn(payload, secret) {
-    authenticateIpn(secret);
+async function processOrderPaid(payload) {
     if (payload?.notification_type !== "ORDER_PAID") {
         throw new AppException("Loại thông báo SePay chưa được hỗ trợ; cần đối soát thủ công", 503);
     }
@@ -117,8 +116,9 @@ async function handleIpn(payload, secret) {
 
     const prisma = require("../../config/prisma");
     const ensurePaymentIndexes = require("./paymentIndexes");
-    const { expireInTransaction, hasValidReservation } = require("../user/order.service");
+    const { expireInTransaction, hasValidReservation, releaseReservationInTransaction, validateBookingReservation, finalizeBookingReservation } = require("../user/order.service");
     await ensurePaymentIndexes();
+    for (let attempt = 0; ; attempt += 1) {
     try {
         const result = await prisma.$transaction(async (tx) => {
             const existing = await tx.sePayNotification.findUnique({ where: { transactionId } });
@@ -128,10 +128,6 @@ async function handleIpn(payload, secret) {
                 }
                 return existing;
             }
-            const order = await tx.order.findUnique({
-                where: { orderCode: invoiceNumber },
-                include: { orderItems: { include: { tickets: { include: { seat: true } }, ticketType: { include: { zone: true } } } } },
-            });
             const receipt = {
                 transactionId,
                 invoiceNumber,
@@ -140,6 +136,47 @@ async function handleIpn(payload, secret) {
                 outcome: "REVIEW_REQUIRED",
                 reason: "UNKNOWN_ORDER",
             };
+            const reservation = await tx.bookingReservation.findUnique({ where: { reference: invoiceNumber } });
+            if (reservation) {
+                try {
+                    validatePaidIpn(payload, { ...reservation, orderCode: reservation.reference });
+                } catch (error) {
+                    if (!(error instanceof BadRequestException)) throw error;
+                    receipt.reason = "PAYMENT_MISMATCH";
+                    return tx.sePayNotification.create({ data: receipt });
+                }
+                const now = new Date();
+                if (reservation.status === "PENDING_PAYMENT" && reservation.expiresAt <= now) {
+                    await releaseReservationInTransaction(tx, reservation.id, "EXPIRED", now);
+                }
+                if (reservation.status !== "PENDING_PAYMENT" || reservation.expiresAt <= now) {
+                    receipt.reason = "ORDER_NOT_PAYABLE";
+                    if (reservation.orderId) {
+                        await tx.payment.create({
+                            data: { orderId: reservation.orderId, transactionCode: transactionId, amount: reservation.totalAmount, method: "SEPAY", status: "REVIEW_REQUIRED" },
+                        });
+                    }
+                    return tx.sePayNotification.create({ data: receipt });
+                }
+                try {
+                    await validateBookingReservation(tx, reservation);
+                } catch (error) {
+                    if (!(error instanceof ConflictException)) throw error;
+                    receipt.reason = "INVALID_RESERVATION";
+                    return tx.sePayNotification.create({ data: receipt });
+                }
+                const order = await finalizeBookingReservation(tx, reservation, now);
+                await tx.payment.create({
+                    data: { orderId: order.id, transactionCode: transactionId, amount: reservation.totalAmount, method: "SEPAY", status: "SUCCESS", paidAt: now },
+                });
+                receipt.outcome = "APPLIED";
+                receipt.reason = null;
+                return tx.sePayNotification.create({ data: receipt });
+            }
+            const order = await tx.order.findUnique({
+                where: { orderCode: invoiceNumber },
+                include: { orderItems: { include: { tickets: { include: { seat: true } }, ticketType: { include: { zone: true } } } } },
+            });
             if (!order) return tx.sePayNotification.create({ data: receipt });
 
             try {
@@ -183,6 +220,7 @@ async function handleIpn(payload, secret) {
             await tx.payment.create({
                 data: { orderId: order.id, transactionCode: transactionId, amount: order.totalAmount, method: "SEPAY", status: "SUCCESS", paidAt: now },
             });
+            await tx.ticketEmailDelivery.create({ data: { orderId: order.id } });
             receipt.outcome = "APPLIED";
             receipt.reason = null;
             return tx.sePayNotification.create({ data: receipt });
@@ -192,12 +230,65 @@ async function handleIpn(payload, secret) {
         }
         return result;
     } catch (error) {
+        if (error.code === "P2034" && attempt < 4) continue;
         if (error.code === "P2002") {
             const existing = await prisma.sePayNotification.findUnique({ where: { transactionId } });
             if (existing && existing.invoiceNumber === invoiceNumber) return existing;
+            if (existing) throw new BadRequestException("Mã giao dịch SePay không khớp đơn hàng");
+            if (attempt < 4) continue;
         }
         throw error;
     }
+    }
 }
 
-module.exports = { checkoutFields, authenticateIpn, validatePaidIpn, handleIpn };
+async function handleIpn(payload, secret) {
+    authenticateIpn(secret);
+    return processOrderPaid(payload);
+}
+
+async function syncOrderWithSePay(invoiceNumber) {
+    if (typeof invoiceNumber !== "string" || !invoiceNumber) return null;
+    let config;
+    try {
+        config = getConfig();
+    } catch {
+        return null;
+    }
+    const client = new SePayPgClient({
+        env: config.env,
+        merchant_id: config.merchantId,
+        secret_key: config.secretKey,
+    });
+    let response;
+    try {
+        response = await client.order.retrieve(invoiceNumber);
+    } catch {
+        return null;
+    }
+    const orderData = response?.data?.data || response?.data;
+    if (!orderData || orderData.order_status !== "CAPTURED") return null;
+    const transactions = Array.isArray(orderData.transactions) ? orderData.transactions : [];
+    const approvedTx = transactions.find(
+        (tx) => tx?.transaction_status === "APPROVED" && tx?.transaction_type === "PAYMENT" && tx?.id
+    );
+    if (!approvedTx) return null;
+    return processOrderPaid({
+        notification_type: "ORDER_PAID",
+        order: {
+            order_invoice_number: orderData.order_invoice_number,
+            order_status: orderData.order_status,
+            order_currency: orderData.order_currency,
+            order_amount: orderData.order_amount,
+        },
+        transaction: {
+            transaction_id: approvedTx.id,
+            transaction_status: approvedTx.transaction_status,
+            transaction_type: approvedTx.transaction_type,
+            transaction_currency: approvedTx.transaction_currency,
+            transaction_amount: approvedTx.transaction_amount,
+        },
+    });
+}
+
+module.exports = { checkoutFields, authenticateIpn, validatePaidIpn, handleIpn, syncOrderWithSePay };
