@@ -245,6 +245,10 @@ class AdminEventService extends BaseService {
                         posts: true,
                     },
                 },
+
+                sessions: {
+                    orderBy: { startAt: "asc" },
+                },
             },
         });
 

@@ -12,6 +12,7 @@ function CommentComposer({
     emptyErrorMessage = "Vui lòng nhập nội dung bình luận.",
     fallbackErrorMessage = "Không thể gửi bình luận.",
     clearOnSuccess = false,
+    autoFocus = false,
     className = "",
     onSubmit,
     onCancel,
@@ -25,6 +26,12 @@ function CommentComposer({
     const [error, setError] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
+
+    useEffect(() => {
+        if (autoFocus && textareaRef.current) {
+            textareaRef.current.focus();
+        }
+    }, [autoFocus]);
 
     // Tự động điều chỉnh chiều cao textarea theo nội dung
     useEffect(() => {

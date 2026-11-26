@@ -6,10 +6,11 @@ import { Info, Ticket, Map, Building2 } from "lucide-react";
 export default function EventInfoTabs({ activeTab, onTabChange, hasSeatMap = false }) {
     const tabs = [
         { id: "overview", label: "Giới thiệu", icon: Info },
-        { id: "tickets", label: "Bảng giá & Vé", icon: Ticket },
-        ...(hasSeatMap
-            ? [{ id: "seatmap", label: "Sơ đồ chỗ ngồi", icon: Map }]
-            : []),
+        {
+            id: "tickets",
+            label: hasSeatMap ? "Bảng giá & Sơ đồ" : "Bảng giá & Vé",
+            icon: hasSeatMap ? Map : Ticket,
+        },
         { id: "organizer", label: "Ban tổ chức", icon: Building2 },
     ];
 

@@ -22,6 +22,7 @@ function CommentSection({
 }) {
     const [deletingComment, setDeletingComment] = useState(null);
     const [deletingLoading, setDeletingLoading] = useState(false);
+    const [activeReplyCommentId, setActiveReplyCommentId] = useState(null);
 
     const handleRootSubmit = async (trimmed) => {
         await createComment(postId, { content: trimmed });
@@ -59,20 +60,10 @@ function CommentSection({
     return (
         <section
             id="comments"
-            aria-labelledby="comments-heading"
+            aria-label="Bình luận"
             className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:p-8"
         >
-            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
-                <h2
-                    id="comments-heading"
-                    className="flex items-center gap-2 text-lg font-bold text-slate-900"
-                >
-                    <MessageSquare className="h-5 w-5 text-blue-600" aria-hidden="true" />
-                    <span>Bình luận ({totalComments})</span>
-                </h2>
-            </div>
-
-            <div className="mt-5">
+            <div>
                 {isAuthenticated ? (
                     <CommentComposer
                         placeholder="Viết bình luận của bạn... (Enter để gửi)"
@@ -106,6 +97,8 @@ function CommentSection({
                             postId={postId}
                             eventOrganizerId={eventOrganizerId}
                             depth={0}
+                            activeReplyCommentId={activeReplyCommentId}
+                            onActiveReplyChange={setActiveReplyCommentId}
                             isAuthenticated={isAuthenticated}
                             onReplySubmit={handleReplySubmit}
                             onEditSubmit={handleEditSubmit}

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useCallback, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
     ArrowLeft,
     ChevronRight,
@@ -14,12 +14,14 @@ import ConfirmModal from "../../../components/common/ConfirmModal";
 import AuthorBadge from "../components/AuthorBadge";
 import CommentSection from "../components/CommentSection";
 import ForumNotice from "../components/ForumNotice";
+import ForumSidebar from "../components/ForumSidebar";
 import PostFormModal from "../components/PostFormModal";
 import PostActionBar from "../components/PostActionBar";
 import { usePostDetail } from "../hooks/usePostDetail";
 
 function PostDetailPage() {
     const { id } = useParams();
+    const navigate = useNavigate();
     const {
         isAuthenticated,
         redirectToLogin,
@@ -39,6 +41,19 @@ function PostDetailPage() {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
+    const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+        const saved = localStorage.getItem("vticket_forum_sidebar_open");
+        return saved !== null ? saved === "true" : true;
+    });
+
+    const handleToggleSidebar = useCallback(() => {
+        setIsSidebarOpen((prev) => {
+            const next = !prev;
+            localStorage.setItem("vticket_forum_sidebar_open", String(next));
+            return next;
+        });
+    }, []);
+
     const handlePostUpdated = async () => {
         setIsEditModalOpen(false);
         notify("Đã cập nhật bài viết.", "success");
@@ -57,7 +72,37 @@ function PostDetailPage() {
         <div className="flex min-h-screen flex-col bg-slate-50">
             <Header />
 
-            <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+            <div className="relative flex min-h-[calc(100vh-4rem)] w-full flex-1">
+                {!isSidebarOpen && (
+                    <button
+                        type="button"
+                        onClick={handleToggleSidebar}
+                        title="Mở thanh điều hướng"
+                        aria-label="Mở thanh điều hướng"
+                        className="fixed left-3 top-20 z-30 hidden md:flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/90 bg-white/90 text-slate-700 shadow-md backdrop-blur-md transition-all hover:bg-slate-100 hover:text-slate-900 active:scale-95 cursor-pointer"
+                    >
+                        <svg
+                            className="h-5 w-5"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                        >
+                            <line x1="4" y1="8" x2="20" y2="8" />
+                            <line x1="4" y1="16" x2="20" y2="16" />
+                        </svg>
+                    </button>
+                )}
+
+                <ForumSidebar
+                    isOpen={isSidebarOpen}
+                    onToggle={handleToggleSidebar}
+                    onOpenCreate={() => navigate("/forum")}
+                    onNotify={notify}
+                />
+
+                <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
                 <nav
                     aria-label="Đường dẫn"
                     className="mb-5 flex flex-wrap items-center gap-1.5 text-sm text-slate-500"
@@ -199,6 +244,7 @@ function PostDetailPage() {
                     </div>
                 )}
             </main>
+            </div>
 
             {post && (
                 <>

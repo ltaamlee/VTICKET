@@ -1,9 +1,19 @@
-import { useId, useState } from "react";
-import { CornerDownRight, Pencil, Trash2 } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { CornerDownRight, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import AuthorBadge from "./AuthorBadge";
 import CommentComposer from "./CommentComposer";
 import PostActionBar from "./PostActionBar";
 
+
+function countAllReplies(comment) {
+    if (!Array.isArray(comment?.replies) || comment.replies.length === 0) {
+        return 0;
+    }
+    return comment.replies.reduce(
+        (sum, reply) => sum + 1 + countAllReplies(reply),
+        0
+    );
+}
 
 function CommentItem({
     comment,
@@ -11,6 +21,8 @@ function CommentItem({
     eventOrganizerId = null,
     depth = 0,
     parentAuthorName = null,
+    activeReplyCommentId = null,
+    onActiveReplyChange,
     isAuthenticated = false,
     onReplySubmit,
     onEditSubmit,
@@ -18,10 +30,24 @@ function CommentItem({
     onRequireAuth,
 }) {
     const replyFormId = useId();
-    const [showReplyForm, setShowReplyForm] = useState(false);
+    const showReplyForm = activeReplyCommentId === comment.id;
+    const [showReplies, setShowReplies] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
+    const menuRef = useRef(null);
 
-    // Quản lý reaction cho bình luận (lưu trong localStorage để duy trì trạng thái)
+    useEffect(() => {
+        if (!menuOpen) return;
+        const handleClickOutside = (e) => {
+            if (menuRef.current && !menuRef.current.contains(e.target)) {
+                setMenuOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [menuOpen]);
+
+    // Quản lý reaction cho bình luận 
     const storageKey = `vticket_comment_liked_${comment.id}`;
     const [isLiked, setIsLiked] = useState(() => {
         try {
@@ -54,7 +80,13 @@ function CommentItem({
             onRequireAuth?.();
             return;
         }
-        setShowReplyForm((prev) => !prev);
+        if (showReplyForm) {
+            onActiveReplyChange?.(null);
+            setShowReplies(false);
+        } else {
+            onActiveReplyChange?.(comment.id);
+            setShowReplies(true);
+        }
     };
 
     const handleEditSubmit = async (trimmed) => {
@@ -64,11 +96,12 @@ function CommentItem({
 
     const handleReplySubmit = async (trimmed) => {
         await onReplySubmit?.(comment.id, trimmed);
-        setShowReplyForm(false);
+        onActiveReplyChange?.(null);
+        setShowReplies(true);
     };
 
     const hasReplies = Array.isArray(comment.replies) && comment.replies.length > 0;
-    const repliesCount = comment.replies?.length || 0;
+    const repliesCount = countAllReplies(comment);
     const repliesContainerClass =
         depth < 2
             ? "mt-3 ml-3 space-y-3 border-l-2 border-slate-200 pl-3 sm:ml-6 sm:pl-4"
@@ -86,7 +119,7 @@ function CommentItem({
                     {comment.content || "Bình luận này đã bị ẩn hoặc xóa."}
                 </div>
             ) : (
-                <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-2xs transition-shadow hover:shadow-xs">
+                <div className="py-2">
                     {/* Header thông tin tác giả & Thao tác Sửa/Xóa nếu là chủ sở hữu */}
                     <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
@@ -106,27 +139,46 @@ function CommentItem({
                             )}
                         </div>
 
-                        {/* Nút Sửa / Xóa cho chủ bài viết đặt gọn ở góc phải trên */}
+                        {/* Nút 3 chấm mở menu Sửa / Xóa cho chủ bình luận */}
                         {comment.isOwner && !isEditing && (
-                            <div className="flex items-center gap-1 text-slate-400">
+                            <div ref={menuRef} className="relative text-slate-400">
                                 <button
                                     type="button"
-                                    onClick={() => setIsEditing(true)}
-                                    title="Chỉnh sửa bình luận"
-                                    aria-label="Chỉnh sửa"
-                                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md transition-colors hover:bg-slate-100 hover:text-slate-700"
+                                    onClick={() => setMenuOpen((prev) => !prev)}
+                                    title="Tùy chọn bình luận"
+                                    aria-label="Tùy chọn bình luận"
+                                    aria-expanded={menuOpen}
+                                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-slate-100 hover:text-slate-700"
                                 >
-                                    <Pencil className="h-3.5 w-3.5" />
+                                    <MoreHorizontal className="h-4 w-4" />
                                 </button>
-                                <button
-                                    type="button"
-                                    onClick={() => onDeleteRequest?.(comment)}
-                                    title="Xóa bình luận"
-                                    aria-label="Xóa"
-                                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md transition-colors hover:bg-red-50 hover:text-red-600"
-                                >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                </button>
+
+                                {menuOpen && (
+                                    <div className="absolute right-0 top-8 z-20 w-36 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setMenuOpen(false);
+                                                setIsEditing(true);
+                                            }}
+                                            className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                                        >
+                                            <Pencil className="h-3.5 w-3.5" />
+                                            Chỉnh sửa
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setMenuOpen(false);
+                                                onDeleteRequest?.(comment);
+                                            }}
+                                            className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+                                        >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                            Xóa
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -152,7 +204,7 @@ function CommentItem({
                                 {comment.content}
                             </p>
 
-                            {/* Cụm 4 icons y hệt trên bài đăng: Tim, Bình luận, Đăng lại, Chia sẻ */}
+                            {/* Cụm 4 icon trên bài đăng: Tim, Bình luận, Đăng lại, Chia sẻ */}
                             <div className="mt-2.5 pt-1">
                                 <PostActionBar
                                     postId={postId || comment.id}
@@ -181,16 +233,17 @@ function CommentItem({
                                 emptyErrorMessage="Vui lòng nhập nội dung phản hồi."
                                 fallbackErrorMessage="Không thể gửi phản hồi."
                                 clearOnSuccess={true}
+                                autoFocus={true}
                                 onSubmit={handleReplySubmit}
-                                onCancel={() => setShowReplyForm(false)}
+                                onCancel={() => onActiveReplyChange?.(null)}
                             />
                         </div>
                     )}
                 </div>
             )}
 
-            {/* Danh sách các câu trả lời con (replies lồng nhau) */}
-            {hasReplies && (
+            {/* Danh sách các câu trả lời con (replies lồng nhau, tối đa 3 cấp) */}
+            {hasReplies && showReplies && (
                 <div className={repliesContainerClass}>
                     {comment.replies.map((reply) => (
                         <CommentItem
@@ -202,6 +255,8 @@ function CommentItem({
                             parentAuthorName={
                                 comment.isPlaceholder ? null : comment.author?.name || null
                             }
+                            activeReplyCommentId={activeReplyCommentId}
+                            onActiveReplyChange={onActiveReplyChange}
                             isAuthenticated={isAuthenticated}
                             onReplySubmit={onReplySubmit}
                             onEditSubmit={onEditSubmit}

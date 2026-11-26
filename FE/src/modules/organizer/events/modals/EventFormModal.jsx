@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { X, FileText, Send, Save, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Send, Save, ChevronLeft, ChevronRight } from "lucide-react";
 
 import Button from "../../../../components/common/button/Button";
 import {
@@ -8,11 +8,13 @@ import {
     uploadEventImage,
     submitEvent,
 } from "../../services/eventService";
+import { createSession } from "../../services/eventSessionService";
 import { generateSlug } from "../../../../utils/generateSlug";
 import EventBasicInfoSection from "../form/steps/EventBasicInfoSection";
 import EventScheduleSection from "../form/steps/EventScheduleSection";
 import EventImagesSection from "../form/steps/EventImagesSection";
 import EventSeatMapSection from "../form/steps/EventSeatMapSection";
+import EventSessionSection from "../form/steps/EventSessionSection";
 
 import { EVENT_DESCRIPTION_TEMPLATE } from "../../../../utils/eventDescriptionTemplate";
 
@@ -98,9 +100,13 @@ function EventFormModal({
     seatMapRefreshKey = 0,
 }) {
     const isEdit = mode === "edit";
-    const stepContentRef = useRef(null);
+    const stepContentRefs = useRef([]);
+    const scrollRef = useRef(null);
     const [activeStep, setActiveStep] = useState(0);
-    const steps = ["Thông tin", "Lịch trình", "Hình ảnh"];
+    const steps = ["Thông tin tổng quan", "Thời gian & Suất diễn", "Hình ảnh và sơ đồ"];
+    const [draftSessions, setDraftSessions] = useState([]);
+    const [createdEventId, setCreatedEventId] = useState(null);
+    const [hasPendingSession, setHasPendingSession] = useState(false);
 
     const [formData, setFormData] = useState(() =>
         createInitialFormData(event, isEdit, categories)
@@ -155,21 +161,30 @@ function EventFormModal({
 
         setSlugError("");
 
+        for (let index = 0; index < steps.length; index += 1) {
+            if (!validateStep(index)) return;
+        }
+
+        const showStepError = (step, message) => {
+            changeStep(step);
+            onAlert?.("error", message);
+        };
+
         if (!formData.name.trim()) {
-            return onAlert?.("error", "Vui lòng nhập tên sự kiện.");
+            return showStepError(0, "Vui lòng nhập tên sự kiện.");
         }
 
         if (!formData.slug.trim()) {
-            return onAlert?.("error", "Vui lòng nhập slug sự kiện.");
+            return showStepError(0, "Vui lòng nhập slug sự kiện.");
         }
 
         if (!categoryId) {
-            return onAlert?.("error", "Vui lòng chọn danh mục.");
+            return showStepError(0, "Vui lòng chọn danh mục.");
         }
 
         if (!formData.location.trim()) {
-            return onAlert?.(
-                "error",
+            return showStepError(
+                0,
                 formData.eventType === "ONLINE"
                     ? "Vui lòng nhập nền tảng hoặc link sự kiện trực tuyến."
                     : "Vui lòng nhập địa điểm tổ chức."
@@ -177,12 +192,12 @@ function EventFormModal({
         }
 
         if (!formData.startAt || !formData.endAt) {
-            return onAlert?.("error", "Vui lòng chọn thời gian diễn ra.");
+            return showStepError(1, "Vui lòng chọn thời gian diễn ra.");
         }
 
         if (new Date(formData.startAt) >= new Date(formData.endAt)) {
-            return onAlert?.(
-                "error",
+            return showStepError(
+                1,
                 "Thời gian kết thúc phải sau thời gian bắt đầu."
             );
         }
@@ -192,8 +207,8 @@ function EventFormModal({
             formData.saleEndAt &&
             new Date(formData.saleStartAt) >= new Date(formData.saleEndAt)
         ) {
-            return onAlert?.(
-                "error",
+            return showStepError(
+                1,
                 "Thời gian kết thúc mở bán phải sau thời gian bắt đầu."
             );
         }
@@ -202,8 +217,8 @@ function EventFormModal({
             formData.saleStartAt &&
             new Date(formData.saleStartAt) >= new Date(formData.startAt)
         ) {
-            return onAlert?.(
-                "error",
+            return showStepError(
+                1,
                 "Thời gian mở bán phải trước khi sự kiện bắt đầu."
             );
         }
@@ -212,9 +227,29 @@ function EventFormModal({
             formData.saleEndAt &&
             new Date(formData.saleEndAt) > new Date(formData.startAt)
         ) {
-            return onAlert?.(
-                "error",
+            return showStepError(
+                1,
                 "Thời gian kết thúc mở bán không được sau thời gian bắt đầu sự kiện."
+            );
+        }
+
+        if (
+            draftSessions.some(
+                (session) =>
+                    new Date(session.startAt) < new Date(formData.startAt) ||
+                    new Date(session.endAt) > new Date(formData.endAt)
+            )
+        ) {
+            return showStepError(
+                1,
+                "Thời gian suất diễn phải nằm trong thời gian diễn ra sự kiện."
+            );
+        }
+
+        if (hasPendingSession) {
+            return showStepError(
+                1,
+                "Vui lòng nhấn Thêm hoặc Cập nhật để lưu suất diễn đang nhập trước."
             );
         }
 
@@ -268,6 +303,8 @@ function EventFormModal({
                 seatMapId: formData.seatMapId || null,
             };
 
+            let eventId = event?.id;
+
             if (isEdit) {
                 await updateEvent(event.id, payload);
 
@@ -282,18 +319,50 @@ function EventFormModal({
                 return;
             }
 
-            const response = await createEvent(payload);
+            if (createdEventId) {
+                eventId = createdEventId;
+                await updateEvent(eventId, payload);
+            } else {
+                const response = await createEvent(payload);
+                eventId =
+                    response?.data?.id ||
+                    response?.data?.data?.id ||
+                    response?.data?.event?.id ||
+                    response?.data?.data?.event?.id;
+
+                if (eventId) {
+                    setCreatedEventId(eventId);
+                }
+            }
+
+            if (!eventId && draftSessions.length > 0) {
+                throw new Error(
+                    "Tạo sự kiện thành công nhưng không lấy được ID để lưu suất diễn."
+                );
+            }
+
+            if (eventId && draftSessions.length > 0) {
+                let sessionsToSave = [...draftSessions];
+                for (const session of sessionsToSave) {
+                    if (session.serverId) continue;
+
+                    const savedSession = await createSession(eventId, {
+                        startAt: session.startAt,
+                        endAt: session.endAt,
+                    });
+                    sessionsToSave = sessionsToSave.map((item) =>
+                        item.id === session.id
+                            ? { ...item, serverId: savedSession?.id }
+                            : item
+                    );
+                    setDraftSessions(sessionsToSave);
+                }
+            }
 
             if (action === "DRAFT") {
                 onSuccess?.("Đã lưu sự kiện dưới dạng bản nháp.");
                 return;
             }
-
-            const eventId =
-                response?.data?.id ||
-                response?.data?.data?.id ||
-                response?.data?.event?.id ||
-                response?.data?.data?.event?.id;
 
             if (!eventId) {
                 throw new Error(
@@ -317,7 +386,7 @@ function EventFormModal({
                 setSlugError(
                     "Slug đã tồn tại. Vui lòng chọn slug khác."
                 );
-                setActiveStep(0);
+                changeStep(0);
                 return;
             }
 
@@ -327,14 +396,24 @@ function EventFormModal({
         }
     };
 
-    const validateCurrentStep = () => {
-        const fields = stepContentRef.current?.querySelectorAll(
+    const changeStep = (step) => {
+        setActiveStep(step);
+        scrollRef.current?.scrollTo({ top: 0 });
+    };
+
+    const validateStep = (step) => {
+        const fields = stepContentRefs.current[step]?.querySelectorAll(
             "input, select, textarea"
         );
 
         for (const field of fields || []) {
             if (!field.checkValidity()) {
-                field.reportValidity();
+                if (step === activeStep) {
+                    field.reportValidity();
+                } else {
+                    changeStep(step);
+                    requestAnimationFrame(() => field.reportValidity());
+                }
                 return false;
             }
         }
@@ -343,8 +422,8 @@ function EventFormModal({
     };
 
     const handleNext = () => {
-        if (validateCurrentStep()) {
-            setActiveStep((step) => Math.min(step + 1, steps.length - 1));
+        if (validateStep(activeStep)) {
+            changeStep(Math.min(activeStep + 1, steps.length - 1));
         }
     };
 
@@ -355,23 +434,22 @@ function EventFormModal({
     if (!open || (isEdit && !event)) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-5">
-            <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-3 sm:p-5">
+            <div role="dialog" aria-modal="true" aria-labelledby="event-form-title" className="flex h-[min(92dvh,900px)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
 
                 {/* HEADER */}
-                <div className="relative flex shrink-0 items-center justify-between border-t border-gray-100 px-6 py-4">
-                    <h2 className="absolute left-1/2 -translate-x-1/2 text-xl font-semibold text-gray-900">
-                        {isEdit ? "Chỉnh sửa sự kiện" : "Tạo sự kiện mới"}
-                    </h2>
-
-                    <div className="invisible">
-                        <X size={21} />
+                <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-5 py-4 sm:px-7">
+                    <div>
+                        <h2 id="event-form-title" className="text-lg font-semibold text-gray-900 sm:text-xl">
+                            {isEdit ? "Chỉnh sửa sự kiện" : "Tạo sự kiện mới"}
+                        </h2>
                     </div>
 
                     <button
                         type="button"
                         onClick={onClose}
                         disabled={loading}
+                        aria-label="Đóng"
                         className="rounded-lg p-2 text-gray-500 transition hover:bg-gray-100"
                     >
                         <X size={21} />
@@ -380,45 +458,40 @@ function EventFormModal({
 
                 <form
                     onSubmit={(e) => e.preventDefault()}
-                    className="min-h-0 flex-1 overflow-y-auto"
+                    className="flex min-h-0 flex-1 flex-col"
                 >
-                    <div className="border-b border-gray-100 px-6 py-4">
-                        <ol className="flex items-center gap-3">
+                    <nav aria-label="Các bước tạo sự kiện" className="shrink-0 border-b border-gray-100 px-4 py-3 sm:px-7 sm:py-4">
+                        <ol className="mx-auto grid max-w-3xl grid-cols-3 gap-2 sm:gap-4">
                             {steps.map((step, index) => (
-                                <li
-                                    key={step}
-                                    className={`flex items-center gap-2 text-sm ${
-                                        index === activeStep
-                                            ? "font-semibold text-blue-700"
-                                            : index < activeStep
-                                              ? "text-gray-700"
-                                              : "text-gray-400"
-                                    }`}
-                                >
-                                    <span
-                                        className={`flex h-7 w-7 items-center justify-center rounded-full text-xs ${
-                                            index <= activeStep
-                                                ? "bg-blue-600 text-white"
-                                                : "bg-gray-100 text-gray-500"
+                                <li key={step} className="min-w-0">
+                                    <button
+                                        type="button"
+                                        onClick={() => changeStep(index)}
+                                        disabled={loading}
+                                        aria-current={index === activeStep ? "step" : undefined}
+                                        className={`flex w-full items-center gap-2 rounded-xl border px-2 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 sm:gap-3 sm:px-3 ${
+                                            index === activeStep
+                                                ? "border-transparent bg-white text-blue-700"
+                                                : "border-transparent text-gray-500 hover:bg-white hover:text-gray-800"
                                         }`}
                                     >
-                                        {index + 1}
-                                    </span>
-                                    {step}
+                                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
+                                            index === activeStep
+                                                ? "bg-blue-600 text-white"
+                                                : "bg-gray-200 text-gray-600"
+                                        }`}>
+                                            {index + 1}
+                                        </span>
+                                        <span className="min-w-0 text-xs font-medium sm:text-sm">{step}</span>
+                                    </button>
                                 </li>
                             ))}
                         </ol>
-                    </div>
+                    </nav>
 
-                    <div ref={stepContentRef} className="p-6">
-                        {activeStep === 0 && (
-                            <section className="mx-auto max-w-3xl space-y-5">
-                                <div className="flex items-center gap-2">
-                                    <FileText size={18} className="text-blue-600" />
-                                    <h3 className="font-semibold text-gray-900">
-                                        Thông tin sự kiện
-                                    </h3>
-                                </div>
+                    <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-7 sm:py-6">
+                            <section ref={(element) => { stepContentRefs.current[0] = element; }} hidden={activeStep !== 0} className="mx-auto max-w-3xl space-y-5">
+
                                 <EventBasicInfoSection
                                     formData={{
                                         ...formData,
@@ -438,25 +511,34 @@ function EventFormModal({
                                     slugError={slugError}
                                 />
                             </section>
-                        )}
 
-                        {activeStep === 1 && (
-                            <section className="mx-auto max-w-3xl">
+                            <section ref={(element) => { stepContentRefs.current[1] = element; }} hidden={activeStep !== 1} className="mx-auto max-w-3xl space-y-5">
                                 <EventScheduleSection
                                     formData={formData}
                                     handleChange={handleChange}
                                 />
+                                {isEdit && event && (
+                                    <EventSessionSection
+                                        eventId={event.id}
+                                        sessions={event.sessions || []}
+                                        eventStartAt={event.startAt}
+                                        eventEndAt={event.endAt}
+                                        onPendingStateChange={setHasPendingSession}
+                                    />
+                                )}
+                                    {!isEdit && (
+                                        <EventSessionSection
+                                            sessions={draftSessions}
+                                            onDraftSessionsChange={setDraftSessions}
+                                            eventStartAt={formData.startAt}
+                                            eventEndAt={formData.endAt}
+                                            onPendingStateChange={setHasPendingSession}
+                                        />
+                                    )}
                             </section>
-                        )}
 
-                        {activeStep === 2 && (
-                            <section className="mx-auto max-w-4xl space-y-5">
-                                <div className="flex items-center gap-2">
-                                    <FileText size={18} className="text-blue-600" />
-                                    <h3 className="font-semibold text-gray-900">
-                                        Hình ảnh sự kiện
-                                    </h3>
-                                </div>
+                            <section ref={(element) => { stepContentRefs.current[2] = element; }} hidden={activeStep !== 2} className="mx-auto max-w-4xl space-y-5">
+
                                 <EventImagesSection
                                     formData={formData}
                                     setFormData={setFormData}
@@ -468,6 +550,7 @@ function EventFormModal({
                                     seatMapSection={
                                         <EventSeatMapSection
                                             value={formData.seatMapId}
+                                            eventId={isEdit ? event.id : undefined}
                                             onChange={(value) =>
                                                 setFormData((prev) => ({
                                                     ...prev,
@@ -483,24 +566,21 @@ function EventFormModal({
                                     }
                                 />
                             </section>
-                        )}
                     </div>
 
                     {/* FOOTER */}
-                    <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-white px-6 py-4">
+                    <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-gray-100 bg-white px-4 py-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:px-7 sm:py-4">
                         <Button
                             type="button"
                             variant="secondary"
-                            onClick={() =>
-                                setActiveStep((step) => Math.max(step - 1, 0))
-                            }
+                            onClick={() => changeStep(Math.max(activeStep - 1, 0))}
                             disabled={loading || activeStep === 0}
                         >
                             <ChevronLeft size={16} />
                             Quay lại
                         </Button>
 
-                        <div className="flex flex-wrap justify-end gap-3">
+                        <div className="contents sm:flex sm:flex-wrap sm:justify-end sm:gap-3">
                             <Button
                                 type="button"
                                 variant="secondary"
@@ -516,6 +596,7 @@ function EventFormModal({
                                     variant="primary"
                                     onClick={handleNext}
                                     disabled={loading}
+                                    className="col-span-2 sm:col-span-1"
                                 >
                                     Tiếp tục
                                     <ChevronRight size={16} />

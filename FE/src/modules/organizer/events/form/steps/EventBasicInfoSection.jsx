@@ -246,12 +246,7 @@ export default function EventBasicInfoSection({
                 <TextEditor
                     name="description"
                     value={formData.description}
-                    onChange={(e) =>
-                        setFormData((prev) => ({
-                            ...prev,
-                            [e.target.name]: e.target.value,
-                        }))
-                    }
+                    onChange={handleChange}
                     placeholder="Giới thiệu nội dung, lịch trình, khách mời và chi tiết sự kiện..."
                     minHeight={160}
                 />

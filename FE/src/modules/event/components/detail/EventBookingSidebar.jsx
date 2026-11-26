@@ -1,15 +1,28 @@
 import { ShieldCheck, Zap, HelpCircle } from "lucide-react";
 import EventBadge from "../common/EventBadge";
 
-/**
- * EventBookingSidebar - Khung đặt vé nổi bên phải trang chi tiết sự kiện
- */
-export default function EventBookingSidebar({ event, onBuyClick }) {
+export default function EventBookingSidebar({
+    event,
+    onBuyClick,
+    selectedSession,
+}) {
     if (!event) return null;
 
-    const isSoldOut = event.ticketStatus === "SOLD_OUT";
-    const isEnded = event.ticketStatus === "ENDED";
+    const now = new Date();
+    const sessionCount = event.sessions?.length || 0;
+    const isEnded =
+        event.ticketStatus === "ENDED" ||
+        (selectedSession && new Date(selectedSession.endAt) <= now);
     const isUpcoming = event.ticketStatus === "UPCOMING";
+    const isSoldOut = event.ticketStatus === "SOLD_OUT";
+    const ticketStatus = isEnded
+        ? "ENDED"
+        : isUpcoming
+          ? "UPCOMING"
+          : isSoldOut
+            ? "SOLD_OUT"
+            : "SELLING";
+    const priceRange = event.priceRange;
 
     const formatPrice = (priceRange) => {
         if (!priceRange || priceRange.isFree) return "Miễn phí";
@@ -19,11 +32,20 @@ export default function EventBookingSidebar({ event, onBuyClick }) {
         return `Từ ${Number(priceRange.minPrice).toLocaleString("vi-VN")} đ`;
     };
 
+    const formatSession = (session) => {
+        const start = new Date(session.startAt);
+        const end = new Date(session.endAt);
+        const time = (date) =>
+            date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+
+        return `${time(start)} - ${time(end)}, ${start.toLocaleDateString("vi-VN")}`;
+    };
+
     const getButtonText = () => {
         if (isEnded) return "Sự kiện đã kết thúc";
         if (isSoldOut) return "Đã hết vé";
         if (isUpcoming) return "Sắp mở bán";
-        return "Chọn vé ngay";
+        return sessionCount > 1 ? "Chọn suất & vé" : "Chọn vé ngay";
     };
 
     return (
@@ -32,19 +54,30 @@ export default function EventBookingSidebar({ event, onBuyClick }) {
             <div className="pb-4 border-b border-slate-100">
                 <span className="text-xs text-slate-500 font-medium">Giá vé tham dự</span>
                 <div className="mt-1 flex items-baseline justify-between gap-2">
+
                     <span className="text-2xl font-black text-blue-600 tracking-tight">
-                        {formatPrice(event.priceRange)}
+                        {formatPrice(priceRange)}
                     </span>
-                    <EventBadge status={event.ticketStatus} size="sm" />
+                    <EventBadge status={ticketStatus} size="sm" />
                 </div>
             </div>
 
             {/* Thông tin nhanh số lượng hạng vé */}
             <div className="space-y-2 text-xs text-slate-600">
-                <div className="flex items-center justify-between">
-                    <span>Số hạng vé mở bán:</span>
-                    <span className="font-bold text-slate-900">{event.ticketTypes?.length || 0} hạng vé</span>
-                </div>
+                {sessionCount > 0 && (
+                    <div className="flex items-center justify-between">
+                        <span>Số suất diễn:</span>
+                        <span className="font-bold text-slate-900">{sessionCount} suất</span>
+                    </div>
+                )}
+                {selectedSession && (
+                    <div className="flex items-start justify-between gap-3">
+                        <span className="shrink-0">Suất đang chọn:</span>
+                        <span className="text-right font-bold text-slate-900">
+                            {formatSession(selectedSession)}
+                        </span>
+                    </div>
+                )}
                 {event.seatMap && (
                     <div className="flex items-center justify-between">
                         <span>Hình thức chỗ ngồi:</span>

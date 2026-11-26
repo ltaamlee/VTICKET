@@ -262,6 +262,7 @@ model Event {
   updatedAt DateTime @updatedAt
 
   ticketTypes TicketType[]
+  sessions    EventSession[]
   tickets     Ticket[]
   posts       Post[]
   @@index([organizerId])
@@ -269,6 +270,23 @@ model Event {
   @@index([status])
   @@index([startAt])
   @@map("events")
+}
+
+model EventSession {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  eventId     String   @db.ObjectId
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  startAt     DateTime
+  endAt       DateTime
+  saleStartAt DateTime?
+  saleEndAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ticketTypes TicketType[]
+
+  @@index([eventId, startAt])
+  @@map("eventSessions")
 }
 
 model SeatMap {
@@ -387,6 +405,8 @@ model TicketType {
   id           String           @id @default(auto()) @map("_id") @db.ObjectId
   eventId      String           @db.ObjectId
   event        Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sessionId    String?          @db.ObjectId
+  session      EventSession?    @relation(fields: [sessionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   zoneId       String           @db.ObjectId
   zone         Zone             @relation(fields: [zoneId], references: [id], onDelete: Cascade)
   name         String
@@ -403,6 +423,7 @@ model TicketType {
   tickets    Ticket[]
 
   @@index([eventId])
+  @@index([sessionId])
   @@index([zoneId])
   @@index([status])
   @@map("ticketTypes")
