@@ -1,4 +1,5 @@
 const prisma = require("../../config/prisma");
+const { EventType } = require("@prisma/client");
 const generateSlug = require("../../utils/generateSlug");
 const { EventStatus, isValidEventStatus, getEventStatus, } = require("../../shared/eventStatus");
 const BaseService = require("../public/base.service");
@@ -33,6 +34,12 @@ class OrganizerEventService extends BaseService {
         }
 
         return date;
+    }
+
+    validateEventType(eventType) {
+        if (!Object.values(EventType).includes(eventType)) {
+            this.throwError("Hình thức tổ chức sự kiện không hợp lệ");
+        }
     }
 
     async validateCategory(categoryId) {
@@ -193,6 +200,9 @@ class OrganizerEventService extends BaseService {
                     createdAt: "desc",
                 },
                 include: {
+                    _count: {
+                        select: { sessions: true },
+                    },
                     category: {
                         select: {
                             id: true,
@@ -273,6 +283,9 @@ class OrganizerEventService extends BaseService {
                         },
                     },
                 },
+                sessions: {
+                    orderBy: { startAt: "asc" },
+                },
             },
         });
 
@@ -291,6 +304,7 @@ class OrganizerEventService extends BaseService {
         thumbnailUrl,
         bannerUrl,
         categoryId,
+        eventType,
         location,
         saleStartAt,
         saleEndAt,
@@ -306,6 +320,10 @@ class OrganizerEventService extends BaseService {
 
         if (typeof location !== "string" || !location.trim()) {
             this.throwError("Địa điểm không được để trống");
+        }
+
+        if (eventType !== undefined) {
+            this.validateEventType(eventType);
         }
 
         await this.validateCategory(categoryId);
@@ -364,6 +382,7 @@ class OrganizerEventService extends BaseService {
                         bannerUrl,
                         organizerId,
                         categoryId,
+                        eventType,
                         location: location.trim(),
                         saleStartAt: saleStartDate,
                         saleEndAt: saleEndDate,
@@ -403,6 +422,7 @@ class OrganizerEventService extends BaseService {
         thumbnailUrl,
         bannerUrl,
         categoryId,
+        eventType,
         location,
         saleStartAt,
         saleEndAt,
@@ -466,6 +486,11 @@ class OrganizerEventService extends BaseService {
             data.bannerUrl = bannerUrl;
         }
 
+        if (eventType !== undefined) {
+            this.validateEventType(eventType);
+            data.eventType = eventType;
+        }
+
         if (location !== undefined) {
             if (typeof location !== "string" || !location.trim()) {
                 this.throwError("Địa điểm không được để trống");
@@ -525,6 +550,23 @@ class OrganizerEventService extends BaseService {
         if (finalStartAt >= finalEndAt) {
             this.throwError(
                 "Thời gian kết thúc phải sau thời gian bắt đầu"
+            );
+        }
+
+        const sessionOutsideEventRange = await prisma.eventSession.findFirst({
+            where: {
+                eventId,
+                OR: [
+                    { startAt: { lt: finalStartAt } },
+                    { endAt: { gt: finalEndAt } },
+                ],
+            },
+            select: { id: true },
+        });
+
+        if (sessionOutsideEventRange) {
+            this.throwError(
+                "Không thể thu hẹp thời gian sự kiện vì có suất diễn nằm ngoài khoảng thời gian mới"
             );
         }
 

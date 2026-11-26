@@ -13,6 +13,7 @@ const organizerSeatMapController = require("../../controllers/v1/organizer/organ
 const organizerZoneController = require("../../controllers/v1/organizer/organizerZone.controller");
 const organizerTicketController = require("../../controllers/v1/organizer/organizerTicket.controller");
 const organizerDashboardController = require("../../controllers/v1/organizer/organizerDashboard.controller");
+const organizerEventSessionController = require("../../controllers/v1/organizer/organizerEventSession.controller");
 
 // ==========================================
 // 1. NHÓM ĐĂNG KÝ LÀM BAN TỔ CHỨC (Cần đăng nhập)
@@ -36,6 +37,32 @@ router.post("/events", organizerEventController.createEvent);
 router.put("/events/:id", organizerEventController.updateEvent);
 router.delete("/events/:id", organizerEventController.deleteEvent);
 router.patch("/events/:id/submit", organizerEventController.submitEvent);
+
+// Event Sessions
+router.get(
+  "/events/:eventId/sessions",
+  organizerEventSessionController.getSessions
+);
+router.get(
+  "/events/:eventId/sessions/:sessionId",
+  organizerEventSessionController.getSessionDetail
+);
+router.post(
+  "/events/:eventId/sessions",
+  organizerEventSessionController.createSession
+);
+router.patch(
+  "/events/:eventId/sessions/:sessionId",
+  organizerEventSessionController.updateSession
+);
+router.delete(
+  "/events/:eventId/sessions/:sessionId",
+  organizerEventSessionController.deleteSession
+);
+router.post(
+  "/events/:eventId/sessions/check-conflict",
+  organizerEventSessionController.checkTimeConflict
+);
 
 // Tickets
 router.get(

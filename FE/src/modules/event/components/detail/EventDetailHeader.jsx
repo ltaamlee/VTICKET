@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
     Calendar,
+    CalendarClock,
     MapPin,
     Share2,
     Check,
@@ -22,6 +23,7 @@ export default function EventDetailHeader({ event, onBuyClick }) {
 
     const isSoldOut = event.ticketStatus === "SOLD_OUT";
     const isEnded = event.ticketStatus === "ENDED";
+    const sessionCount = event.sessions?.length || 0;
 
     const handleShare = () => {
         navigator.clipboard.writeText(window.location.href);
@@ -162,6 +164,14 @@ export default function EventDetailHeader({ event, onBuyClick }) {
                                     <Calendar className="h-4 w-4 shrink-0 text-blue-600" />
                                     <span>{formatDateRange(event.startAt, event.endAt)}</span>
                                 </div>
+
+                                {/* Số suất diễn */}
+                                {sessionCount > 0 && (
+                                    <div className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-slate-800">
+                                        <CalendarClock className="h-4 w-4 shrink-0 text-blue-600" />
+                                        <span>{sessionCount} suất diễn</span>
+                                    </div>
+                                )}
 
                                 {/* Địa điểm */}
                                 <div className="flex items-start gap-2.5 text-xs sm:text-sm">

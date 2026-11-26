@@ -17,7 +17,11 @@ function truncate(text, max = 22) {
     return value.length > max ? `${value.slice(0, max - 1)}…` : value;
 }
 
-export default function SeatMapPreview({ seatMap, className = "" }) {
+export default function SeatMapPreview({
+    seatMap,
+    className = "",
+    showCapacity = true,
+}) {
     const canvasWidth = Number(seatMap?.canvasWidth) || 900;
     const canvasHeight = Number(seatMap?.canvasHeight) || 600;
     const zones = seatMap?.zones || [];
@@ -131,8 +135,8 @@ export default function SeatMapPreview({ seatMap, className = "" }) {
                             .filter(Boolean)
                             .join(" ");
 
-                        const capacity =
-                            zone.type === "SEATED"
+                        const capacity = showCapacity
+                            ? zone.type === "SEATED"
                                 ? Math.max(
                                       0,
                                       (Number(zone.rowCount) || 0) *
@@ -140,7 +144,8 @@ export default function SeatMapPreview({ seatMap, className = "" }) {
                                           (zone.removedSeats?.length || 0) -
                                           (zone.blockedSeats?.length || 0)
                                   )
-                                : Number(zone.capacity) || 0;
+                                : Number(zone.capacity) || 0
+                            : null;
 
                         /**
                          * Lưới ghế + khung bao của các ô CÒN LẠI.
@@ -346,7 +351,7 @@ export default function SeatMapPreview({ seatMap, className = "" }) {
                                 </text>
 
                                 {/* Capacity */}
-                                {!isStage && (
+                                {showCapacity && !isStage && (
                                     <text
                                         x={cx}
                                         y={cy + 17}

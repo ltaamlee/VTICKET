@@ -480,11 +480,18 @@ class OrganizerZoneService extends BaseService {
             });
         }
 
+        const eventTicketTypes = existingTicketTypes.filter(
+            (ticketType) => !ticketType.sessionId
+        );
+        const sessions = await tx.eventSession.findMany({
+            where: { eventId },
+        });
         const ticketTypes = [];
 
         for (const zone of zones) {
-            const existing = existingTicketTypes.find(
-                (ticketType) => ticketType.zoneId === zone.id
+            const existing = eventTicketTypes.find(
+                (ticketType) =>
+                    ticketType.zoneId === zone.id && !ticketType.sessionId
             );
             const data = {
                 name: zone.name,
@@ -521,6 +528,48 @@ class OrganizerZoneService extends BaseService {
             }
         }
 
+        for (const session of sessions) {
+            const sessionTicketTypes = existingTicketTypes.filter(
+                (ticketType) => ticketType.sessionId === session.id
+            );
+
+            for (const zone of zones) {
+                const existing = sessionTicketTypes.find(
+                    (ticketType) => ticketType.zoneId === zone.id
+                );
+                const data = {
+                    name: zone.name,
+                    price: zone.price,
+                    capacity: zone.capacity,
+                    saleStartAt: saleStartAt ?? null,
+                    saleEndAt: saleEndAt ?? null,
+                };
+
+                if (existing) {
+                    if (zone.capacity < existing.soldQuantity) {
+                        this.throwError(
+                            `Sức chứa khu vực "${zone.name}" thấp hơn số vé đã bán`,
+                            409
+                        );
+                    }
+
+                    await tx.ticketType.update({
+                        where: { id: existing.id },
+                        data,
+                    });
+                } else {
+                    await tx.ticketType.create({
+                        data: {
+                            eventId,
+                            sessionId: session.id,
+                            zoneId: zone.id,
+                            ...data,
+                        },
+                    });
+                }
+            }
+        }
+
         return ticketTypes;
     }
 
@@ -542,9 +591,12 @@ class OrganizerZoneService extends BaseService {
             return null;
         }
 
-        const existing = await tx.ticketType.findFirst({
+        const ticketTypes = await tx.ticketType.findMany({
             where: { eventId: event.id, zoneId: zone.id },
         });
+        const existing = ticketTypes.find(
+            (ticketType) => !ticketType.sessionId
+        );
 
         const data = {
             name: zone.name,
@@ -554,6 +606,7 @@ class OrganizerZoneService extends BaseService {
             saleEndAt: event.saleEndAt,
         };
 
+        let eventTicketType;
         if (existing) {
             if (zone.capacity < existing.soldQuantity) {
                 this.throwError(
@@ -562,19 +615,51 @@ class OrganizerZoneService extends BaseService {
                 );
             }
 
-            return tx.ticketType.update({
+            eventTicketType = await tx.ticketType.update({
                 where: { id: existing.id },
                 data,
             });
+        } else {
+            eventTicketType = await tx.ticketType.create({
+                data: {
+                    eventId: event.id,
+                    zoneId: zone.id,
+                    ...data,
+                },
+            });
         }
 
-        return tx.ticketType.create({
-            data: {
-                eventId: event.id,
-                zoneId: zone.id,
-                ...data,
-            },
+        const sessions = await tx.eventSession.findMany({
+            where: { eventId: event.id },
         });
+        for (const session of sessions) {
+            const existingSessionType = ticketTypes.find(
+                (ticketType) => ticketType.sessionId === session.id
+            );
+            if (existingSessionType) {
+                if (zone.capacity < existingSessionType.soldQuantity) {
+                    this.throwError(
+                        `Sức chứa khu vực "${zone.name}" thấp hơn số vé đã bán`,
+                        409
+                    );
+                }
+                await tx.ticketType.update({
+                    where: { id: existingSessionType.id },
+                    data,
+                });
+            } else {
+                await tx.ticketType.create({
+                    data: {
+                        eventId: event.id,
+                        sessionId: session.id,
+                        zoneId: zone.id,
+                        ...data,
+                    },
+                });
+            }
+        }
+
+        return eventTicketType;
     }
 
     handlePrismaError(error) {
