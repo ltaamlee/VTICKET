@@ -1,22 +1,26 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
-import AccountLayout from "../../../layout/AccountLayout";
+import { useSearchParams } from "react-router-dom";
+import { User, Lock } from "lucide-react";
+
 import { useAuth } from "../../../contexts/AuthContext";
 import {
     getProfile,
     updateProfile,
     changePassword,
 } from "../services/profileService";
-import { CheckCircle2, AlertCircle } from "lucide-react";
+import Tabs from "../../../components/common/Tabs";
 import PersonalInfoTab from "../components/PersonalInfoTab";
 import SecurityTab from "../components/SecurityTab";
 import ChangePasswordModal from "../components/ChangePasswordModal";
-import { Lock, UserRound } from "lucide-react";
+
+const tabs = [
+    { id: "info", label: "Thông tin cá nhân", icon: User },
+    { id: "security", label: "Tài khoản & bảo mật", icon: Lock },
+];
 
 function ProfilePage() {
     const { user: authUser, updateUser } = useAuth();
-    const location = useLocation();
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const activeTab = searchParams.get("tab") === "security" ? "security" : "info";
 
     const [profile, setProfile] = useState(null);
@@ -29,7 +33,6 @@ function ProfilePage() {
     const [fullName, setFullName] = useState("");
     const [phone, setPhone] = useState("");
     const [dob, setDob] = useState("");
-    const [avatar, setAvatar] = useState("");
 
     // Change password states
     const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -120,7 +123,10 @@ function ProfilePage() {
                 setPwdSuccess("");
             }, 2000);
         } catch (err) {
-            setPwdError(err.message || "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu hiện tại");
+            setPwdError(
+                err.message ||
+                    "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu hiện tại"
+            );
         } finally {
             setPwdLoading(false);
         }
@@ -128,40 +134,49 @@ function ProfilePage() {
 
     // Tải dữ liệu hồ sơ từ API
     useEffect(() => {
-        fetchProfileData();
-    }, []);
+        let cancelled = false;
 
-    const fetchProfileData = async () => {
-        try {
-            setLoading(true);
-            setError("");
-            const response = await getProfile();
-            const data = response.data;
-            setProfile(data);
+        async function fetchProfileData() {
+            try {
+                setLoading(true);
+                setError("");
 
-            setFullName(data.fullName || "");
-            setPhone(data.phone || "");
-            setDob(data.dob ? data.dob.split("T")[0] : "");
-            setAvatar(data.avatar || "");
+                const response = await getProfile();
+                const data = response.data;
 
-            // Đồng bộ avatar vào AuthContext nếu chưa đồng bộ
-            if (data.avatar && data.avatar !== authUser?.avatar) {
-                updateUser({ avatar: data.avatar });
+                if (cancelled) return;
+
+                setProfile(data);
+                setFullName(data.fullName || "");
+                setPhone(data.phone || "");
+                setDob(data.dob ? data.dob.split("T")[0] : "");
+
+                // Đồng bộ avatar vào AuthContext nếu chưa đồng bộ
+                if (data.avatar && data.avatar !== authUser?.avatar) {
+                    updateUser({ avatar: data.avatar });
+                }
+            } catch (err) {
+                if (cancelled) return;
+
+                setError(err.message || "Không thể tải thông tin hồ sơ.");
+            } finally {
+                if (!cancelled) setLoading(false);
             }
-        } catch (err) {
-            console.error("Error loading profile:", err);
-            setError(err.message || "Không thể tải thông tin hồ sơ.");
-        } finally {
-            setLoading(false);
         }
-    };
+
+        fetchProfileData();
+
+        return () => {
+            cancelled = true;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleResetForm = () => {
         if (!profile) return;
         setFullName(profile.fullName || "");
         setPhone(profile.phone || "");
         setDob(profile.dob ? profile.dob.split("T")[0] : "");
-        setAvatar(profile.avatar || "");
         setError("");
         setSuccess("");
     };
@@ -190,7 +205,6 @@ function ProfilePage() {
                 fullName: fullName.trim(),
                 phone: phone.trim() || null,
                 dob: dob || null,
-                avatar: avatar.trim() || null,
             });
 
             const updated = response.data;
@@ -212,35 +226,40 @@ function ProfilePage() {
         }
     };
 
-    const isStaff = authUser?.role === "ADMIN" || authUser?.role === "ORGANIZER";
-    const profileContent = (
-        <>
-            {isStaff && (
-                <div className="mb-6">
-                    <h1 className="text-2xl font-bold text-gray-900">Hồ sơ cá nhân</h1>
-                    <p className="mt-1 text-sm text-gray-500">Quản lý thông tin và bảo mật tài khoản</p>
-                    <nav className="mt-5 flex gap-2 border-b border-gray-200" aria-label="Các mục hồ sơ">
-                        <Link to={location.pathname} className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium ${activeTab === "info" ? "border-indigo-600 text-indigo-700" : "border-transparent text-gray-500 hover:text-gray-800"}`}>
-                            <UserRound className="h-4 w-4" /> Thông tin cá nhân
-                        </Link>
-                        <Link to={`${location.pathname}?tab=security`} className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium ${activeTab === "security" ? "border-indigo-600 text-indigo-700" : "border-transparent text-gray-500 hover:text-gray-800"}`}>
-                            <Lock className="h-4 w-4" /> Tài khoản &amp; bảo mật
-                        </Link>
-                    </nav>
-                </div>
-            )}
+    return (
+        <div className="space-y-6">
+            {/* Tiêu đề trang */}
+            <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                    Hồ sơ cá nhân
+                </h1>
+                <p className="mt-1 text-sm text-gray-500">
+                    Quản lý thông tin và bảo mật tài khoản VTICKET của bạn.
+                </p>
+            </div>
+
+            {/* Tabs */}
+            <Tabs
+                tabs={tabs}
+                activeTab={activeTab}
+                onChange={(id) =>
+                    setSearchParams(
+                        id === "info" ? {} : { tab: id },
+                        { replace: true }
+                    )
+                }
+            />
+
             {/* Thông báo trạng thái */}
             {error && (
-                <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600 shadow-sm animate-in fade-in">
-                    <AlertCircle className="h-5 w-5 shrink-0" />
-                    <span>{error}</span>
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                    {error}
                 </div>
             )}
 
             {success && (
-                <div className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700 shadow-sm animate-in fade-in">
-                    <CheckCircle2 className="h-5 w-5 shrink-0" />
-                    <span>{success}</span>
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                    {success}
                 </div>
             )}
 
@@ -291,10 +310,8 @@ function ProfilePage() {
                 pwdLoading={pwdLoading}
                 handleChangePassword={handleChangePassword}
             />
-        </>
+        </div>
     );
-
-    return isStaff ? profileContent : <AccountLayout>{profileContent}</AccountLayout>;
 }
 
 export default ProfilePage;

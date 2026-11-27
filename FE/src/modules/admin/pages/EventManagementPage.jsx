@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { XCircle } from "lucide-react";
 
 import {
     getEventStats,
@@ -14,6 +15,10 @@ import EventStats from "../events/EventStats";
 import EventToolbar from "../events/EventToolbar";
 import EventTable from "../events/EventTable";
 import ConfirmModal from "../../../components/common/ConfirmModal";
+import FormPanel, {
+    FORM_PANEL_INPUT_CLASS,
+    FORM_PANEL_LABEL_CLASS,
+} from "../../../components/common/form/FormPanel";
 import Pagination from "../../../components/common/Pagination";
 
 const confirmConfig = {
@@ -205,10 +210,6 @@ function AdminEventPage() {
                 <h1 className="text-2xl font-semibold text-gray-900">
                     Quản lý sự kiện
                 </h1>
-
-                <p className="mt-1 text-sm text-gray-500">
-                    Theo dõi, kiểm duyệt và quản lý các sự kiện trên hệ thống.
-                </p>
             </div>
 
             {/* Statistics */}
@@ -248,48 +249,30 @@ function AdminEventPage() {
 
             {/* Reject modal */}
             {modalType === "reject" && selectedEvent && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-md rounded-xl bg-white p-6">
-                        <h2 className="text-lg font-semibold text-gray-900">
-                            Từ chối sự kiện
-                        </h2>
-
-                        <p className="mt-3 text-sm text-gray-600">
-                            Sự kiện:{" "}
-                            <span className="font-medium text-gray-900">
-                                {selectedEvent.name}
-                            </span>
-                        </p>
-
+                <FormPanel
+                    icon={XCircle}
+                    title="Từ chối sự kiện"
+                    subtitle={selectedEvent.name}
+                    onClose={closeModal}
+                    onSubmit={handleAction}
+                    loading={processing}
+                    size="sm"
+                    submitText="Từ chối"
+                    submitVariant="danger"
+                >
+                    <div>
+                        <label className={FORM_PANEL_LABEL_CLASS}>
+                            Lý do từ chối
+                        </label>
                         <textarea
                             value={rejectReason}
                             onChange={(e) => setRejectReason(e.target.value)}
                             rows={4}
                             placeholder="Nhập lý do từ chối..."
-                            className="mt-4 w-full rounded-lg border border-gray-200 p-3 text-sm outline-none focus:border-blue-500"
+                            className={`${FORM_PANEL_INPUT_CLASS} resize-none`}
                         />
-
-                        <div className="mt-6 flex justify-end gap-3">
-                            <button
-                                type="button"
-                                onClick={closeModal}
-                                disabled={processing}
-                                className="rounded-lg border px-4 py-2 text-sm disabled:opacity-50"
-                            >
-                                Hủy
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={handleAction}
-                                disabled={processing}
-                                className="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-50"
-                            >
-                                {processing ? "Đang xử lý..." : "Từ chối"}
-                            </button>
-                        </div>
                     </div>
-                </div>
+                </FormPanel>
             )}
 
             {/* Confirmation modal */}

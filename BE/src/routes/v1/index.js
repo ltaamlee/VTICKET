@@ -10,7 +10,11 @@ const eventRoutes = require('./event.route');
 const categoryRoutes = require('./category.route');
 const orderRoutes = require('./order.route');
 const paymentRoutes = require('./payment.route');
+const settingRoutes = require('./setting.route');
+const resaleRoutes = require('./resale.route');
+const walletRoutes = require('./wallet.route');
 
+router.use('/settings', settingRoutes);
 router.use('/auth', authRoutes);
 router.use('/admin', adminRoutes);
 router.use('/users', userRoutes);
@@ -20,6 +24,8 @@ router.use('/events', eventRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/orders', orderRoutes);
 router.use('/payments', paymentRoutes);
+router.use('/resales', resaleRoutes);
+router.use('/wallet', walletRoutes);
 
 // router.use('/event', eventRoutes);
 // router.use('/category', categoryRoutes);

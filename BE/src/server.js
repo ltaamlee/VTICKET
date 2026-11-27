@@ -1,5 +1,6 @@
 const app = require('./app');
 const { expireDueOrders } = require('./services/user/order.service');
+const { expireDueResaleOrders } = require('./services/resale/resaleOrder.cancel');
 const ensurePaymentIndexes = require('./services/payment/paymentIndexes');
 const { syncCompletedEvents } = require('./shared/eventStatus');
 const PORT = process.env.PORT || 5000;
@@ -18,6 +19,7 @@ async function releaseExpiredOrders() {
   expiringOrders = true;
   try {
     await expireDueOrders();
+    await expireDueResaleOrders();
     await syncCompletedEvents();
   } catch (error) {
     console.error("Không thể giải phóng đơn hàng hết hạn:", error.code || error.name);

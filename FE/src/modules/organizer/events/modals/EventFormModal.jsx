@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
-import { X, Send, Save, ChevronLeft, ChevronRight } from "lucide-react";
+import { Send, Save, ChevronLeft, ChevronRight } from "lucide-react";
 
 import Button from "../../../../components/common/button/Button";
+import FormPanel from "../../../../components/common/form/FormPanel";
 import {
     createEvent,
     updateEvent,
@@ -452,221 +453,230 @@ function EventFormModal({
     if (!open || (isEdit && !event)) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-3 sm:p-5">
-            <div role="dialog" aria-modal="true" aria-labelledby="event-form-title" className="flex h-[min(92dvh,900px)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-
-                {/* HEADER */}
-                <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-5 py-4 sm:px-7">
-                    <div>
-                        <h2 id="event-form-title" className="text-lg font-semibold text-gray-900 sm:text-xl">
-                            {isEdit ? "Chỉnh sửa sự kiện" : "Tạo sự kiện mới"}
-                        </h2>
-                    </div>
-
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        disabled={loading}
-                        aria-label="Đóng"
-                        className="rounded-lg p-2 text-gray-500 transition hover:bg-gray-100"
-                    >
-                        <X size={21} />
-                    </button>
-                </div>
-
-                <form
-                    onSubmit={(e) => e.preventDefault()}
-                    className="flex min-h-0 flex-1 flex-col"
+        <FormPanel
+            title={isEdit ? "Chỉnh sửa sự kiện" : "Tạo sự kiện mới"}
+            onClose={onClose}
+            loading={loading}
+            size="xl"
+            overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-3 sm:p-5"
+            panelClassName="h-[min(92dvh,900px)] max-w-6xl shadow-2xl"
+            headerClassName="shrink-0 border-b border-gray-100 px-5 py-4 sm:px-7"
+            bodyClassName="px-4 py-5 sm:px-7 sm:py-6"
+            footerClassName="shrink-0 border-t border-gray-100 bg-white px-4 py-3 sm:px-7 sm:py-4"
+            closeButtonClassName="shrink-0 rounded-lg p-2 text-gray-500 transition hover:bg-gray-100"
+            headerExtra={
+                <nav
+                    aria-label="Các bước tạo sự kiện"
+                    className="shrink-0 border-b border-gray-100 px-4 py-3 sm:px-7 sm:py-4"
                 >
-                    <nav aria-label="Các bước tạo sự kiện" className="shrink-0 border-b border-gray-100 px-4 py-3 sm:px-7 sm:py-4">
-                        <ol className="mx-auto grid max-w-3xl grid-cols-3 gap-2 sm:gap-4">
-                            {steps.map((step, index) => (
-                                <li key={step} className="min-w-0">
-                                    <button
-                                        type="button"
-                                        onClick={() => changeStep(index)}
-                                        disabled={loading}
-                                        aria-current={index === activeStep ? "step" : undefined}
-                                        className={`flex w-full items-center gap-2 rounded-xl border px-2 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 sm:gap-3 sm:px-3 ${
-                                            index === activeStep
-                                                ? "border-transparent bg-white text-blue-700"
-                                                : "border-transparent text-gray-500 hover:bg-white hover:text-gray-800"
-                                        }`}
-                                    >
-                                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
+                    <ol className="mx-auto grid max-w-3xl grid-cols-3 gap-2 sm:gap-4">
+                        {steps.map((step, index) => (
+                            <li key={step} className="min-w-0">
+                                <button
+                                    type="button"
+                                    onClick={() => changeStep(index)}
+                                    disabled={loading}
+                                    aria-current={
+                                        index === activeStep ? "step" : undefined
+                                    }
+                                    className={`flex w-full items-center gap-2 rounded-xl border px-2 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 sm:gap-3 sm:px-3 ${
+                                        index === activeStep
+                                            ? "border-transparent bg-white text-blue-700"
+                                            : "border-transparent text-gray-500 hover:bg-white hover:text-gray-800"
+                                    }`}
+                                >
+                                    <span
+                                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
                                             index === activeStep
                                                 ? "bg-blue-600 text-white"
                                                 : "bg-gray-200 text-gray-600"
-                                        }`}>
-                                            {index + 1}
-                                        </span>
-                                        <span className="min-w-0 text-xs font-medium sm:text-sm">{step}</span>
-                                    </button>
-                                </li>
-                            ))}
-                        </ol>
-                    </nav>
+                                        }`}
+                                    >
+                                        {index + 1}
+                                    </span>
+                                    <span className="min-w-0 text-xs font-medium sm:text-sm">
+                                        {step}
+                                    </span>
+                                </button>
+                            </li>
+                        ))}
+                    </ol>
+                </nav>
+            }
+            footer={
+                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => changeStep(Math.max(activeStep - 1, 0))}
+                        disabled={loading || activeStep === 0}
+                    >
+                        <ChevronLeft size={16} />
+                        Quay lại
+                    </Button>
 
-                    <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-7 sm:py-6">
-                            <section ref={(element) => { stepContentRefs.current[0] = element; }} hidden={activeStep !== 0} className="mx-auto max-w-3xl space-y-5">
-
-                                <EventBasicInfoSection
-                                    formData={{
-                                        ...formData,
-                                        categoryId: String(categoryId),
-                                    }}
-                                    handleChange={handleChange}
-                                    categories={categories}
-                                    selectedCategoryExists={
-                                        isEdit ? selectedCategoryExists : true
-                                    }
-                                    getCategoryId={getCategoryId}
-                                    currentCategoryName={
-                                        event?.category?.name ||
-                                        event?.categoryName ||
-                                        ""
-                                    }
-                                    slugError={slugError}
-                                />
-                            </section>
-
-                            <section ref={(element) => { stepContentRefs.current[1] = element; }} hidden={activeStep !== 1} className="mx-auto max-w-3xl space-y-5">
-                                <EventScheduleSection
-                                    formData={formData}
-                                    handleChange={handleChange}
-                                />
-                                {isEdit && event && (
-                                    <EventSessionSection
-                                        eventId={event.id}
-                                        sessions={event.sessions || []}
-                                        eventStartAt={event.startAt}
-                                        eventEndAt={event.endAt}
-                                        onPendingStateChange={setHasPendingSession}
-                                    />
-                                )}
-                                    {!isEdit && (
-                                        <EventSessionSection
-                                            sessions={draftSessions}
-                                            onDraftSessionsChange={setDraftSessions}
-                                            eventStartAt={formData.startAt}
-                                            eventEndAt={formData.endAt}
-                                            onPendingStateChange={setHasPendingSession}
-                                        />
-                                    )}
-                            </section>
-
-                            <section ref={(element) => { stepContentRefs.current[2] = element; }} hidden={activeStep !== 2} className="mx-auto max-w-4xl space-y-5">
-
-                                <EventImagesSection
-                                    formData={formData}
-                                    setFormData={setFormData}
-                                    thumbnailFile={thumbnailFile}
-                                    setThumbnailFile={setThumbnailFile}
-                                    bannerFile={bannerFile}
-                                    setBannerFile={setBannerFile}
-                                    onAlert={onAlert}
-                                    seatMapSection={
-                                        <EventSeatMapSection
-                                            value={formData.seatMapId}
-                                            eventId={isEdit ? event.id : undefined}
-                                            onChange={(value) =>
-                                                setFormData((prev) => ({
-                                                    ...prev,
-                                                    seatMapId: value,
-                                                }))
-                                            }
-                                            onAlert={onAlert}
-                                            onManageSeatMaps={
-                                                onManageSeatMaps
-                                            }
-                                            refreshKey={seatMapRefreshKey}
-                                        />
-                                    }
-                                />
-                            </section>
-                    </div>
-
-                    {/* FOOTER */}
-                    <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-gray-100 bg-white px-4 py-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:px-7 sm:py-4">
+                    <div className="contents sm:flex sm:flex-wrap sm:justify-end sm:gap-3">
                         <Button
                             type="button"
                             variant="secondary"
-                            onClick={() => changeStep(Math.max(activeStep - 1, 0))}
-                            disabled={loading || activeStep === 0}
+                            onClick={onClose}
+                            disabled={loading}
                         >
-                            <ChevronLeft size={16} />
-                            Quay lại
+                            Hủy
                         </Button>
 
-                        <div className="contents sm:flex sm:flex-wrap sm:justify-end sm:gap-3">
+                        {activeStep < steps.length - 1 ? (
                             <Button
                                 type="button"
-                                variant="secondary"
-                                onClick={onClose}
+                                variant="primary"
+                                onClick={handleNext}
                                 disabled={loading}
+                                className="col-span-2 sm:col-span-1"
                             >
-                                Hủy
+                                Tiếp tục
+                                <ChevronRight size={16} />
                             </Button>
-
-                            {activeStep < steps.length - 1 ? (
+                        ) : (
+                            <>
                                 <Button
                                     type="button"
-                                    variant="primary"
-                                    onClick={handleNext}
+                                    variant="secondary"
+                                    onClick={() =>
+                                        handleAction(
+                                            isEdit
+                                                ? event.status || "DRAFT"
+                                                : "DRAFT"
+                                        )
+                                    }
                                     disabled={loading}
-                                    className="col-span-2 sm:col-span-1"
                                 >
-                                    Tiếp tục
-                                    <ChevronRight size={16} />
+                                    <Save size={16} />
+                                    {loading
+                                        ? "Đang xử lý..."
+                                        : isEdit
+                                          ? "Lưu thay đổi"
+                                          : "Lưu nháp"}
                                 </Button>
-                            ) : (
-                                <>
+
+                                {(!isEdit ||
+                                    event.status === "DRAFT" ||
+                                    event.status === "REJECTED") && (
                                     <Button
                                         type="button"
-                                        variant="secondary"
+                                        variant="primary"
                                         onClick={() =>
-                                            handleAction(
-                                                isEdit
-                                                    ? event.status || "DRAFT"
-                                                    : "DRAFT"
-                                            )
+                                            handleAction("PENDING")
                                         }
                                         disabled={loading}
                                     >
-                                        <Save size={16} />
+                                        <Send size={16} />
                                         {loading
                                             ? "Đang xử lý..."
                                             : isEdit
-                                              ? "Lưu thay đổi"
-                                              : "Lưu nháp"}
+                                              ? "Lưu và gửi phê duyệt"
+                                              : "Gửi phê duyệt"}
                                     </Button>
-
-                                    {(!isEdit ||
-                                        event.status === "DRAFT" ||
-                                        event.status === "REJECTED") && (
-                                        <Button
-                                            type="button"
-                                            variant="primary"
-                                            onClick={() =>
-                                                handleAction("PENDING")
-                                            }
-                                            disabled={loading}
-                                        >
-                                            <Send size={16} />
-                                            {loading
-                                                ? "Đang xử lý..."
-                                                : isEdit
-                                                  ? "Lưu và gửi phê duyệt"
-                                                  : "Gửi phê duyệt"}
-                                        </Button>
-                                    )}
-                                </>
-                            )}
-                        </div>
+                                )}
+                            </>
+                        )}
                     </div>
-                </form>
+                </div>
+            }
+        >
+            <div
+                ref={scrollRef}
+                className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+            >
+                <section
+                    ref={(element) => {
+                        stepContentRefs.current[0] = element;
+                    }}
+                    hidden={activeStep !== 0}
+                    className="mx-auto max-w-3xl space-y-5"
+                >
+                    <EventBasicInfoSection
+                        formData={{
+                            ...formData,
+                            categoryId: String(categoryId),
+                        }}
+                        handleChange={handleChange}
+                        categories={categories}
+                        selectedCategoryExists={
+                            isEdit ? selectedCategoryExists : true
+                        }
+                        getCategoryId={getCategoryId}
+                        currentCategoryName={
+                            event?.category?.name || event?.categoryName || ""
+                        }
+                        slugError={slugError}
+                    />
+                </section>
+
+                <section
+                    ref={(element) => {
+                        stepContentRefs.current[1] = element;
+                    }}
+                    hidden={activeStep !== 1}
+                    className="mx-auto max-w-3xl space-y-5"
+                >
+                    <EventScheduleSection
+                        formData={formData}
+                        handleChange={handleChange}
+                    />
+                    {isEdit && event && (
+                        <EventSessionSection
+                            eventId={event.id}
+                            sessions={event.sessions || []}
+                            eventStartAt={event.startAt}
+                            eventEndAt={event.endAt}
+                            onPendingStateChange={setHasPendingSession}
+                        />
+                    )}
+                    {!isEdit && (
+                        <EventSessionSection
+                            sessions={draftSessions}
+                            onDraftSessionsChange={setDraftSessions}
+                            eventStartAt={formData.startAt}
+                            eventEndAt={formData.endAt}
+                            onPendingStateChange={setHasPendingSession}
+                        />
+                    )}
+                </section>
+
+                <section
+                    ref={(element) => {
+                        stepContentRefs.current[2] = element;
+                    }}
+                    hidden={activeStep !== 2}
+                    className="mx-auto max-w-4xl space-y-5"
+                >
+                    <EventImagesSection
+                        formData={formData}
+                        setFormData={setFormData}
+                        thumbnailFile={thumbnailFile}
+                        setThumbnailFile={setThumbnailFile}
+                        bannerFile={bannerFile}
+                        setBannerFile={setBannerFile}
+                        onAlert={onAlert}
+                        seatMapSection={
+                            <EventSeatMapSection
+                                value={formData.seatMapId}
+                                eventId={isEdit ? event.id : undefined}
+                                onChange={(value) =>
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        seatMapId: value,
+                                    }))
+                                }
+                                onAlert={onAlert}
+                                onManageSeatMaps={onManageSeatMaps}
+                                refreshKey={seatMapRefreshKey}
+                            />
+                        }
+                    />
+                </section>
             </div>
-        </div>
+        </FormPanel>
     );
 }
 

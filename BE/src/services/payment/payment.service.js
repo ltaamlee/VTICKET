@@ -32,7 +32,7 @@ function getConfig() {
     };
 }
 
-function checkoutFields(order) {
+function checkoutFields(order, options = {}) {
     const config = getConfig();
     if (!order || typeof order.id !== "string" ||
         typeof order.orderCode !== "string" || !order.orderCode ||
@@ -46,7 +46,17 @@ function checkoutFields(order) {
         merchant_id: config.merchantId,
         secret_key: config.secretKey,
     });
-    const returnUrl = `${config.frontendUrl}/orders/${encodeURIComponent(order.id)}`;
+
+    // returnPath cho phép mỗi loại đơn có URL quay về riêng
+    // (đơn vé thường -> /orders/:id, đơn bán lại -> /resales/orders/:id)
+    const returnPath = typeof options.returnPath === "string" && options.returnPath
+        ? options.returnPath
+        : `/orders/${encodeURIComponent(order.id)}`;
+    const returnUrl = `${config.frontendUrl}${returnPath}`;
+    const description = typeof options.description === "string" && options.description
+        ? options.description
+        : `Thanh toan don hang ${order.orderCode}`;
+
     return {
         url: client.checkout.initCheckoutUrl(),
         fields: client.checkout.initOneTimePaymentFields({
@@ -55,7 +65,7 @@ function checkoutFields(order) {
             order_invoice_number: order.orderCode,
             order_amount: order.totalAmount,
             currency: "VND",
-            order_description: `Thanh toan don hang ${order.orderCode}`,
+            order_description: description,
             customer_id: order.userId,
             success_url: `${returnUrl}?payment=success`,
             error_url: `${returnUrl}?payment=error`,
@@ -138,6 +148,14 @@ async function processOrderPaid(payload) {
                 outcome: "REVIEW_REQUIRED",
                 reason: "UNKNOWN_ORDER",
             };
+            // Đơn mua vé BÁN LẠI (ResaleOrder) - thanh toán qua cổng SePay
+            const resaleOrder = await tx.resaleOrder.findUnique({
+                where: { orderCode: invoiceNumber },
+            });
+            if (resaleOrder) {
+                const { processResaleOrderPaid } = require("../resale/resaleOrder.ipn");
+                return processResaleOrderPaid(tx, { payload, receipt, transactionId, invoiceNumber, resaleOrder });
+            }
             const reservation = await tx.bookingReservation.findUnique({ where: { reference: invoiceNumber } });
             if (reservation) {
                 try {

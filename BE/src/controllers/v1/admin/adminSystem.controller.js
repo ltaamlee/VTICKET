@@ -19,6 +19,23 @@ class AdminSystemController {
         return sendResponse(res, 200, "Lấy cấu hình hệ thống thành công", result);
     });
 
+    getPublicSettings = asyncHandler(async (req, res) => {
+        const settings = await this.adminSystemService.getSettings();
+        const general = settings?.general ?? {};
+        const appearance = settings?.appearance ?? {};
+        const localization = settings?.localization ?? {};
+
+        return sendResponse(res, 200, "Lấy cấu hình công khai thành công", {
+            title: general.title || "VTicket",
+            logoUrl: general.logoUrl || appearance.logoUrl || "",
+            supportEmail: general.supportEmail || "",
+            theme: general.theme || appearance.theme || "light",
+            primaryColor: general.primaryColor || appearance.primaryColor || "#2563EB",
+            defaultPageSize: general.defaultPageSize || 10,
+            defaultLanguage: localization.defaultLanguage || "vi",
+        });
+    });
+
     getSetting = asyncHandler(async (req, res) => {
         const { key } = req.params;
 
