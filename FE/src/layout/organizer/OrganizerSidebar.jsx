@@ -38,6 +38,15 @@ const menuItems = [
             </svg>
         ),
     },
+    {
+        label: "Hồ sơ cá nhân",
+        path: "/organizer/profile",
+        icon: (
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20 21a8 8 0 0 0-16 0m8-10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
+            </svg>
+        ),
+    },
 ];
 
 function OrganizerSidebar({ sidebarOpen, setSidebarOpen, onLogout }) {

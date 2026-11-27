@@ -2,7 +2,7 @@ import { Outlet, useNavigate, Link } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import OrganizerSidebar from "./OrganizerSidebar";
-import { User, Home, LogOut, ChevronDown } from "lucide-react";
+import { Home, LogOut, ChevronDown } from "lucide-react";
 
 function OrganizerLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -128,17 +128,6 @@ function OrganizerLayout() {
                                 </div>
 
                                 <div className="mt-1 space-y-1">
-                                    <Link
-                                        to="/profile"
-                                        onClick={() =>
-                                            setShowOrganizerMenu(false)
-                                        }
-                                        className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-indigo-50 hover:text-indigo-600"
-                                    >
-                                        <User className="h-4 w-4 text-indigo-500" />
-                                        <span>Trang cá nhân</span>
-                                    </Link>
-
                                     <Link
                                         to="/"
                                         onClick={() =>

@@ -1,58 +1,119 @@
-const { getRedisClient } = require("../../config/redis");
 
-const MAX_ACTIVE_BOOKERS = Math.max(1, Number(process.env.WAITING_ROOM_LIMIT || 100));
+const { getRedisClient } = require("../../config/redis");
+const { AppException } = require("../../exceptions");
+
+const configuredLimit = Number(process.env.WAITING_ROOM_LIMIT || 100);
+const MAX_ACTIVE_BOOKERS =
+    Number.isFinite(configuredLimit) && configuredLimit > 0
+        ? Math.floor(configuredLimit)
+        : 100;
+
 const ACTIVE_TTL_MS = 15 * 60 * 1000;
 
 const ENTER_LUA = `
 local activeKey = KEYS[1]
 local queueKey = KEYS[2]
 local seqKey = KEYS[3]
+
 local userId = ARGV[1]
 local now = tonumber(ARGV[2])
 local expiresAt = tonumber(ARGV[3])
 local limit = tonumber(ARGV[4])
 
+-- Xóa user hết hạn.
 redis.call("ZREMRANGEBYSCORE", activeKey, "-inf", now)
 
+-- Chuyển những người đang chờ vào slot trống.
+local activeCount = redis.call("ZCARD", activeKey)
+
+while activeCount < limit do
+    local popped = redis.call("ZPOPMIN", queueKey, 1)
+
+    if not popped or #popped < 1 then
+        break
+    end
+
+    redis.call("ZADD", activeKey, expiresAt, popped[1])
+    activeCount = activeCount + 1
+end
+
+-- User đã được admitted.
 if redis.call("ZSCORE", activeKey, userId) then
     return {"ADMITTED", 0, 0}
 end
 
-local activeCount = redis.call("ZCARD", activeKey)
-if activeCount < limit then
+-- User vẫn đang trong queue.
+local rank = redis.call("ZRANK", queueKey, userId)
+
+if rank ~= false and rank ~= nil then
+    local total = redis.call("ZCARD", queueKey)
+
+    return {"QUEUED", rank + 1, total}
+end
+
+-- Chỉ admit user mới khi không còn ai trong queue.
+activeCount = redis.call("ZCARD", activeKey)
+local queueCount = redis.call("ZCARD", queueKey)
+
+if activeCount < limit and queueCount == 0 then
     redis.call("ZADD", activeKey, expiresAt, userId)
-    redis.call("ZREM", queueKey, userId)
+
     return {"ADMITTED", 0, 0}
 end
 
+-- Thêm user mới vào cuối queue.
 local seq = redis.call("INCR", seqKey)
+
 redis.call("ZADD", queueKey, "NX", seq, userId)
-local rank = redis.call("ZRANK", queueKey, userId) or 0
-local total = redis.call("ZCARD", queueKey) or 0
-return {"QUEUED", rank + 1, total}
+
+local newRank = redis.call("ZRANK", queueKey, userId) or 0
+local total = redis.call("ZCARD", queueKey)
+
+return {"QUEUED", newRank + 1, total}
 `;
 
+/**
+ * Giải phóng slot và chuyển người tiếp theo vào active.
+ */
 const RELEASE_LUA = `
 local activeKey = KEYS[1]
 local queueKey = KEYS[2]
+
 local userId = ARGV[1]
 local now = tonumber(ARGV[2])
 local expiresAt = tonumber(ARGV[3])
 local limit = tonumber(ARGV[4])
 
+-- Xóa user cần giải phóng.
 redis.call("ZREM", activeKey, userId)
 redis.call("ZREM", queueKey, userId)
+
+-- Xóa user hết hạn.
 redis.call("ZREMRANGEBYSCORE", activeKey, "-inf", now)
 
+-- Chuyển tất cả người đang chờ vào slot còn trống.
 local activeCount = redis.call("ZCARD", activeKey)
-if activeCount < limit then
+local firstPromoted = ""
+
+while activeCount < limit do
     local popped = redis.call("ZPOPMIN", queueKey, 1)
-    if popped and #popped >= 1 then
-        redis.call("ZADD", activeKey, expiresAt, popped[1])
-        return popped[1]
+
+    if not popped or #popped < 1 then
+        break
     end
+
+    local nextUser = popped[1]
+
+    redis.call("ZADD", activeKey, expiresAt, nextUser)
+
+    if firstPromoted == "" then
+        firstPromoted = nextUser
+    end
+
+    activeCount = activeCount + 1
 end
-return ""
+
+return firstPromoted
 `;
 
 function keysFor(eventId) {
@@ -63,14 +124,35 @@ function keysFor(eventId) {
     ];
 }
 
-async function enterWaitingRoom(eventId, userId) {
+function getRedisOrThrow() {
     const redis = getRedisClient();
-    if (!redis) return { status: "ADMITTED", position: 0, total: 0 };
 
-    const now = Date.now();
-    const expiresAt = now + ACTIVE_TTL_MS;
+    if (!redis) {
+        throw new AppException(
+            "Waiting Room hiện không khả dụng. Vui lòng thử lại sau.",
+            503
+        );
+    }
+
+    return redis;
+}
+
+/**
+ * Đăng ký hoặc kiểm tra trạng thái Waiting Room.
+ */
+async function enterWaitingRoom(eventId, userId) {
+    if (!eventId || !userId) {
+        throw new AppException("Thiếu thông tin Waiting Room", 400);
+    }
+
     try {
+        const redis = getRedisOrThrow();
+
+        const now = Date.now();
+        const expiresAt = now + ACTIVE_TTL_MS;
+
         const [activeKey, queueKey, seqKey] = keysFor(eventId);
+
         const result = await redis.eval(
             ENTER_LUA,
             3,
@@ -82,24 +164,40 @@ async function enterWaitingRoom(eventId, userId) {
             String(expiresAt),
             String(MAX_ACTIVE_BOOKERS)
         );
+
         return {
-            status: result?.[0] || "ADMITTED",
+            status: result?.[0] || "QUEUED",
             position: Number(result?.[1] || 0),
             total: Number(result?.[2] || 0),
         };
-    } catch {
-        return { status: "ADMITTED", position: 0, total: 0 };
+    } catch (error) {
+        if (error instanceof AppException) {
+            throw error;
+        }
+
+        throw new AppException(
+            "Không thể kết nối Waiting Room. Vui lòng thử lại sau.",
+            503
+        );
     }
 }
 
+/**
+ * Giải phóng slot của user.
+ *
+ * Đồng thời chuyển người tiếp theo trong queue vào active.
+ */
 async function releaseWaitingRoomSlot(eventId, userId) {
-    const redis = getRedisClient();
-    if (!redis || !eventId || !userId) return null;
+    if (!eventId || !userId) return null;
 
-    const now = Date.now();
-    const expiresAt = now + ACTIVE_TTL_MS;
     try {
+        const redis = getRedisOrThrow();
+
+        const now = Date.now();
+        const expiresAt = now + ACTIVE_TTL_MS;
+
         const [activeKey, queueKey] = keysFor(eventId);
+
         return await redis.eval(
             RELEASE_LUA,
             2,
@@ -110,8 +208,9 @@ async function releaseWaitingRoomSlot(eventId, userId) {
             String(expiresAt),
             String(MAX_ACTIVE_BOOKERS)
         );
-    } catch {
-        return null;
+    } catch (error) {
+        console.error("[WaitingRoom] Release slot failed:", error);
+        throw error;
     }
 }
 
@@ -119,5 +218,5 @@ module.exports = {
     enterWaitingRoom,
     releaseWaitingRoomSlot,
     MAX_ACTIVE_BOOKERS,
+    ACTIVE_TTL_MS,
 };
-

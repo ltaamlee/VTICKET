@@ -17,7 +17,7 @@ import {
     ClipboardList,
 } from "lucide-react";
 
-export default function AccountLayout({ children }) {
+export default function AccountLayout({ children, embedded = false }) {
     const { user, updateUser } = useAuth();
     const location = useLocation();
     const [searchParams] = useSearchParams();
@@ -55,7 +55,7 @@ export default function AccountLayout({ children }) {
     const getActiveTab = () => {
         if (location.pathname === "/my-tickets") return "tickets";
         if (location.pathname === "/my-orders") return "orders";
-        if (location.pathname === "/profile") {
+        if (location.pathname.endsWith("/profile")) {
             return currentTabParam === "security" ? "security" : "info";
         }
         return "info";
@@ -68,13 +68,13 @@ export default function AccountLayout({ children }) {
         {
             id: "info",
             label: "Thông tin cá nhân",
-            path: "/profile",
+            path: location.pathname.endsWith("/profile") ? location.pathname : "/profile",
             icon: User,
         },
         {
             id: "security",
             label: "Tài khoản & Bảo mật",
-            path: "/profile?tab=security",
+            path: `${location.pathname.endsWith("/profile") ? location.pathname : "/profile"}?tab=security`,
             icon: Lock,
         },
         {
@@ -87,7 +87,7 @@ export default function AccountLayout({ children }) {
     ];
 
     const navTabs = allNavTabs.filter((tab) => {
-        if (user?.role === "ADMIN" && tab.hideForAdmin) {
+        if (user?.role !== "USER" && tab.hideForAdmin) {
             return false;
         }
         return true;
@@ -205,13 +205,14 @@ export default function AccountLayout({ children }) {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col justify-between">
-            <Header />
+        <div className={embedded ? "" : "min-h-screen bg-slate-50 flex flex-col justify-between"}>
+            {!embedded && <Header />}
 
-            <main className="flex-1 py-8">
+            <main className={embedded ? "" : "flex-1 py-8"}>
                 <div className="mx-auto max-w-5xl px-4 sm:px-6">
+                
                     {/* Card thông tin người dùng đầu trang */}
-                    <div className="rounded-2xl border border-gray-200/80 bg-white p-6 shadow-sm sm:p-8">
+                    <div className={`${embedded ? "hidden" : "rounded-2xl border border-gray-200/80 bg-white p-6 shadow-sm sm:p-8"}`}>
                         <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
                                 {/* Avatar lớn với nút đổi ảnh */}
@@ -295,13 +296,13 @@ export default function AccountLayout({ children }) {
                     </div>
 
                     {/* Khu vực hiển thị nội dung từng trang riêng */}
-                    <div className="mt-6">
+                    <div className={embedded ? `role-profile-content role-profile-${user?.role?.toLowerCase()} rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6` : "mt-6"}>
                         {children}
                     </div>
                 </div>
             </main>
 
-            <Footer />
+            {!embedded && <Footer />}
 
             {/* Modal Upload Avatar dùng chung cho toàn bộ Account */}
             <AvatarUploadModal

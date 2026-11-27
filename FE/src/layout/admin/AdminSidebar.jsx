@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import { UserRound } from "lucide-react";
 
 const menuItems = [
     {
@@ -189,6 +190,11 @@ const menuItems = [
                 />
             </svg>
         ),
+    },
+    {
+        label: "Hồ sơ cá nhân",
+        path: "/admin/profile",
+        icon: <UserRound className="h-5 w-5" aria-hidden="true" />,
     },
 ];
 

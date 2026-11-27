@@ -205,16 +205,6 @@ function Header() {
                                                     </div>
                                                 )}
 
-                                                {/* Vé đã mua */}
-                                                <Link
-                                                    to="/my-tickets"
-                                                    onClick={() => setShowMenu(false)}
-                                                    className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-gray-100 hover:text-gray-900"
-                                                >
-                                                    <Ticket className="h-4 w-4 text-gray-500" />
-                                                    <span>Vé đã mua</span>
-                                                </Link>
-
                                                 {/* Trang cá nhân */}
                                                 <Link
                                                     to="/profile"

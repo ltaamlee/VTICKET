@@ -457,7 +457,7 @@ function CheckInManagementPage() {
                     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         <StatCard
                             label="Tổng vé đã bán"
-                            value={soldCount}
+                            value={totalCount}
                             icon={Ticket}
                             bg="bg-sky-50"
                             iconBg="bg-sky-500"
@@ -496,9 +496,6 @@ function CheckInManagementPage() {
                                     <QrCode className="h-5 w-5 text-indigo-600" />
                                     Quét mã QR check-in
                                 </h2>
-                                <p className="mt-1 text-xs text-slate-500">
-                                    Bật camera để đưa mã QR vào khung quét, hoặc nhập thủ công chuỗi mã QR thuộc suất diễn đang chọn.
-                                </p>
                             </div>
                             <button
                                 type="button"
@@ -554,31 +551,6 @@ function CheckInManagementPage() {
                                 <canvas ref={canvasRef} className="hidden" />
                             </div>
                         )}
-
-                        <form
-                            onSubmit={handleQrCheckIn}
-                            className="mt-4 flex flex-col gap-3 sm:flex-row"
-                        >
-                            <input
-                                ref={qrInputRef}
-                                value={qrToken}
-                                onChange={(event) => setQrToken(event.target.value)}
-                                placeholder="Hoặc nhập / quét mã QR token bằng đầu đọc..."
-                                className="flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-mono outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                            />
-                            <button
-                                type="submit"
-                                disabled={scanning || !qrToken.trim()}
-                                className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                                {scanning ? (
-                                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                                ) : (
-                                    <Check className="h-4 w-4" />
-                                )}
-                                Check-in QR
-                            </button>
-                        </form>
 
                         {scanResult && (
                             <div

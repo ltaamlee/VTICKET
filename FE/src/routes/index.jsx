@@ -48,17 +48,14 @@ function AppRoutes() {
         <Route path="/403" element={<Page403 />} />
         <Route path="/404" element={<Page404 />} />
 
-        {/* User Protected Routes: Profile & Feature Pages */}
-        <Route element={<ProtectedRoute />}>
-          <Route path="/profile" element={<ProfilePage />} />
+        {/* Customer account and ticket routes */}
+        <Route element={<ProtectedRoute allowedRoles={["USER"]} />}>
           <Route path="/my-tickets" element={<MyTicketsPage />} />
           <Route path="/orders/:id" element={<OrderPage />} />
           <Route path="/orders/:id/success" element={<OrderSuccessPage />} />
           <Route path="/my-orders" element={<MyOrdersPage />} />
           <Route path="/organizer/register" element={<OrganizerRegisterPage />} />
-        </Route>
-
-        <Route element={<ProtectedRoute allowedRoles={["USER"]} />}>
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/events/:idOrSlug/booking" element={<EventDetailPage key="event-booking" booking />} />
         </Route>
 
@@ -71,6 +68,7 @@ function AppRoutes() {
             <Route path="system" element={<SystemPage/>} />
             <Route path="organizer-requests" element={<OrganizerRequestsPage />} />
             <Route path="events" element={<AdminEventPage />} />
+            <Route path="profile" element={<ProfilePage embedded />} />
           </Route>
         </Route>
 
@@ -81,6 +79,7 @@ function AppRoutes() {
             <Route path="events" element={<OrganizerEventPage />} />
             <Route path="tickets" element={<OrganizerTicketPage />} />
             <Route path="check-in" element={<OrganizerCheckInPage />} />
+            <Route path="profile" element={<ProfilePage embedded />} />
           </Route>
           <Route path="/organizer/seat-maps/new" element={<SeatMapEditorPage />} />
           <Route path="/organizer/seat-maps/:seatMapId/edit" element={<SeatMapEditorPage />} />
