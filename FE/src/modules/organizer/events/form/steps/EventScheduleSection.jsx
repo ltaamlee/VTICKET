@@ -94,6 +94,31 @@ export default function EventScheduleSection({ formData, handleChange }) {
                         />
                     </div>
                 </div>
+                <div className="rounded-xl border border-gray-100 p-4">
+                    <label className={labelClass} htmlFor="seatSelectionMode">Cách chọn ghế</label>
+                    <select id="seatSelectionMode" name="seatSelectionMode" value={formData.seatSelectionMode}
+                        onChange={handleChange} className={inputClass}>
+                        <option value="AUTO">Hệ thống tự xếp ghế theo thứ tự đã cấu hình</option>
+                        <option value="MANUAL">Người mua tự chọn ghế</option>
+                    </select>
+                    <label className={labelClass} htmlFor="maxTicketsPerOrder">
+                        Số vé tối đa mỗi lượt mua
+                    </label>
+                    <input
+                        id="maxTicketsPerOrder"
+                        type="number"
+                        name="maxTicketsPerOrder"
+                        min="1"
+                        max="10"
+                        step="1"
+                        value={formData.maxTicketsPerOrder}
+                        onChange={handleChange}
+                        className={inputClass}
+                    />
+                    <p className="mt-1 text-xs text-gray-400">
+                        Giới hạn cho toàn bộ đơn hàng từ 1 đến 10 vé; để trống mặc định là 10 vé.
+                    </p>
+                </div>
             </div>
         </div>
     );

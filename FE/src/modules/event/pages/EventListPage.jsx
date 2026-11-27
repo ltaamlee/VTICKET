@@ -6,14 +6,10 @@ import EventFilterBar from "../components/list/EventFilterBar";
 import EventFilterSidebar from "../components/list/EventFilterSidebar";
 import ActiveFilters from "../components/list/ActiveFilters";
 import EventGrid from "../components/list/EventGrid";
-import EventPagination from "../components/list/EventPagination";
+import Pagination from "../../../components/common/Pagination";
 import EventSkeleton from "../components/common/EventSkeleton";
 import { getEvents, getCategories } from "../services/eventService";
 
-/**
- * EventListPage - Trang danh sách, tìm kiếm và lọc sự kiện công khai (/events)
- * Áp dụng Component-Driven: tách rời toàn bộ các khối chức năng thành từng component nhỏ.
- */
 export default function EventListPage() {
     const [searchParams, setSearchParams] = useSearchParams();
 
@@ -233,10 +229,13 @@ export default function EventListPage() {
                                 />
 
                                 {/* Phân trang */}
-                                <EventPagination
-                                    pagination={pagination}
-                                    onPageChange={handlePageChange}
-                                />
+                                <div className="mt-8">
+                                    <Pagination
+                                        page={pagination?.currentPage || 1}
+                                        totalPages={pagination?.totalPages || 1}
+                                        onPageChange={handlePageChange}
+                                    />
+                                </div>
                             </>
                         )}
                     </div>

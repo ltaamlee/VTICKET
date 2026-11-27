@@ -25,7 +25,7 @@ class OrganizerTicketController {
     });
 
     getEventTickets = asyncHandler(async (req, res) => {
-        const { page = 1, pageSize = 20, keyword = "", status = "" } =
+        const { page = 1, pageSize = 20, keyword = "", status = "", sessionId = "" } =
             req.query;
 
         const result = await organizerTicketService.getEventTickets({
@@ -35,6 +35,7 @@ class OrganizerTicketController {
             pageSize,
             keyword,
             status,
+            sessionId,
         });
 
         return sendResponse(res, 200, "Lấy danh sách vé thành công", result);
@@ -53,6 +54,18 @@ class OrganizerTicketController {
         const result = await organizerTicketService.checkInTicket({
             ticketId: req.params.id,
             organizerId: req.user.id,
+            sessionId: req.body?.sessionId,
+        });
+
+        return sendResponse(res, 200, "Check-in vé thành công", result);
+    });
+
+    checkInQr = asyncHandler(async (req, res) => {
+        const result = await organizerTicketService.checkInTicket({
+            eventId: req.params.eventId,
+            organizerId: req.user.id,
+            sessionId: req.body?.sessionId,
+            qrToken: req.body?.qrToken,
         });
 
         return sendResponse(res, 200, "Check-in vé thành công", result);

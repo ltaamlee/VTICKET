@@ -20,6 +20,22 @@ class EmailService {
         }
     }
 
+    async sendTicketEmail({ to, subject, html, attachments, messageId }) {
+        if (!this.transporter) {
+            const error = new Error("Chưa cấu hình SMTP để gửi vé");
+            error.code = "SMTP_NOT_CONFIGURED";
+            throw error;
+        }
+        return this.transporter.sendMail({
+            from: `"VTicket" <${process.env.EMAIL_USER}>`,
+            to,
+            subject,
+            html,
+            attachments,
+            messageId,
+        });
+    }
+
     /**
      * Send OTP verification email
      * @param {string} toEmail 

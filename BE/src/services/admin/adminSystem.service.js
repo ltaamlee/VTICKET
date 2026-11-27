@@ -11,16 +11,6 @@ const DEFAULT_SETTINGS = {
         defaultPageSize: 10,
     },
 
-    payment: {
-        platformFeeRate: 2,
-        environment: "SANDBOX",
-        providers: {
-            momo: { enabled: true },
-            vnpay: { enabled: true },
-            payos: { enabled: false },
-        },
-    },
-
     localization: {
         defaultLanguage: "vi",
         supportedLanguages: ["vi", "en"],
@@ -60,6 +50,27 @@ const DEFAULT_SETTINGS = {
             securityAlert: true,
         },
     },
+
+    payment: {
+        environment: "SANDBOX",
+        platformFeeRate: 2,
+        providers: {
+            SEPAY: { enabled: true, displayName: "SePay", logo: null },
+            MOMO: { enabled: false, displayName: "MoMo", logo: "/images/payment/momo.png" },
+            VNPAY: { enabled: false, displayName: "VNPay", logo: "/images/payment/vnpay.png" },
+            PAYOS: { enabled: false, displayName: "PayOS", logo: "/images/payment/payos.png" },
+        },
+        wallet: {
+            enabled: true,
+            minTopUp: 10_000,
+            maxTopUp: 100_000_000,
+            allowWalletPayment: true,
+            allowWithdraw: true,
+            minWithdraw: 10_000,
+            maxWithdraw: 100_000_000,
+            allowedRoles: ["USER", "ORGANIZER", "ADMIN"],
+        },
+    },
 };
 
 class AdminSystemService {
@@ -71,7 +82,26 @@ class AdminSystemService {
 
         for (const setting of settings) {
             if (Object.hasOwn(DEFAULT_SETTINGS, setting.key)) {
-                result[setting.key] = setting.value;
+                const defaultValue = DEFAULT_SETTINGS[setting.key];
+                const value = setting.value || {};
+
+                if (setting.key === "payment") {
+                    result.payment = {
+                        ...defaultValue,
+                        ...value,
+                        providers: {
+                            ...defaultValue.providers,
+                            ...(value.providers || {}),
+                        },
+                        wallet: {
+                            ...defaultValue.wallet,
+                            ...(value.wallet || {}),
+                        },
+                    };
+                    continue;
+                }
+
+                result[setting.key] = value;
             }
         }
 
@@ -90,9 +120,24 @@ class AdminSystemService {
             where: { key },
         });
 
-        return setting
-            ? setting.value
-            : DEFAULT_SETTINGS[key];
+        if (!setting) return DEFAULT_SETTINGS[key];
+
+        if (key === "payment") {
+            return {
+                ...DEFAULT_SETTINGS.payment,
+                ...setting.value,
+                providers: {
+                    ...DEFAULT_SETTINGS.payment.providers,
+                    ...(setting.value?.providers || {}),
+                },
+                wallet: {
+                    ...DEFAULT_SETTINGS.payment.wallet,
+                    ...(setting.value?.wallet || {}),
+                },
+            };
+        }
+
+        return setting.value;
     }
 
     // Cập nhật cấu hình
@@ -129,9 +174,24 @@ class AdminSystemService {
 
         // Merge cấu hình thanh toán
         if (key === "payment") {
-            mergedValue.providers = {
-                ...currentValue.providers,
-                ...(value.providers || {}),
+            const currentProviders = currentValue.providers || {};
+            const nextProviders = {};
+
+            for (const providerKey of new Set([
+                ...Object.keys(currentProviders),
+                ...Object.keys(value.providers || {}),
+            ])) {
+                nextProviders[providerKey] = {
+                    ...(currentProviders[providerKey] || {}),
+                    ...((value.providers || {})[providerKey] || {}),
+                };
+            }
+
+            mergedValue.providers = nextProviders;
+
+            mergedValue.wallet = {
+                ...(currentValue.wallet || {}),
+                ...(value.wallet || {}),
             };
         }
 
@@ -303,6 +363,88 @@ class AdminSystemService {
                 ) {
                     throw this.validationError(
                         "Trạng thái cổng thanh toán phải là true hoặc false."
+                    );
+                }
+            }
+
+            if (
+                value.wallet !== undefined &&
+                (
+                    !value.wallet ||
+                    typeof value.wallet !== "object" ||
+                    Array.isArray(value.wallet)
+                )
+            ) {
+                throw this.validationError(
+                    "Cấu hình ví điện tử không hợp lệ."
+                );
+            }
+
+            if (value.wallet?.minTopUp !== undefined &&
+                (typeof value.wallet.minTopUp !== "number" || value.wallet.minTopUp < 0)) {
+                throw this.validationError(
+                    "Số tiền nạp tối thiểu không hợp lệ."
+                );
+            }
+
+            if (value.wallet?.maxTopUp !== undefined &&
+                (typeof value.wallet.maxTopUp !== "number" || value.wallet.maxTopUp <= 0)) {
+                throw this.validationError(
+                    "Số tiền nạp tối đa không hợp lệ."
+                );
+            }
+
+            if (value.wallet?.minTopUp !== undefined &&
+                value.wallet?.maxTopUp !== undefined &&
+                value.wallet.minTopUp > value.wallet.maxTopUp) {
+                throw this.validationError(
+                    "Số tiền nạp tối thiểu không được lớn hơn số tiền nạp tối đa."
+                );
+            }
+
+            for (const flag of ["enabled", "allowWalletPayment", "allowWithdraw"]) {
+                if (
+                    value.wallet?.[flag] !== undefined &&
+                    typeof value.wallet[flag] !== "boolean"
+                ) {
+                    throw this.validationError(
+                        "Cấu hình ví điện tử không hợp lệ."
+                    );
+                }
+            }
+
+            if (value.wallet?.minWithdraw !== undefined &&
+                (typeof value.wallet.minWithdraw !== "number" || value.wallet.minWithdraw < 0)) {
+                throw this.validationError(
+                    "Số tiền rút tối thiểu không hợp lệ."
+                );
+            }
+
+            if (value.wallet?.maxWithdraw !== undefined &&
+                (typeof value.wallet.maxWithdraw !== "number" || value.wallet.maxWithdraw <= 0)) {
+                throw this.validationError(
+                    "Số tiền rút tối đa không hợp lệ."
+                );
+            }
+
+            if (value.wallet?.minWithdraw !== undefined &&
+                value.wallet?.maxWithdraw !== undefined &&
+                value.wallet.minWithdraw > value.wallet.maxWithdraw) {
+                throw this.validationError(
+                    "Số tiền rút tối thiểu không được lớn hơn số tiền rút tối đa."
+                );
+            }
+
+            if (value.wallet?.allowedRoles !== undefined) {
+                const roles = value.wallet.allowedRoles;
+                const validRoles = ["USER", "ORGANIZER", "ADMIN"];
+
+                if (
+                    !Array.isArray(roles) ||
+                    roles.some((role) => !validRoles.includes(role))
+                ) {
+                    throw this.validationError(
+                        "Danh sách vai trò được phép dùng ví điện tử không hợp lệ."
                     );
                 }
             }

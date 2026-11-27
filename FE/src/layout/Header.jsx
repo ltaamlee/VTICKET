@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { useSystemSettings } from "../contexts/SystemSettingsContext";
 import {
     User,
     LayoutDashboard,
@@ -13,10 +14,13 @@ import {
     Plus,
     Building2,
     Search,
+    Repeat2,
+    Wallet,
 } from "lucide-react";
 
 function Header() {
     const { user, isAuthenticated, logout } = useAuth();
+    const { settings } = useSystemSettings();
     const [showMenu, setShowMenu] = useState(false);
     const [searchKeyword, setSearchKeyword] = useState("");
     const dropdownRef = useRef(null);
@@ -53,9 +57,16 @@ function Header() {
     return (
         <header className="sticky top-0 z-40 bg-blue-100/90 backdrop-blur-md shadow-sm">
             <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2.5 sm:px-6 gap-3 sm:gap-6">
-                {/* Logo VTICKET */}
-                <Link to="/" className="text-2xl font-black tracking-tight text-blue-600 transition hover:opacity-90 shrink-0">
-                    VTICKET
+                {/* Logo */}
+                <Link to="/" className="flex items-center gap-2 text-2xl font-black tracking-tight text-blue-600 transition hover:opacity-90 shrink-0" style={{ color: settings.primaryColor || undefined }}>
+                    {settings.logoUrl ? (
+                        <img
+                            src={settings.logoUrl}
+                            alt={settings.title || "Logo"}
+                            className="h-8 w-auto max-w-[140px] object-contain"
+                        />
+                    ) : null}
+                    <span>{settings.title || "VTICKET"}</span>
                 </Link>
 
                 {/* Thanh tìm kiếm */}
@@ -84,8 +95,8 @@ function Header() {
                     <Link to="/forum" className="text-sm font-medium text-gray-700 transition hover:text-blue-600">
                         Diễn đàn
                     </Link>
-                    <Link to="/blog" className="text-sm font-medium text-gray-700 transition hover:text-blue-600">
-                        Blog
+                    <Link to="/resales" className="text-sm font-medium text-gray-700 transition hover:text-blue-600">
+                        Resale
                     </Link>
                 </nav>
 
@@ -208,36 +219,6 @@ function Header() {
                                                     </div>
                                                 )}
 
-                                                {/* Vé đã mua */}
-                                                <Link
-                                                    to="/my-tickets"
-                                                    onClick={() => setShowMenu(false)}
-                                                    className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-gray-100 hover:text-gray-900"
-                                                >
-                                                    <Ticket className="h-4 w-4 text-gray-500" />
-                                                    <span>Vé đã mua</span>
-                                                </Link>
-
-                                                {/* Thẻ thành viên */}
-                                                <Link
-                                                    to="/membership"
-                                                    onClick={() => setShowMenu(false)}
-                                                    className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-gray-100 hover:text-gray-900"
-                                                >
-                                                    <Gem className="h-4 w-4 text-gray-500" />
-                                                    <span>Thẻ thành viên</span>
-                                                </Link>
-
-                                                {/* Sự kiện của tôi */}
-                                                <Link
-                                                    to="/my-events"
-                                                    onClick={() => setShowMenu(false)}
-                                                    className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-gray-100 hover:text-gray-900"
-                                                >
-                                                    <Calendar className="h-4 w-4 text-gray-500" />
-                                                    <span>Sự kiện của tôi</span>
-                                                </Link>
-
                                                 {/* Trang cá nhân */}
                                                 <Link
                                                     to="/profile"
@@ -247,6 +228,44 @@ function Header() {
                                                     <User className="h-4 w-4 text-gray-500" />
                                                     <span>Trang cá nhân</span>
                                                 </Link>
+
+                                                {/* Sàn vé bán lại (Chỉ khách hàng) */}
+                                                {user?.role === "USER" && (
+                                                    <>
+                                                        <Link
+                                                            to="/my-tickets"
+                                                            onClick={() => setShowMenu(false)}
+                                                            className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-gray-100 hover:text-gray-900"
+                                                        >
+                                                            <Ticket className="h-4 w-4 text-gray-500" />
+                                                            <span>Vé của tôi</span>
+                                                        </Link>
+                                                        <Link
+                                                            to="/resales"
+                                                            onClick={() => setShowMenu(false)}
+                                                            className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-gray-100 hover:text-gray-900"
+                                                        >
+                                                            <Repeat2 className="h-4 w-4 text-blue-500" />
+                                                            <span>Vé bán lại</span>
+                                                        </Link>
+                                                        <Link
+                                                            to="/my-resales"
+                                                            onClick={() => setShowMenu(false)}
+                                                            className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-gray-100 hover:text-gray-900"
+                                                        >
+                                                            <Repeat2 className="h-4 w-4 text-gray-500" />
+                                                            <span>Bán vé của tôi</span>
+                                                        </Link>
+                                                        <Link
+                                                            to="/wallet"
+                                                            onClick={() => setShowMenu(false)}
+                                                            className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-gray-100 hover:text-gray-900"
+                                                        >
+                                                            <Wallet className="h-4 w-4 text-indigo-500" />
+                                                            <span>Ví điện tử</span>
+                                                        </Link>
+                                                    </>
+                                                )}
 
                                                 {/* Đăng ký làm Ban Tổ Chức (Chỉ hiện khi role là USER) */}
                                                 {user?.role === "USER" && (

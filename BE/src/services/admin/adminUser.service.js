@@ -262,15 +262,72 @@ class AdminUserService {
     }
 
     async deleteUser({ userId }) {
-        const user = await prisma.user.findFirst({
+        if (typeof userId !== "string" || !/^[a-f\d]{24}$/i.test(userId)) {
+            const error = new Error("ID người dùng không hợp lệ");
+            error.statusCode = 400;
+            throw error;
+        }
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
             select: {
                 id: true,
+                role: { select: { roleName: true } },
             },
         });
 
         if (!user) {
             const error = new Error("Không tìm thấy người dùng");
             error.statusCode = 404;
+            throw error;
+        }
+
+        if (user.role?.roleName === "ADMIN") {
+            const error = new Error("Không thể xóa tài khoản quản trị viên");
+            error.statusCode = 403;
+            throw error;
+        }
+
+        const [
+            tickets,
+            orders,
+            reservations,
+            events,
+            posts,
+            comments,
+            reactions,
+            soldResales,
+            boughtResales,
+            organizerRequests,
+        ] = await Promise.all([
+            prisma.ticket.count({ where: { userId } }),
+            prisma.order.count({ where: { userId } }),
+            prisma.bookingReservation.count({ where: { userId } }),
+            prisma.event.count({ where: { organizerId: userId } }),
+            prisma.post.count({ where: { authorId: userId } }),
+            prisma.comment.count({ where: { authorId: userId } }),
+            prisma.reaction.count({ where: { userId } }),
+            prisma.reSale.count({ where: { sellerId: userId } }),
+            prisma.reSale.count({ where: { buyerId: userId } }),
+            prisma.organizerRequest.count({ where: { userId } }),
+        ]);
+
+        if (
+            tickets ||
+            orders ||
+            reservations ||
+            events ||
+            posts ||
+            comments ||
+            reactions ||
+            soldResales ||
+            boughtResales ||
+            organizerRequests
+        ) {
+            const error = new Error(
+                "Không thể xóa tài khoản đã có vé, đơn hàng, sự kiện hoặc dữ liệu liên quan. Hãy khóa tài khoản (BANNED) thay thế."
+            );
+            error.statusCode = 409;
             throw error;
         }
 

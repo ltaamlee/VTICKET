@@ -9,26 +9,24 @@
 import { useState } from "react";
 import {
     Settings,
-    CreditCard,
     ShieldCheck,
     Bell,
-    SlidersHorizontal,
+    CreditCard,
 } from "lucide-react";
 
 import { Alert } from "../../../components/common/Arlet";
 import Tabs from "../../../components/common/Tabs";
 
 import General from "../system/General";
-import Payment from "../system/PaymentSetting";
 import Security from "../system/Security";
 import Notification from "../system/Notification";
+import PaymentSetting from "../system/PaymentSetting";
 
 const tabs = [
     { id: "general", label: "Tổng quan", icon: Settings, content: General },
-    { id: "payment", label: "Thanh toán", icon: CreditCard, content: Payment },
     { id: "security", label: "Bảo mật", icon: ShieldCheck, content: Security },
     { id: "notification", label: "Thông báo", icon: Bell, content: Notification },
-    // { id: "system", label: "Hệ thống", icon: SlidersHorizontal, content: System },
+    { id: "payment", label: "Thanh toán & Ví", icon: CreditCard, content: PaymentSetting },
 ];
 
 function SystemPage() {
@@ -62,9 +60,6 @@ function SystemPage() {
                 <h1 className="text-2xl font-bold text-gray-900">
                     Quản lý hệ thống
                 </h1>
-                <p className="mt-1 text-sm text-gray-500">
-                    Quản lý cấu hình hệ thống VTICKET.
-                </p>
             </div>
 
             <Tabs

@@ -364,6 +364,8 @@ class EventQueryBuilder {
                     id: true,
                     startAt: true,
                     endAt: true,
+                    saleStartAt: true,
+                    saleEndAt: true,
                 },
                 orderBy: {
                     startAt: "asc",
