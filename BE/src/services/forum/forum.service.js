@@ -119,17 +119,17 @@ class ForumService {
         return trimmed;
     }
 
-    validateCommentContent(content) {
-        if (typeof content !== "string" || !content.trim()) {
+    validateCommentContent(content, { allowEmpty = false } = {}) {
+        const text = typeof content === "string" ? content.trim() : "";
+        if (!text && !allowEmpty) {
             throw new BadRequestException("Nội dung bình luận không được để trống");
         }
-        const trimmed = content.trim();
-        if (trimmed.length > MAX_COMMENT_LENGTH) {
+        if (text.length > MAX_COMMENT_LENGTH) {
             throw new BadRequestException(
                 `Nội dung bình luận không được vượt quá ${MAX_COMMENT_LENGTH} ký tự`
             );
         }
-        return trimmed;
+        return text;
     }
 
     async resolveValidEventId(eventId) {
@@ -248,6 +248,9 @@ class ForumService {
                 OR: [
                     { title: { contains: cleanKeyword, mode: "insensitive" } },
                     { content: { contains: cleanKeyword, mode: "insensitive" } },
+                    { author: { username: { contains: cleanKeyword, mode: "insensitive" } } },
+                    { author: { profile: { fullName: { contains: cleanKeyword, mode: "insensitive" } } } },
+                    { event: { name: { contains: cleanKeyword, mode: "insensitive" } } },
                 ],
             });
         }
@@ -333,6 +336,34 @@ class ForumService {
     /**
      * Tạo bài viết mới (gắn tag sự kiện hoặc thảo luận chung)
      */
+    validateMediaUrls(mediaUrls, maxCount = 4) {
+        if (mediaUrls === undefined || mediaUrls === null) return [];
+        if (!Array.isArray(mediaUrls)) {
+            throw new BadRequestException("Danh sách ảnh không hợp lệ");
+        }
+        const cleaned = mediaUrls
+            .filter((url) => typeof url === "string")
+            .map((url) => url.trim())
+            .filter(Boolean);
+        if (cleaned.length > maxCount) {
+            throw new BadRequestException(`Tối đa ${maxCount} ảnh`);
+        }
+        for (const url of cleaned) {
+            if (!/^https?:\/\//i.test(url)) {
+                throw new BadRequestException("Đường dẫn ảnh không hợp lệ");
+            }
+        }
+        return cleaned;
+    }
+
+    validateGifUrl(gifUrl) {
+        if (gifUrl === undefined || gifUrl === null || gifUrl === "") return null;
+        if (typeof gifUrl !== "string" || !/^https?:\/\//i.test(gifUrl.trim())) {
+            throw new BadRequestException("Đường dẫn GIF không hợp lệ");
+        }
+        return gifUrl.trim();
+    }
+
     async createPost(userId, payload = {}) {
         if (!userId) {
             throw new UnauthorizedException("Vui lòng đăng nhập để đăng bài");
@@ -340,6 +371,8 @@ class ForumService {
 
         const title = this.validateTitle(payload.title);
         const content = this.validatePostContent(payload.content);
+        const mediaUrls = this.validateMediaUrls(payload.mediaUrls, 4);
+        const gifUrl = this.validateGifUrl(payload.gifUrl);
         const validEventId = await this.resolveValidEventId(payload.eventId);
 
         const created = await this.prisma.post.create({
@@ -348,6 +381,8 @@ class ForumService {
                 eventId: validEventId,
                 title,
                 content,
+                mediaUrls,
+                gifUrl,
                 status: "VISIBLE",
             },
             include: POST_DETAIL_INCLUDE,
@@ -399,6 +434,14 @@ class ForumService {
 
         if (payload.eventId !== undefined) {
             data.eventId = await this.resolveValidEventId(payload.eventId);
+        }
+
+        if (payload.mediaUrls !== undefined) {
+            data.mediaUrls = this.validateMediaUrls(payload.mediaUrls, 4);
+        }
+
+        if (payload.gifUrl !== undefined) {
+            data.gifUrl = this.validateGifUrl(payload.gifUrl);
         }
 
         if (Object.keys(data).length === 0) {
@@ -460,7 +503,11 @@ class ForumService {
             throw new BadRequestException("ID bài viết không hợp lệ");
         }
 
-        const content = this.validateCommentContent(payload.content);
+        const mediaUrls = this.validateMediaUrls(payload.mediaUrls, 1);
+        const gifUrl = this.validateGifUrl(payload.gifUrl);
+        const content = this.validateCommentContent(payload.content ?? "", {
+            allowEmpty: mediaUrls.length > 0 || Boolean(gifUrl),
+        });
 
         const post = await this.prisma.post.findUnique({
             where: { id: postId },
@@ -509,6 +556,8 @@ class ForumService {
                 authorId: userId,
                 parentId: validParentId,
                 content,
+                mediaUrls,
+                gifUrl,
                 status: "VISIBLE",
             },
             include: {
@@ -530,7 +579,11 @@ class ForumService {
             throw new BadRequestException("ID bình luận không hợp lệ");
         }
 
-        const content = this.validateCommentContent(payload.content);
+        const mediaUrls = this.validateMediaUrls(payload.mediaUrls, 1);
+        const gifUrl = this.validateGifUrl(payload.gifUrl);
+        const content = this.validateCommentContent(payload.content ?? "", {
+            allowEmpty: mediaUrls.length > 0 || Boolean(gifUrl),
+        });
 
         const existingComment = await this.prisma.comment.findUnique({
             where: { id: commentId },
@@ -552,9 +605,17 @@ class ForumService {
             );
         }
 
+        const updateData = { content };
+        if (payload.mediaUrls !== undefined) {
+            updateData.mediaUrls = this.validateMediaUrls(payload.mediaUrls, 1);
+        }
+        if (payload.gifUrl !== undefined) {
+            updateData.gifUrl = this.validateGifUrl(payload.gifUrl);
+        }
+
         const updatedComment = await this.prisma.comment.update({
             where: { id: commentId },
-            data: { content },
+            data: updateData,
             include: {
                 author: { select: AUTHOR_SELECT },
             },

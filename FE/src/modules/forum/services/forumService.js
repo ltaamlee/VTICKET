@@ -30,6 +30,16 @@ export function getMyActivity({ limit = 30 } = {}) {
     });
 }
 
+export function uploadForumImage(file) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("folder", "forum");
+    return apiRequest("/upload/image", {
+        method: "POST",
+        body: formData,
+    });
+}
+
 export function getPosts({
     page = 1,
     limit = 10,
@@ -60,24 +70,28 @@ export function getPostDetail(postId) {
     });
 }
 
-export function createPost({ title, content, eventId = null }) {
+export function createPost({ title, content, eventId = null, mediaUrls = [], gifUrl = null }) {
     return apiRequest("/forum/posts", {
         method: "POST",
         body: JSON.stringify({
             title,
             content,
             eventId: eventId || null,
+            mediaUrls,
+            gifUrl: gifUrl || null,
         }),
     });
 }
 
-export function updatePost(postId, { title, content, eventId = null }) {
+export function updatePost(postId, { title, content, eventId = null, mediaUrls, gifUrl }) {
     return apiRequest(`/forum/posts/${postId}`, {
         method: "PUT",
         body: JSON.stringify({
             title,
             content,
             eventId: eventId || null,
+            ...(mediaUrls !== undefined ? { mediaUrls } : {}),
+            ...(gifUrl !== undefined ? { gifUrl: gifUrl || null } : {}),
         }),
     });
 }
@@ -88,20 +102,26 @@ export function deletePost(postId) {
     });
 }
 
-export function createComment(postId, { content, parentId = null }) {
+export function createComment(postId, { content, parentId = null, mediaUrls = [], gifUrl = null }) {
     return apiRequest(`/forum/posts/${postId}/comments`, {
         method: "POST",
         body: JSON.stringify({
             content,
             parentId: parentId || null,
+            mediaUrls,
+            gifUrl: gifUrl || null,
         }),
     });
 }
 
-export function updateComment(commentId, { content }) {
+export function updateComment(commentId, { content, mediaUrls, gifUrl }) {
     return apiRequest(`/forum/comments/${commentId}`, {
         method: "PUT",
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({
+            content,
+            ...(mediaUrls !== undefined ? { mediaUrls } : {}),
+            ...(gifUrl !== undefined ? { gifUrl: gifUrl || null } : {}),
+        }),
     });
 }
 

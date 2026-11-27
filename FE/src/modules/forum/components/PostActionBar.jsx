@@ -135,41 +135,6 @@ function PostActionBar({
                 </Link>
             )}
 
-            {/* Nút ĐĂNG LẠI (Repost / Share link) */}
-            <button
-                type="button"
-                onClick={handleRepostOrShare}
-                title="Đăng lại / Sao chép liên kết"
-                aria-label="Đăng lại"
-                className="group relative inline-flex cursor-pointer items-center gap-1.5 py-1 text-xs font-medium transition-transform active:scale-90"
-            >
-                <span className={`flex ${buttonPadClass} items-center justify-center rounded-full transition-colors group-hover:bg-emerald-50`}>
-                    {copied ? (
-                        <Check
-                            className={`${iconClass} text-emerald-600`}
-                            aria-hidden="true"
-                        />
-                    ) : (
-                        <Repeat
-                            className={`${iconClass} text-slate-600 transition-colors group-hover:text-emerald-600`}
-                            aria-hidden="true"
-                        />
-                    )}
-                </span>
-                {formattedReposts && (
-                    <span className="tabular-nums font-semibold text-slate-700">
-                        {formattedReposts}
-                    </span>
-                )}
-
-                {/* Toast tooltip nhỏ thông báo đã copy link */}
-                {copied && (
-                    <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-white shadow-md z-10">
-                        Đã sao chép liên kết!
-                    </span>
-                )}
-            </button>
-
             {/* Nút CHIA SẺ (Send) */}
             <button
                 type="button"

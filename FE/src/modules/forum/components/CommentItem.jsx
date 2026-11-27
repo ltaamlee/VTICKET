@@ -89,13 +89,13 @@ function CommentItem({
         }
     };
 
-    const handleEditSubmit = async (trimmed) => {
-        await onEditSubmit?.(comment.id, trimmed);
+    const handleEditSubmit = async (trimmed, media) => {
+        await onEditSubmit?.(comment.id, trimmed, media);
         setIsEditing(false);
     };
 
-    const handleReplySubmit = async (trimmed) => {
-        await onReplySubmit?.(comment.id, trimmed);
+    const handleReplySubmit = async (trimmed, media) => {
+        await onReplySubmit?.(comment.id, trimmed, media);
         onActiveReplyChange?.(null);
         setShowReplies(true);
     };
@@ -200,9 +200,31 @@ function CommentItem({
                         </div>
                     ) : (
                         <>
-                            <p className="mt-2.5 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-slate-800">
-                                {comment.content}
-                            </p>
+                            {comment.content && (
+                                <p className="mt-2.5 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-slate-800">
+                                    {comment.content}
+                                </p>
+                            )}
+
+                            {(comment.mediaUrls?.length > 0 || comment.gifUrl) && (
+                                <div className="mt-2.5 flex flex-wrap gap-2">
+                                    {comment.mediaUrls?.map((url, idx) => (
+                                        <img
+                                            key={`${url}-${idx}`}
+                                            src={url}
+                                            alt=""
+                                            className="max-h-56 rounded-xl border border-slate-100 object-cover"
+                                        />
+                                    ))}
+                                    {comment.gifUrl && (
+                                        <img
+                                            src={comment.gifUrl}
+                                            alt="GIF"
+                                            className="max-h-48 rounded-xl border border-slate-100 object-cover"
+                                        />
+                                    )}
+                                </div>
+                            )}
 
                             {/* Cụm 4 icon trên bài đăng: Tim, Bình luận, Đăng lại, Chia sẻ */}
                             <div className="mt-2.5 pt-1">

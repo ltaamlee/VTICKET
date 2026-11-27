@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Heart, MessageCircle, MessagesSquare, User } from "lucide-react";
+import { Heart, MessageCircle, MessagesSquare, Search, User, X } from "lucide-react";
 import Header from "../../../layout/Header";
 import Footer from "../../../layout/Footer";
 import { useAuth } from "../../../contexts/AuthContext";
@@ -9,6 +9,7 @@ import { getMyActivity } from "../services/forumService";
 import ForumPostFeed from "../components/ForumPostFeed";
 import ForumSidebar from "../components/ForumSidebar";
 import ForumNotice from "../components/ForumNotice";
+import ForumRightSearch from "../components/ForumRightSearch";
 import { useTaggableEvents } from "../hooks/useTaggableEvents";
 
 function ForumListPage() {
@@ -25,6 +26,8 @@ function ForumListPage() {
     const mine = isAuthenticated && searchParams.get("mine") === "true";
     const liked = isAuthenticated && searchParams.get("liked") === "true";
     const isActivityTab = isAuthenticated && searchParams.get("tab") === "activity";
+    const isSearchTab = searchParams.get("tab") === "search";
+    const [searchInput, setSearchInput] = useState(keyword);
 
     const [pageNotice, setPageNotice] = useState(null);
     const [activityItems, setActivityItems] = useState([]);
@@ -164,7 +167,7 @@ function ForumListPage() {
 
                 {/* Cột chính giữa toàn màn hình: Feed bài viết */}
                 <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
-                    <div className="mx-auto w-full max-w-4xl space-y-4">
+                    <div className="mx-auto w-full max-w-2xl space-y-4">
                         <ForumNotice notice={pageNotice} onDismiss={dismissNotice} />
 
                         {/* Khung Profile khi ở tab Bài của tôi */}
@@ -342,7 +345,41 @@ function ForumListPage() {
                             aria-label="Danh sách bài viết"
                             className="rounded-2xl border border-slate-200/80 bg-white shadow-2xs"
                         >
-                            {!mine && !liked && (
+                            {isSearchTab && (
+                                <div className="border-b border-slate-100 p-4">
+                                    <div className="relative">
+                                        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            value={searchInput}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setSearchInput(val);
+                                                updateFilters({ keyword: val.trim(), tab: "search" });
+                                            }}
+                                            placeholder="Tìm kiếm tên người dùng, bài viết hoặc từ khóa..."
+                                            className="w-full rounded-full border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-9 text-sm text-slate-800 outline-none focus:border-slate-300 focus:bg-white"
+                                        />
+                                        {searchInput && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setSearchInput("");
+                                                    updateFilters({ keyword: "", tab: "search" });
+                                                }}
+                                                aria-label="Xóa từ khóa"
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer rounded-full p-0.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+                                            >
+                                                <X className="h-3.5 w-3.5" />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <p className="mt-3 text-sm font-bold text-slate-900">
+                                        {keyword ? `Kết quả cho "${keyword}"` : "Đang thịnh hành"}
+                                    </p>
+                                </div>
+                            )}
+                            {!mine && !liked && !isSearchTab && (
                                 <div className="border-b border-slate-100 px-5 py-4">
                                     <h1 className="text-lg font-bold text-slate-900">
                                         Dành cho bạn
@@ -401,6 +438,39 @@ function ForumListPage() {
                         )}
                     </div>
                 </main>
+
+                {isSearchTab ? (
+                    <aside className="hidden xl:block w-80 shrink-0 pr-6 py-6">
+                        <div className="sticky top-20 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs">
+                            <h2 className="text-sm font-bold text-slate-900">
+                                Chủ đề dành cho bạn
+                            </h2>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                {taggableEvents.slice(0, 12).map((ev) => (
+                                    <button
+                                        key={ev.id}
+                                        type="button"
+                                        onClick={() =>
+                                            updateFilters({
+                                                eventId: eventId === ev.id ? "" : ev.id,
+                                                tab: "search",
+                                            })
+                                        }
+                                        className={`cursor-pointer rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                                            eventId === ev.id
+                                                ? "border-blue-600 bg-blue-50 text-blue-700"
+                                                : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
+                                        }`}
+                                    >
+                                        {ev.name}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </aside>
+                ) : (
+                    <ForumRightSearch />
+                )}
             </div>
 
             <Footer />

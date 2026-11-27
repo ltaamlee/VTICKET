@@ -1,9 +1,10 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
     ArrowLeft,
     ChevronRight,
     EyeOff,
+    MoreHorizontal,
     Pencil,
     Trash2,
 } from "lucide-react";
@@ -15,6 +16,7 @@ import AuthorBadge from "../components/AuthorBadge";
 import CommentSection from "../components/CommentSection";
 import ForumNotice from "../components/ForumNotice";
 import ForumSidebar from "../components/ForumSidebar";
+import ForumRightSearch from "../components/ForumRightSearch";
 import PostFormModal from "../components/PostFormModal";
 import PostActionBar from "../components/PostActionBar";
 import { usePostDetail } from "../hooks/usePostDetail";
@@ -40,6 +42,19 @@ function PostDetailPage() {
 
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
+    const menuRef = useRef(null);
+
+    useEffect(() => {
+        if (!menuOpen) return;
+        const handleClickOutside = (e) => {
+            if (menuRef.current && !menuRef.current.contains(e.target)) {
+                setMenuOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [menuOpen]);
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
         const saved = localStorage.getItem("vticket_forum_sidebar_open");
@@ -102,7 +117,7 @@ function PostDetailPage() {
                     onNotify={notify}
                 />
 
-                <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+                <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
                 <nav
                     aria-label="Đường dẫn"
                     className="mb-5 flex flex-wrap items-center gap-1.5 text-sm text-slate-500"
@@ -184,26 +199,45 @@ function PostDetailPage() {
 
                                 <div className="flex flex-wrap items-center gap-2">
                                     {post.isOwner && (
-                                        <>
-                                            <Button
+                                        <div ref={menuRef} className="relative text-slate-400">
+                                            <button
                                                 type="button"
-                                                size="sm"
-                                                variant="secondary"
-                                                icon={Pencil}
-                                                onClick={() => setIsEditModalOpen(true)}
+                                                onClick={() => setMenuOpen((prev) => !prev)}
+                                                title="Tùy chọn bài viết"
+                                                aria-label="Tùy chọn bài viết"
+                                                aria-expanded={menuOpen}
+                                                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-slate-100 hover:text-slate-700"
                                             >
-                                                Sửa bài
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                size="sm"
-                                                variant="danger"
-                                                icon={Trash2}
-                                                onClick={() => setIsDeleteModalOpen(true)}
-                                            >
-                                                Xóa
-                                            </Button>
-                                        </>
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </button>
+
+                                            {menuOpen && (
+                                                <div className="absolute right-0 top-9 z-20 w-36 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setMenuOpen(false);
+                                                            setIsEditModalOpen(true);
+                                                        }}
+                                                        className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                                                    >
+                                                        <Pencil className="h-3.5 w-3.5" />
+                                                        Chỉnh sửa
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setMenuOpen(false);
+                                                            setIsDeleteModalOpen(true);
+                                                        }}
+                                                        className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                        Xóa
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -211,6 +245,26 @@ function PostDetailPage() {
                             <div className="mt-5 whitespace-pre-wrap wrap-break-word text-base leading-relaxed text-slate-800">
                                 {post.content}
                             </div>
+
+                            {(post.mediaUrls?.length > 0 || post.gifUrl) && (
+                                <div className="mt-4 flex flex-wrap gap-3">
+                                    {post.mediaUrls?.map((url, idx) => (
+                                        <img
+                                            key={`${url}-${idx}`}
+                                            src={url}
+                                            alt=""
+                                            className="max-h-96 rounded-2xl border border-slate-100 object-cover"
+                                        />
+                                    ))}
+                                    {post.gifUrl && (
+                                        <img
+                                            src={post.gifUrl}
+                                            alt="GIF"
+                                            className="max-h-72 rounded-2xl border border-slate-100 object-cover"
+                                        />
+                                    )}
+                                </div>
+                            )}
 
                             <div className="mt-8 border-t border-slate-100 pt-4 flex items-center justify-between">
                                 <PostActionBar
@@ -240,6 +294,8 @@ function PostDetailPage() {
                     </div>
                 )}
             </main>
+
+            <ForumRightSearch />
             </div>
 
             {post && (

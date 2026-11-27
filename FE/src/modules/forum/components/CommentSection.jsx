@@ -24,20 +24,20 @@ function CommentSection({
     const [deletingLoading, setDeletingLoading] = useState(false);
     const [activeReplyCommentId, setActiveReplyCommentId] = useState(null);
 
-    const handleRootSubmit = async (trimmed) => {
-        await createComment(postId, { content: trimmed });
+    const handleRootSubmit = async (trimmed, media = {}) => {
+        await createComment(postId, { content: trimmed, ...media });
         await onRefreshPost?.({ silent: true });
         onNotify?.("Đã đăng bình luận.", "success");
     };
 
-    const handleReplySubmit = async (parentId, content) => {
-        await createComment(postId, { content, parentId });
+    const handleReplySubmit = async (parentId, content, media = {}) => {
+        await createComment(postId, { content, parentId, ...media });
         await onRefreshPost?.({ silent: true });
         onNotify?.("Đã gửi phản hồi.", "success");
     };
 
-    const handleEditSubmit = async (commentId, content) => {
-        await updateComment(commentId, { content });
+    const handleEditSubmit = async (commentId, content, media = {}) => {
+        await updateComment(commentId, { content, ...media });
         await onRefreshPost?.({ silent: true });
         onNotify?.("Đã cập nhật bình luận.", "success");
     };

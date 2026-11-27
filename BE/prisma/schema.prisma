@@ -543,6 +543,8 @@ model Post {
   author    User       @relation(fields: [authorId], references: [id])
   title     String
   content   String
+  mediaUrls String[]   @default([])
+  gifUrl    String?
   status    PostStatus @default(VISIBLE)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
@@ -567,6 +569,8 @@ model Comment {
   parent    Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   replies   Comment[]     @relation("CommentReplies")
   content   String
+  mediaUrls String[]      @default([])
+  gifUrl    String?
   status    CommentStatus @default(VISIBLE)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
