@@ -180,6 +180,36 @@ function Header() {
                                             </>
                                         ) : (
                                             <>
+                                                {/* Hồ sơ cá nhân */}
+                                                <Link
+                                                    to="/profile"
+                                                    onClick={() => setShowMenu(false)}
+                                                    className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-gray-100 hover:text-gray-900"
+                                                >
+                                                    <User className="h-4 w-4 text-blue-500" />
+                                                    <span>Hồ sơ cá nhân</span>
+                                                </Link>
+
+                                                {/* Vé của tôi */}
+                                                <Link
+                                                    to="/my-tickets"
+                                                    onClick={() => setShowMenu(false)}
+                                                    className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-gray-100 hover:text-gray-900"
+                                                >
+                                                    <Ticket className="h-4 w-4 text-emerald-500" />
+                                                    <span>Vé của tôi</span>
+                                                </Link>
+
+                                                {/* Đơn hàng của tôi */}
+                                                <Link
+                                                    to="/my-orders"
+                                                    onClick={() => setShowMenu(false)}
+                                                    className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-gray-100 hover:text-gray-900"
+                                                >
+                                                    <Calendar className="h-4 w-4 text-amber-500" />
+                                                    <span>Đơn hàng của tôi</span>
+                                                </Link>
+
                                                 {/* Nút Tạo sự kiện (Dành riêng cho Ban Tổ Chức - ORGANIZER) */}
                                                 {user?.role === "ORGANIZER" && (
                                                     <div className="mb-2">
