@@ -10,6 +10,7 @@ class UserMapper {
       token,
       user: {
         id: user.id,
+        username: user.username || null,
         email: user.email,
         role: user.role ? user.role.roleName : null,
         status: user.status,
@@ -30,12 +31,14 @@ class UserMapper {
   static toUserProfileResponse(user) {
     return {
       id: user.id,
+      username: user.username || null,
       email: user.email,
       role: user.role ? user.role.roleName : null,
       status: user.status,
       isVerified: user.isVerified,
       fullName: user.profile ? user.profile.fullName : null,
       phone: user.profile ? user.profile.phone : null,
+      dob: user.profile ? user.profile.dob : null,
       avatar: user.profile ? user.profile.avatar : null,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { login } from "../services/authService";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../contexts/AuthContext";
 import GoogleLoginButton from "./GoogleLogin";
 
@@ -11,7 +11,7 @@ function LoginForm() {
 	const [loading, setLoading] = useState(false);
 
 	const navigate = useNavigate();
-	const {login: saveLogin} = useAuth();
+	const { login: saveLogin } = useAuth();
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
@@ -36,12 +36,6 @@ function LoginForm() {
 
 			saveLogin({ token, user });
 
-<<<<<<< Updated upstream
-			if (user.role === "ADMIN") {
-				navigate("/admin/dashboard");
-			} else if (user.role === "ORGANIZER") {
-				navigate("/organizer/dashboard");
-=======
 			const from = location.state?.from;
 			const isSafeFrom =
 				from?.startsWith("/") &&
@@ -53,7 +47,6 @@ function LoginForm() {
 				navigate(from, { replace: true });
 			} else if (user.role === "ADMIN") {
 				navigate("/admin/dashboard", { replace: true });
->>>>>>> Stashed changes
 			} else {
 				navigate("/", { replace: true });
 			}

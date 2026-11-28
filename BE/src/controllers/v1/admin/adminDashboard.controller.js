@@ -3,7 +3,12 @@ const adminDashboardService = require('../../../services/admin/adminDashboard.se
 class AdminDashboardController {
     async getDashboardData(req, res, next) {
         try {
-            const dashboardData = await adminDashboardService.getDashboardData();
+            const dashboardData = await adminDashboardService.getDashboardData({
+                page: req.query.page,
+                pageSize: req.query.pageSize,
+                startDate: req.query.startDate,
+                endDate: req.query.endDate,
+            });
             res.status(200).json({
                 success: true,
                 message: 'Lấy dữ liệu dashboard thành công',
