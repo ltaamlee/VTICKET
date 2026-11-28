@@ -1,9 +1,6 @@
-import { Ticket, Clock } from "lucide-react";
+import { Ticket } from "lucide-react";
 
-/**
- * EventTicketList - Bảng danh sách các loại vé đang phát hành của sự kiện
- */
-export default function EventTicketList({ ticketTypes: allTicketTypes = [] }) {
+export default function EventTicketList({ ticketTypes: allTicketTypes = [], quantities = {}, onQuantityChange, maxTickets = 10, disabled = false, onBuy, buying = false, error = "", manualSeats = false, readOnly = false, now }) {
     // Khu vực sân khấu không bán vé nên không hiển thị giá.
     const ticketTypes = (allTicketTypes || []).filter(
         (ticket) => ticket.zone?.type !== "STAGE"
@@ -26,7 +23,7 @@ export default function EventTicketList({ ticketTypes: allTicketTypes = [] }) {
             <div>
                 <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                     <Ticket className="h-5 w-5 text-blue-600" />
-                    "Các hạng vé đang mở bán"
+                    Thông tin hạng vé
                 </h2>
                 <p className="mt-1 text-xs text-slate-500">
                     Bảng giá và thông tin các hạng vé tham dự sự kiện
@@ -36,6 +33,11 @@ export default function EventTicketList({ ticketTypes: allTicketTypes = [] }) {
             <div className="space-y-3.5">
                 {ticketTypes.map((ticket) => {
                     const isSoldOut = ticket.isSoldOut;
+                    const unavailable = isSoldOut || ticket.status !== "ACTIVE" ||
+                        (ticket.saleStartAt && new Date(ticket.saleStartAt).getTime() > now) ||
+                        (ticket.saleEndAt && new Date(ticket.saleEndAt).getTime() <= now);
+                    const otherQuantity = Object.entries(quantities).reduce((sum, [id, quantity]) => sum + (id === ticket.id ? 0 : quantity), 0);
+                    const limit = Math.max(0, Math.min(maxTickets - otherQuantity, ticket.remainingQuantity));
                     const priceFormatted = Number(ticket.price) === 0
                         ? "Miễn phí"
                         : `${Number(ticket.price).toLocaleString("vi-VN")} đ`;
@@ -53,22 +55,13 @@ export default function EventTicketList({ ticketTypes: allTicketTypes = [] }) {
                                 <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
                                     <h3 className="font-bold text-base text-slate-900">{ticket.name}</h3>
 
-                                    {isSoldOut ? (
+                                    {unavailable ? (
                                         <span className="inline-flex items-center rounded-md bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-600/20">
-                                            Hết vé
+                                            {isSoldOut ? "Hết vé" : "Không mở bán"}
                                         </span>
                                     ) : (
                                         <span className="inline-flex items-center rounded-md bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-600/20">
                                             Còn vé
-                                        </span>
-                                    )}
-                                </div>
-
-                                <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
-                                    {ticket.saleEndAt && (
-                                        <span className="flex items-center gap-1.5">
-                                            <Clock className="h-3.5 w-3.5 text-slate-400" />
-                                            Đóng bán: {new Date(ticket.saleEndAt).toLocaleDateString("vi-VN")}
                                         </span>
                                     )}
                                 </div>
@@ -79,12 +72,34 @@ export default function EventTicketList({ ticketTypes: allTicketTypes = [] }) {
                                     <span className="text-base sm:text-lg font-bold text-blue-600 tracking-tight">
                                         {priceFormatted}
                                     </span>
+                                    {!readOnly && (manualSeats && ticket.zone?.type === "SEATED" ? (
+                                        <p className="mt-2 text-sm text-slate-600">Đã chọn {quantities[ticket.id] || 0} ghế</p>
+                                    ) : <label className="mt-2 flex items-center gap-2 text-sm text-slate-600">
+                                        Số lượng
+                                        <select
+                                            aria-label={`Số lượng ${ticket.name}`}
+                                            value={quantities[ticket.id] || 0}
+                                            disabled={disabled || unavailable || buying}
+                                            onChange={(e) => onQuantityChange(ticket.id, Number(e.target.value))}
+                                            className="rounded-lg border border-slate-300 px-2 py-1"
+                                        >
+                                            {Array.from({ length: limit + 1 }, (_, count) => (
+                                                <option key={count} value={count}>{count}</option>
+                                            ))}
+                                        </select>
+                                    </label>)}
                                 </div>
                             </div>
                         </div>
                     );
                 })}
             </div>
+            {!readOnly && <><p className="text-sm text-slate-500">Tối đa {maxTickets} vé mỗi đơn. Vé được giữ trong 15 phút.</p>
+            {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
+            <button type="button" disabled={disabled || buying || !Object.values(quantities).some(Boolean)} onClick={onBuy}
+                className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">
+                {buying ? "Đang giữ vé..." : "Tiếp tục đặt vé"}
+            </button></>}
         </div>
     );
 }

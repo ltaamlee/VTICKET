@@ -121,7 +121,7 @@ class OrganizerSeatMapService extends BaseService {
         if (typeof name !== "string" || !name.trim()) {
             this.throwError("Tên sơ đồ ghế không được để trống");
         }
-        
+
         const canvas = seatMapValidationService.normalizeCanvas(
             canvasWidth,
             canvasHeight
@@ -216,23 +216,29 @@ class OrganizerSeatMapService extends BaseService {
         }
 
         try {
-            return await prisma.$transaction(async (tx) => {
-                if (zones !== undefined) {
-                    await organizerZoneService.replaceZonesForSeatMap({
-                        tx,
-                        seatMapId: seatMap.id,
-                        zones,
-                    });
-                }
+            return await prisma.$transaction(
+                async (tx) => {
+                    if (zones !== undefined) {
+                        await organizerZoneService.replaceZonesForSeatMap({
+                            tx,
+                            seatMapId: seatMap.id,
+                            zones,
+                        });
+                    }
 
-                return tx.seatMap.update({
-                    where: { id: seatMap.id },
-                    data,
-                    include: {
-                        zones: { include: { seats: true } },
-                    },
-                });
-            });
+                    return tx.seatMap.update({
+                        where: { id: seatMap.id },
+                        data,
+                        include: {
+                            zones: { include: { seats: true } },
+                        },
+                    });
+                },
+                {
+                    maxWait: 10000,
+                    timeout: 20000,
+                }
+            );
         } catch (error) {
             this.handlePrismaError(error);
         }

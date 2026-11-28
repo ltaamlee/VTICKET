@@ -11,6 +11,8 @@
 
 **VTicket** là hệ thống quản lý sự kiện và phân phối vé điện tử, tích hợp diễn đàn trực tuyến dành cho từng sự kiện.
 
+Chỉ tài khoản khách hàng (USER) được tạo đơn và thanh toán vé; tài khoản ORGANIZER và ADMIN không có quyền mua. Khách hàng đăng nhập và chọn suất, khu vực và hạng vé trên trang đặt vé. Nếu ban tổ chức cho phép chọn ghế thủ công, người dùng chọn ghế trên sơ đồ hoặc danh sách; nếu không, hệ thống tự xếp ghế sau khi người dùng chọn số lượng. Trang khách hàng không hiển thị số vé còn lại theo hạng. Lượt mua có thời hạn 15 phút tính từ khi vào trang chọn vé, bao gồm cả thời gian thanh toán. Lựa chọn chưa tạo đơn sẽ bị xóa khi rời trang chọn vé; ghế chỉ được giữ khi bấm tiếp tục tạo đơn và được trả lại khi đơn hết hạn. Khi quay về trang chi tiết sự kiện trên cùng tab, lượt mua được đặt lại và đơn chờ thanh toán được hủy; giao dịch SePay đến sau khi hủy phải được đối soát thủ công. Người mua kiểm tra thông tin cá nhân trước khi thanh toán qua SePay; vé miễn phí được phát hành ngay. CAPTCHA chưa được áp dụng.
+
 Hệ thống hỗ trợ toàn bộ quy trình từ quản lý sự kiện, tạo loại vé, thiết lập sơ đồ chỗ ngồi, đặt vé, thanh toán, phát hành vé điện tử, tạo mã QR đến kiểm tra vé và check-in tại sự kiện.
 
 Bên cạnh việc bán vé chính thức, VTicket còn cung cấp **thị trường bán lại vé (Resale Marketplace)**, cho phép người sở hữu vé bán lại vé hợp lệ cho người dùng khác. Hệ thống đồng thời tích hợp **diễn đàn theo sự kiện**, nơi người dùng có thể đăng bài, bình luận, tương tác và báo cáo nội dung. Các chức năng chính này phù hợp với phạm vi chức năng được xác định trong tài liệu dự án.  

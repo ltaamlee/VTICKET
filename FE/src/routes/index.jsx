@@ -20,8 +20,9 @@ import OrganizerRequestsPage from "../modules/admin/pages/OrganizerRequestsPage"
 import ProfilePage from "../modules/profile/pages/ProfilePage";
 import OrganizerRegisterPage from "../modules/organizer/pages/OrganizerRegisterPage";
 import MyTicketsPage from "../modules/ticket/pages/MyTicketsPage";
-import MembershipPage from "../modules/membership/pages/MembershipPage";
-import MyEventsPage from "../modules/event/pages/MyEventsPage";
+import OrderPage from "../modules/ticket/pages/OrderPage";
+import OrderSuccessPage from "../modules/ticket/pages/OrderSuccessPage";
+import MyOrdersPage from "../modules/ticket/pages/MyOrdersPage";
 import EventListPage from "../modules/event/pages/EventListPage";
 import EventDetailPage from "../modules/event/pages/EventDetailPage";
 
@@ -29,6 +30,7 @@ import OrganizerLayout from "../layout/organizer/OrganizerLayout";
 import OrganizerEventPage from "../modules/organizer/pages/EventManagementPage";
 import OrganizerDashboardPage from "../modules/organizer/pages/DashboardPage";
 import OrganizerTicketPage from "../modules/organizer/pages/TicketManagementPage";
+import OrganizerCheckInPage from "../modules/organizer/pages/CheckInManagementPage";
 import SeatMapEditorPage from "../modules/organizer/pages/SeatMapEditorPage";
 
 function AppRoutes() {
@@ -37,7 +39,7 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/events" element={<EventListPage />} />
-        <Route path="/events/:idOrSlug" element={<EventDetailPage />} />
+        <Route path="/events/:idOrSlug" element={<EventDetailPage key="event-detail" />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -46,13 +48,15 @@ function AppRoutes() {
         <Route path="/403" element={<Page403 />} />
         <Route path="/404" element={<Page404 />} />
 
-        {/* User Protected Routes: Profile & Feature Pages */}
-        <Route element={<ProtectedRoute />}>
-          <Route path="/profile" element={<ProfilePage />} />
+        {/* Customer account and ticket routes */}
+        <Route element={<ProtectedRoute allowedRoles={["USER"]} />}>
           <Route path="/my-tickets" element={<MyTicketsPage />} />
-          <Route path="/membership" element={<MembershipPage />} />
-          <Route path="/my-events" element={<MyEventsPage />} />
+          <Route path="/orders/:id" element={<OrderPage />} />
+          <Route path="/orders/:id/success" element={<OrderSuccessPage />} />
+          <Route path="/my-orders" element={<MyOrdersPage />} />
           <Route path="/organizer/register" element={<OrganizerRegisterPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/events/:idOrSlug/booking" element={<EventDetailPage key="event-booking" booking />} />
         </Route>
 
         <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
@@ -64,6 +68,7 @@ function AppRoutes() {
             <Route path="system" element={<SystemPage/>} />
             <Route path="organizer-requests" element={<OrganizerRequestsPage />} />
             <Route path="events" element={<AdminEventPage />} />
+            <Route path="profile" element={<ProfilePage embedded />} />
           </Route>
         </Route>
 
@@ -73,6 +78,8 @@ function AppRoutes() {
             <Route path="dashboard" element={<OrganizerDashboardPage />} />
             <Route path="events" element={<OrganizerEventPage />} />
             <Route path="tickets" element={<OrganizerTicketPage />} />
+            <Route path="check-in" element={<OrganizerCheckInPage />} />
+            <Route path="profile" element={<ProfilePage embedded />} />
           </Route>
           <Route path="/organizer/seat-maps/new" element={<SeatMapEditorPage />} />
           <Route path="/organizer/seat-maps/:seatMapId/edit" element={<SeatMapEditorPage />} />

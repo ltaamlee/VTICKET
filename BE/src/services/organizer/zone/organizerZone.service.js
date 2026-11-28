@@ -480,19 +480,24 @@ class OrganizerZoneService extends BaseService {
             });
         }
 
-        const eventTicketTypes = existingTicketTypes.filter(
-            (ticketType) => !ticketType.sessionId
-        );
         const sessions = await tx.eventSession.findMany({
             where: { eventId },
         });
-        const ticketTypes = [];
+        const updates = [];
+        const creates = [];
+        const eventTypeIds = new Map();
+        const existingByZone = new Map();
+        for (const ticketType of existingTicketTypes) {
+            if (!existingByZone.has(ticketType.zoneId)) {
+                existingByZone.set(ticketType.zoneId, new Map());
+            }
+            const bySession = existingByZone.get(ticketType.zoneId);
+            const sessionId = ticketType.sessionId || null;
+            if (!bySession.has(sessionId)) bySession.set(sessionId, ticketType);
+        }
+        const sessionIds = [null, ...sessions.map((session) => session.id)];
 
         for (const zone of zones) {
-            const existing = eventTicketTypes.find(
-                (ticketType) =>
-                    ticketType.zoneId === zone.id && !ticketType.sessionId
-            );
             const data = {
                 name: zone.name,
                 price: zone.price,
@@ -500,50 +505,10 @@ class OrganizerZoneService extends BaseService {
                 saleStartAt: saleStartAt ?? null,
                 saleEndAt: saleEndAt ?? null,
             };
-
-            if (existing) {
-                if (zone.capacity < existing.soldQuantity) {
-                    this.throwError(
-                        `Sức chứa khu vực "${zone.name}" thấp hơn số vé đã bán`,
-                        409
-                    );
-                }
-
-                ticketTypes.push(
-                    await tx.ticketType.update({
-                        where: { id: existing.id },
-                        data,
-                    })
-                );
-            } else {
-                ticketTypes.push(
-                    await tx.ticketType.create({
-                        data: {
-                            eventId,
-                            zoneId: zone.id,
-                            ...data,
-                        },
-                    })
-                );
-            }
-        }
-
-        for (const session of sessions) {
-            const sessionTicketTypes = existingTicketTypes.filter(
-                (ticketType) => ticketType.sessionId === session.id
-            );
-
-            for (const zone of zones) {
-                const existing = sessionTicketTypes.find(
-                    (ticketType) => ticketType.zoneId === zone.id
-                );
-                const data = {
-                    name: zone.name,
-                    price: zone.price,
-                    capacity: zone.capacity,
-                    saleStartAt: saleStartAt ?? null,
-                    saleEndAt: saleEndAt ?? null,
-                };
+            const ids = [];
+            const bySession = existingByZone.get(zone.id);
+            for (const sessionId of sessionIds) {
+                const existing = bySession?.get(sessionId);
 
                 if (existing) {
                     if (zone.capacity < existing.soldQuantity) {
@@ -552,25 +517,43 @@ class OrganizerZoneService extends BaseService {
                             409
                         );
                     }
-
-                    await tx.ticketType.update({
-                        where: { id: existing.id },
-                        data,
-                    });
+                    ids.push(existing.id);
+                    if (!sessionId) eventTypeIds.set(zone.id, existing.id);
                 } else {
-                    await tx.ticketType.create({
-                        data: {
-                            eventId,
-                            sessionId: session.id,
-                            zoneId: zone.id,
-                            ...data,
-                        },
+                    creates.push({
+                        eventId,
+                        zoneId: zone.id,
+                        ...(sessionId ? { sessionId } : {}),
+                        ...data,
                     });
                 }
             }
+            if (ids.length > 0) updates.push({ ids, data });
         }
 
-        return ticketTypes;
+        for (const { ids, data } of updates) {
+            await tx.ticketType.updateMany({
+                where: { id: { in: ids } },
+                data,
+            });
+        }
+        if (creates.length > 0) {
+            await tx.ticketType.createMany({ data: creates });
+        }
+
+        if (zones.length === 0) return [];
+        const syncedTypes = await tx.ticketType.findMany({ where: { eventId } });
+        return zones.map((zone) => {
+            const ticketType = syncedTypes.find((ticketType) =>
+                eventTypeIds.has(zone.id)
+                    ? ticketType.id === eventTypeIds.get(zone.id)
+                    : ticketType.zoneId === zone.id && !ticketType.sessionId
+            );
+            if (!ticketType) {
+                this.throwError("Không thể đồng bộ loại vé cho khu vực", 500);
+            }
+            return ticketType;
+        });
     }
 
     async syncTicketTypeForZone(tx, seatMapId, zone) {

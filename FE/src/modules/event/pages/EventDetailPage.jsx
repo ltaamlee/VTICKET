@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import Header from "../../../layout/Header"
 import Footer from "../../../layout/Footer";
 import EventDetailHeader from "../components/detail/EventDetailHeader";
@@ -8,20 +8,62 @@ import EventDescription from "../components/detail/EventDescription";
 import EventTicketList from "../components/detail/EventTicketList";
 import EventSessionList from "../components/detail/EventSessionList";
 import EventSeatMapPreview from "../components/detail/EventSeatMapPreview";
+import EventBookingWorkspace from "../components/detail/EventBookingWorkspace";
 import EventOrganizerCard from "../components/detail/EventOrganizerCard";
 import EventBookingSidebar from "../components/detail/EventBookingSidebar";
 import { getEventDetail } from "../services/eventService";
 import { AlertCircle, ArrowLeft } from "lucide-react";
+import { useAuth } from "../../../contexts/AuthContext";
+import { createOrder } from "../../ticket/services/orderService";
+import useBookingSession, { resetBookingOnEventPage } from "../../ticket/services/useBookingSession";
+import BookingCountdown from "../../ticket/components/BookingCountdown";
+import { Alert } from "../../../components/common/Arlet";
 
 
-export default function EventDetailPage() {
+export default function EventDetailPage({ booking = false }) {
     const { idOrSlug } = useParams();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { user, isAuthenticated } = useAuth();
+    const [resetError, setResetError] = useState("");
+    const canBuy = !isAuthenticated || user?.role === "USER";
+    const requestedSessionId = booking ? new URLSearchParams(location.search).get("session") : null;
 
     const [event, setEvent] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [activeTab, setActiveTab] = useState("overview");
+    const [activeTab, setActiveTab] = useState(() => new URLSearchParams(location.search).has("booking") ? "tickets" : "overview");
     const [selectedSessionId, setSelectedSessionId] = useState(null);
+    const [quantities, setQuantities] = useState({});
+    const [selectedSeats, setSelectedSeats] = useState({});
+    const [seatRefreshKey, setSeatRefreshKey] = useState(0);
+    const [detailRefreshKey, setDetailRefreshKey] = useState(0);
+    const [buying, setBuying] = useState(false);
+    const buyingRef = useRef(false);
+    const [bookingError, setBookingError] = useState("");
+    const [showTicketLimit, setShowTicketLimit] = useState(false);
+    const closeTicketLimit = useCallback(() => setShowTicketLimit(false), []);
+    const [now, setNow] = useState(() => Date.now());
+    const bookingSession = useBookingSession(booking ? event?.id : null, user?.id, now);
+
+    useEffect(() => {
+        const timer = setInterval(() => setNow(Date.now()), booking ? 1000 : 30000);
+        return () => clearInterval(timer);
+    }, [booking]);
+
+    useEffect(() => {
+        if (!booking) return;
+        const clearRestoredSelection = (event) => {
+            if (event.persisted) {
+                setQuantities({});
+                setSelectedSeats({});
+                setBookingError("");
+                setSeatRefreshKey((current) => current + 1);
+            }
+        };
+        window.addEventListener("pageshow", clearRestoredSelection);
+        return () => window.removeEventListener("pageshow", clearRestoredSelection);
+    }, [booking]);
 
     useEffect(() => {
         let isMounted = true;
@@ -31,12 +73,26 @@ export default function EventDetailPage() {
             setError(null);
 
             try {
-                const res = await getEventDetail(idOrSlug);
+                let res = await getEventDetail(idOrSlug);
+                if (!booking && user?.id) {
+                    try {
+                        const cancelled = await resetBookingOnEventPage(res.data.id, user.id);
+                        if (cancelled) res = await getEventDetail(idOrSlug);
+                        if (isMounted) setResetError("");
+                    } catch (err) {
+                        if (isMounted) setResetError(err.message || "Không thể hủy lượt mua trước đó");
+                    }
+                }
                 if (isMounted) {
                     setEvent(res.data);
+                    setQuantities({});
+                    setSelectedSeats({});
+                    setBookingError("");
                     const sessions = res.data?.sessions || [];
                     const now = new Date();
                     const initialSession =
+                        sessions.find((session) => session.id === requestedSessionId) ||
+                        sessions.find((session) => session.ticketStatus === "SELLING" && new Date(session.endAt) > now) ||
                         sessions.find((session) => new Date(session.endAt) > now) ||
                         sessions[0];
                     setSelectedSessionId(initialSession?.id || null);
@@ -59,15 +115,60 @@ export default function EventDetailPage() {
         return () => {
             isMounted = false;
         };
-    }, [idOrSlug]);
+    }, [idOrSlug, requestedSessionId, detailRefreshKey, booking, user?.id]);
 
     const handleBuyClick = () => {
-        setActiveTab("tickets");
-        window.setTimeout(() => {
-            document
-                .getElementById("tickets-section")
-                ?.scrollIntoView({ behavior: "smooth" });
-        }, 0);
+        const query = selectedSessionId ? `?session=${encodeURIComponent(selectedSessionId)}` : "";
+        navigate(`/events/${encodeURIComponent(idOrSlug)}/booking${query}`);
+    };
+
+    const handleOrder = async () => {
+        if (buyingRef.current || !bookingSession.session || bookingSession.expired || bookingSession.session.orderId) return;
+        if (!isAuthenticated) {
+            navigate("/login", { state: { from: location.pathname + location.search } });
+            return;
+        }
+        const availableTypes = event.sessions?.length
+            ? event.sessions.find((session) => session.id === selectedSessionId)?.ticketTypes || []
+            : event.ticketTypes || [];
+        const items = Object.entries(quantities).filter(([, quantity]) => quantity > 0)
+            .map(([ticketTypeId, quantity]) => ({
+                ticketTypeId,
+                quantity,
+                ...(event.seatSelectionMode === "MANUAL" && availableTypes.find((type) => type.id === ticketTypeId)?.zone?.type === "SEATED"
+                    ? { seatIds: selectedSeats[ticketTypeId] || [] }
+                    : {}),
+            }));
+        const maxTickets = Math.min(event.maxTicketsPerOrder ?? 10, 10);
+        if (items.reduce((sum, item) => sum + item.quantity, 0) > maxTickets) {
+            setShowTicketLimit(true);
+            return;
+        }
+        buyingRef.current = true;
+        setBuying(true);
+        setBookingError("");
+        try {
+            const response = await createOrder({ eventId: event.id, sessionId: selectedSessionId, items, bookingToken: bookingSession.session.token });
+            let storageError = "";
+            try {
+                bookingSession.rememberOrder(response.data);
+            } catch (err) {
+                storageError = `Không thể lưu lượt mua trên trình duyệt: ${err.message}. Hãy dùng trang đơn hàng để tiếp tục.`;
+            }
+            const orderPath = `/orders/${encodeURIComponent(response.data.id)}`;
+            navigate(response.data.status === "PAID" ? `${orderPath}/success` : orderPath, { state: { storageError } });
+        } catch (err) {
+            setBookingError(err.message || "Không thể giữ vé, vui lòng thử lại.");
+            if (event.seatSelectionMode === "MANUAL") {
+                const seated = new Set(availableTypes.filter((type) => type.zone?.type === "SEATED").map((type) => type.id));
+                setSelectedSeats({});
+                setQuantities((current) => Object.fromEntries(Object.entries(current).filter(([id]) => !seated.has(id))));
+                setSeatRefreshKey((current) => current + 1);
+            }
+        } finally {
+            buyingRef.current = false;
+            setBuying(false);
+        }
     };
 
     if (loading) {
@@ -119,13 +220,163 @@ export default function EventDetailPage() {
     const sessions = event.sessions || [];
     const selectedSession =
         sessions.find((session) => session.id === selectedSessionId) || null;
-    const ticketTypes = event.ticketTypes || [];
+    const ticketTypes = sessions.length ? selectedSession?.ticketTypes || [] : event.ticketTypes || [];
+    const bookingDisabled = event.ticketStatus !== "SELLING" || (selectedSession && selectedSession.ticketStatus !== "SELLING");
+    const maxTickets = Math.min(event.maxTicketsPerOrder ?? 10, 10);
+
+    const handleSeatToggle = (ticketTypeId, seatId) => {
+        const current = selectedSeats[ticketTypeId] || [];
+        const isSelected = current.includes(seatId);
+        const total = Object.values(quantities).reduce((sum, quantity) => sum + quantity, 0);
+        if (!isSelected && Object.entries(selectedSeats).some(([id, seats]) => id !== ticketTypeId && seats.includes(seatId))) {
+            setBookingError("Ghế này đã được chọn ở hạng vé khác.");
+            return;
+        }
+        const type = ticketTypes.find((entry) => entry.id === ticketTypeId);
+        if (!isSelected && total >= maxTickets) {
+            setShowTicketLimit(true);
+            return;
+        }
+        if (!isSelected && current.length >= (type?.remainingQuantity || 0)) {
+            setBookingError("Hạng vé này không còn đủ số lượng.");
+            return;
+        }
+        const next = isSelected ? current.filter((id) => id !== seatId) : [...current, seatId];
+        setSelectedSeats((value) => ({ ...value, [ticketTypeId]: next }));
+        setQuantities((value) => ({ ...value, [ticketTypeId]: next.length }));
+        setBookingError("");
+    };
+
+    const refreshSeats = () => {
+        const seated = new Set(ticketTypes.filter((type) => type.zone?.type === "SEATED").map((type) => type.id));
+        setSelectedSeats({});
+        setQuantities((current) => Object.fromEntries(Object.entries(current).filter(([id]) => !seated.has(id))));
+        setSeatRefreshKey((current) => current + 1);
+    };
+
+    if (booking) {
+        if (bookingSession.loading) return <div className="min-h-screen bg-slate-50"><Header /><p className="p-8">Đang bắt đầu lượt mua vé...</p></div>;
+        if (bookingSession.queueState) {
+            const { position, totalInQueue } = bookingSession.queueState;
+            const progress = totalInQueue > 0
+                ? Math.min(100, Math.max(6, Math.round(((totalInQueue - position + 1) / totalInQueue) * 100)))
+                : 15;
+            return (
+                <div className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50/40">
+                    <Header />
+                    <div className="mx-auto max-w-lg px-4 py-14">
+                        <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-8 text-center shadow-lg shadow-blue-900/5">
+                            <div className="mx-auto mb-4 w-36 overflow-hidden rounded-2xl bg-slate-50/50">
+                                <iframe
+                                    src="https://tenor.com/embed/16188376"
+                                    title="Đang chờ lượt mua vé"
+                                    className="pointer-events-none h-28 w-full border-0"
+                                    loading="lazy"
+                                />
+                            </div>
+
+                            <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+                                <span className="h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
+                                Đang tự động cập nhật lượt vào
+                            </div>
+
+                            <h2 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">
+                                Bạn đang ở trong phòng chờ
+                            </h2>
+                            <p className="mt-2 text-sm text-slate-500">
+                                Hiện có nhiều người đang chọn vé. Hệ thống sẽ tự động đưa bạn vào trang đặt vé ngay khi đến lượt.
+                            </p>
+
+                            <div className="mt-6 rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/80 to-indigo-50/60 p-5">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-blue-600/80">
+                                    Số thứ tự của bạn
+                                </p>
+                                <p className="mt-1 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-5xl font-extrabold text-transparent tabular-nums">
+                                    #{position}
+                                </p>
+                                {totalInQueue > 0 && (
+                                    <p className="mt-2 text-xs text-slate-500">
+                                        Tổng số người đang chờ: <span className="font-semibold text-slate-700">{totalInQueue}</span>
+                                    </p>
+                                )}
+
+                                <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-blue-100">
+                                    <div
+                                        className="h-full rounded-full bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 transition-all duration-700 ease-out animate-pulse"
+                                        style={{ width: `${progress}%` }}
+                                    />
+                                </div>
+                            </div>
+
+                            <p className="mt-5 text-xs text-slate-400">
+                                Sắp đến lượt của bạn rồi. Vui lòng giữ nguyên trang này nhé.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        if (!bookingSession.session) return <div className="min-h-screen bg-slate-50"><Header /><div className="p-8"><p role="alert" className="text-rose-600">{bookingSession.error}</p><button type="button" onClick={bookingSession.restart} className="mt-4 text-blue-600">Thử lại</button></div></div>;
+        const orderLocked = Boolean(bookingSession.session.orderId && !bookingSession.expired);
+        return (
+            <div className="min-h-screen flex flex-col">
+                <Header />
+                {showTicketLimit && (
+                    <div className="fixed right-5 top-5 z-[60] w-[calc(100%-2.5rem)] max-w-sm">
+                        <Alert variant="warning" title="Giới hạn số lượng vé" icon={AlertCircle}
+                            duration={5000} onClose={closeTicketLimit} className="shadow-lg">
+                            Mỗi đơn được mua tối đa {maxTickets} vé.
+                        </Alert>
+                    </div>
+                )}
+                {bookingSession.orderStatus !== "PAID" && <BookingCountdown expiresAt={bookingSession.session.expiresAt} now={bookingSession.clockNow + bookingSession.session.offset} />}
+                <EventBookingWorkspace key={`${event.id}-${selectedSessionId || "event"}-${seatRefreshKey}-${bookingSession.expired}`}
+                    event={event} eventPath={`/events/${encodeURIComponent(idOrSlug)}`}
+                    sessions={sessions} selectedSession={selectedSession}
+                    onSelectSession={(session) => {
+                        setSelectedSessionId(session.id);
+                        setQuantities({});
+                        setSelectedSeats({});
+                        setBookingError("");
+                        setShowTicketLimit(false);
+                    }}
+                    ticketTypes={ticketTypes} quantities={bookingSession.expired ? {} : quantities} selectedSeats={bookingSession.expired ? {} : selectedSeats}
+                    onQuantityChange={(id, quantity) => {
+                        const total = Object.values(quantities).reduce((sum, value) => sum + value, 0);
+                        if (total - (quantities[id] || 0) + quantity > maxTickets) {
+                            setShowTicketLimit(true);
+                            return;
+                        }
+                        setQuantities((current) => ({ ...current, [id]: quantity }));
+                        setBookingError("");
+                    }}
+                    onSeatToggle={handleSeatToggle} onRefreshSeats={refreshSeats} onBuy={handleOrder}
+                    disabled={bookingDisabled || bookingSession.expired || orderLocked} buying={buying} error={bookingError || bookingSession.error}
+                    expired={bookingSession.expired}
+                    pendingOrderId={orderLocked ? bookingSession.session.orderId : null}
+                    orderStatus={bookingSession.orderStatus}
+                    onRestart={async () => {
+                        if (await bookingSession.restart()) {
+                            setQuantities({});
+                            setSelectedSeats({});
+                            setBookingError("");
+                            setSeatRefreshKey((current) => current + 1);
+                            setDetailRefreshKey((current) => current + 1);
+                        }
+                    }}
+                    maxTickets={maxTickets} now={now} />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
             <Header />
 
-            <EventDetailHeader event={event} onBuyClick={handleBuyClick} />
+            {resetError && <div role="alert" className="mx-auto mt-4 w-full max-w-7xl px-4 text-sm text-rose-700">
+                Không thể hủy lượt mua trước đó: {resetError}. <button type="button" className="font-semibold underline" onClick={() => setDetailRefreshKey((value) => value + 1)}>Thử lại</button>
+            </div>}
+            <EventDetailHeader event={event} onBuyClick={handleBuyClick} canBuy={canBuy} blocked={Boolean(resetError)} />
 
             {/* Thanh Tab điều hướng nội dung */}
             <EventInfoTabs
@@ -154,9 +405,12 @@ export default function EventDetailPage() {
                                         sessions={sessions}
                                         selectedSessionId={selectedSession?.id}
                                         ticketStatus={event.ticketStatus}
-                                        onSelectSession={(session) =>
-                                            setSelectedSessionId(session.id)
-                                        }
+                                        onSelectSession={(session) => {
+                                            setSelectedSessionId(session.id);
+                                            setQuantities({});
+                                            setSelectedSeats({});
+                                            setBookingError("");
+                                        }}
                                     />
                                 )}
                                 {event.seatMap && (
@@ -164,6 +418,7 @@ export default function EventDetailPage() {
                                 )}
                                 <EventTicketList
                                     ticketTypes={ticketTypes}
+                                    readOnly now={now}
                                 />
                             </div>
                         )}
@@ -179,6 +434,8 @@ export default function EventDetailPage() {
                             event={event}
                             onBuyClick={handleBuyClick}
                             selectedSession={selectedSession}
+                            canBuy={canBuy}
+                            blocked={Boolean(resetError)}
                         />
                     </div>
                 </div>
