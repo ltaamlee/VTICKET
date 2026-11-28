@@ -6,9 +6,19 @@ import {
     UserRound,
     CalendarDays,
 } from "lucide-react";
+import {
+    Area,
+    AreaChart,
+    CartesianGrid,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
+} from "recharts";
 
 import StatCard from "../../../components/common/stats/StatCard";
 import Pagination from "../../../components/common/Pagination";
+import DateRangeFilter, { getDefaultDateRange } from "../../../components/common/DateRangeFilter";
 import { getDashboardData } from "../services/dashboardService";
 
 const PAGE_SIZE = 10;
@@ -17,6 +27,14 @@ const currency = new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
     maximumFractionDigits: 0,
+});
+const dateFormatter = new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+});
+const compactNumber = new Intl.NumberFormat("vi-VN", {
+    notation: "compact",
+    maximumFractionDigits: 1,
 });
 
 const eventStatusLabels = {
@@ -31,6 +49,7 @@ const eventStatusLabels = {
 };
 
 function AdminDashboardPage() {
+    const [dateRange, setDateRange] = useState(() => getDefaultDateRange(7));
     const [dashboard, setDashboard] = useState(null);
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
@@ -38,10 +57,14 @@ function AdminDashboardPage() {
 
     useEffect(() => {
         let cancelled = false;
+        setLoading(true);
 
-        getDashboardData({ page, pageSize: PAGE_SIZE })
+        getDashboardData({ page, pageSize: PAGE_SIZE, ...dateRange })
             .then((response) => {
-                if (!cancelled) setDashboard(response.data);
+                if (!cancelled) {
+                    setDashboard(response.data);
+                    setError("");
+                }
             })
             .catch((requestError) => {
                 if (!cancelled) {
@@ -57,9 +80,9 @@ function AdminDashboardPage() {
         return () => {
             cancelled = true;
         };
-    }, [page]);
+    }, [page, dateRange]);
 
-    if (loading) {
+    if (loading && !dashboard) {
         return (
             <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
                 Đang tải dashboard...
@@ -67,7 +90,7 @@ function AdminDashboardPage() {
         );
     }
 
-    if (error) {
+    if (error && !dashboard) {
         return (
             <div
                 role="alert"
@@ -83,25 +106,35 @@ function AdminDashboardPage() {
     }
 
     const stats = dashboard?.statistics || {};
+    const revenueByDay = dashboard?.revenueByDay || [];
     const recentEvents = dashboard?.recentEvents || [];
     const totalPages = dashboard?.pagination?.totalPages || 1;
 
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold text-slate-900">
-                    Dashboard quản trị
-                </h1>
-                <p className="mt-1 text-sm text-slate-500">
-                    Tổng quan hoạt động và tình hình giao dịch của VTICKET.
-                </p>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-900">
+                        Dashboard quản trị
+                    </h1>
+                    <p className="mt-1 text-sm text-slate-500">
+                        Tổng quan hoạt động và tình hình giao dịch của VTICKET.
+                    </p>
+                </div>
+                <DateRangeFilter
+                    value={dateRange}
+                    onChange={(nextRange) => {
+                        setPage(1);
+                        setDateRange(nextRange);
+                    }}
+                />
             </div>
 
             <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <StatCard
-                    label="Tổng thanh toán thành công"
+                    label="Doanh thu theo kỳ"
                     value={stats.totalRevenue ?? 0}
-                    detail="Tổng giao dịch thành công"
+                    detail={`${dateRange.startDate} → ${dateRange.endDate}`}
                     icon={DollarSign}
                     bg="bg-emerald-50"
                     iconBg="bg-emerald-600"
@@ -127,14 +160,102 @@ function AdminDashboardPage() {
                     loading={loading}
                 />
                 <StatCard
-                    label="Đơn hàng"
+                    label="Đơn hàng theo kỳ"
                     value={stats.totalOrders ?? 0}
-                    detail="Tổng số đơn đã tạo"
+                    detail={`${dateRange.startDate} → ${dateRange.endDate}`}
                     icon={ClipboardList}
                     bg="bg-amber-50"
                     iconBg="bg-amber-600"
                     loading={loading}
                 />
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="mb-5">
+                    <h2 className="font-semibold text-slate-900">
+                        Biểu đồ doanh thu ({dateRange.startDate} → {dateRange.endDate})
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                        Tổng hợp từ các giao dịch thanh toán thành công.
+                    </p>
+                </div>
+                {revenueByDay.length ? (
+                    <div className="h-72">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart
+                                data={revenueByDay}
+                                margin={{ top: 8, right: 12, left: 8, bottom: 0 }}
+                            >
+                                <defs>
+                                    <linearGradient
+                                        id="adminRevenue"
+                                        x1="0"
+                                        y1="0"
+                                        x2="0"
+                                        y2="1"
+                                    >
+                                        <stop
+                                            offset="0%"
+                                            stopColor="#10b981"
+                                            stopOpacity={0.22}
+                                        />
+                                        <stop
+                                            offset="95%"
+                                            stopColor="#10b981"
+                                            stopOpacity={0}
+                                        />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid
+                                    stroke="#e2e8f0"
+                                    vertical={false}
+                                    strokeDasharray="4 4"
+                                />
+                                <XAxis
+                                    dataKey="date"
+                                    tickFormatter={(value) =>
+                                        dateFormatter.format(new Date(`${value}T00:00:00`))
+                                    }
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tick={{ fill: "#64748b", fontSize: 12 }}
+                                />
+                                <YAxis
+                                    tickFormatter={(value) =>
+                                        compactNumber.format(value)
+                                    }
+                                    tickLine={false}
+                                    axisLine={false}
+                                    width={42}
+                                    tick={{ fill: "#64748b", fontSize: 12 }}
+                                />
+                                <Tooltip
+                                    formatter={(value) => [
+                                        currency.format(Number(value)),
+                                        "Doanh thu",
+                                    ]}
+                                    labelFormatter={(value) =>
+                                        dateFormatter.format(
+                                            new Date(`${value}T00:00:00`)
+                                        )
+                                    }
+                                />
+                                <Area
+                                    type="monotone"
+                                    dataKey="revenue"
+                                    stroke="#10b981"
+                                    strokeWidth={2.5}
+                                    fill="url(#adminRevenue)"
+                                    isAnimationActive={false}
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                ) : (
+                    <p className="py-12 text-center text-sm text-slate-500">
+                        Chưa có dữ liệu doanh thu trong khoảng thời gian này.
+                    </p>
+                )}
             </section>
 
             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">

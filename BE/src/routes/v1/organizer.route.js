@@ -2,8 +2,8 @@ const express = require("express");
 const router = express.Router();
 
 const {
-  authenticate,
-  authorize,
+    authenticate,
+    authorize,
 } = require("../../middlewares/auth.middleware");
 
 const organizerRequestController = require("../../controllers/v1/organizer/organizerRequest.controller");
@@ -40,43 +40,44 @@ router.patch("/events/:id/submit", organizerEventController.submitEvent);
 
 // Event Sessions
 router.get(
-  "/events/:eventId/sessions",
-  organizerEventSessionController.getSessions
+    "/events/:eventId/sessions",
+    organizerEventSessionController.getSessions
 );
 router.get(
-  "/events/:eventId/sessions/:sessionId",
-  organizerEventSessionController.getSessionDetail
+    "/events/:eventId/sessions/:sessionId",
+    organizerEventSessionController.getSessionDetail
 );
 router.post(
-  "/events/:eventId/sessions",
-  organizerEventSessionController.createSession
+    "/events/:eventId/sessions",
+    organizerEventSessionController.createSession
 );
 router.patch(
-  "/events/:eventId/sessions/:sessionId",
-  organizerEventSessionController.updateSession
+    "/events/:eventId/sessions/:sessionId",
+    organizerEventSessionController.updateSession
 );
 router.delete(
-  "/events/:eventId/sessions/:sessionId",
-  organizerEventSessionController.deleteSession
+    "/events/:eventId/sessions/:sessionId",
+    organizerEventSessionController.deleteSession
 );
 router.post(
-  "/events/:eventId/sessions/check-conflict",
-  organizerEventSessionController.checkTimeConflict
+    "/events/:eventId/sessions/check-conflict",
+    organizerEventSessionController.checkTimeConflict
 );
 
 // Tickets
 router.get(
-  "/events/:eventId/ticket-types",
-  organizerTicketController.getTicketTypes
+    "/events/:eventId/ticket-types",
+    organizerTicketController.getTicketTypes
 );
 router.get(
-  "/events/:eventId/ticket-stats",
-  organizerTicketController.getEventTicketStats
+    "/events/:eventId/ticket-stats",
+    organizerTicketController.getEventTicketStats
 );
 router.get(
-  "/events/:eventId/tickets",
-  organizerTicketController.getEventTickets
+    "/events/:eventId/tickets",
+    organizerTicketController.getEventTickets
 );
+router.post("/events/:eventId/check-in", organizerTicketController.checkInQr);
 router.get("/tickets/:id", organizerTicketController.getTicketDetail);
 router.post("/tickets/:id/check-in", organizerTicketController.checkInTicket);
 

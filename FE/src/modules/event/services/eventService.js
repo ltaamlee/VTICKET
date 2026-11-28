@@ -41,6 +41,13 @@ export async function getEventDetail(idOrSlug) {
     });
 }
 
+export async function getAvailableSeats(eventId, sessionId) {
+    const params = new URLSearchParams();
+    if (sessionId) params.set("sessionId", sessionId);
+    const query = params.toString();
+    return apiRequest(`/events/${encodeURIComponent(eventId)}/seats${query ? `?${query}` : ""}`);
+}
+
 /**
  * Lấy danh sách sự kiện nổi bật (phục vụ Hero / Banner / Trang chủ)
  * @param {number} limit 

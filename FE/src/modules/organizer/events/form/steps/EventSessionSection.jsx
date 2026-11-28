@@ -440,25 +440,6 @@ export default function EventSessionForm({
                                         </button>
                                     </div>
                                 </div>
-                                {session.ticketTypes?.length > 0 && (
-                                    <div className="mt-3 border-t border-gray-100 pt-3">
-                                        <p className="mb-2 text-xs font-medium text-gray-500">
-                                            Hạng vé của suất diễn
-                                        </p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {session.ticketTypes.map((ticketType) => (
-                                                <span
-                                                    key={ticketType.id}
-                                                    className="rounded-md bg-blue-50 px-2.5 py-1 text-xs text-blue-800"
-                                                >
-                                                    {ticketType.name} ·{" "}
-                                                    {Number(ticketType.price).toLocaleString("vi-VN")} đ ·{" "}
-                                                    {ticketType.capacity} vé
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         ))}
                     </div>

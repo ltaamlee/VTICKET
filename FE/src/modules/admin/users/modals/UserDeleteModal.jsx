@@ -18,7 +18,8 @@ function UserDeleteModal({ user, onClose, onSuccess, onAlert }) {
             await deleteUser(user.id)
             onSuccess?.("Xóa tài khoản thành công!")
         } catch (err) {
-            setError(err.message || "Xóa tài khoản thất bại");
+            const message = err.message || "Xóa tài khoản thất bại";
+            setError(message);
             onAlert?.("error", message);
         } finally {
             setLoading(false);

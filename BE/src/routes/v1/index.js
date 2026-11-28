@@ -8,6 +8,8 @@ const uploadRoutes = require('./upload.routes');
 const organizerRoutes = require('./organizer.route');
 const eventRoutes = require('./event.route');
 const categoryRoutes = require('./category.route');
+const orderRoutes = require('./order.route');
+const paymentRoutes = require('./payment.route');
 
 router.use('/auth', authRoutes);
 router.use('/admin', adminRoutes);
@@ -16,6 +18,8 @@ router.use('/upload', uploadRoutes);
 router.use('/organizer', organizerRoutes);
 router.use('/events', eventRoutes);
 router.use('/categories', categoryRoutes);
+router.use('/orders', orderRoutes);
+router.use('/payments', paymentRoutes);
 
 // router.use('/event', eventRoutes);
 // router.use('/category', categoryRoutes);
