@@ -24,8 +24,6 @@ const initialForm = {
     environment: "SANDBOX",
     providers: {
         SEPAY: { enabled: true, displayName: "SePay" },
-        MOMO: { enabled: false, displayName: "MoMo" },
-        VNPAY: { enabled: false, displayName: "VNPay" },
         PAYOS: { enabled: false, displayName: "PayOS" },
     },
     wallet: {
@@ -46,18 +44,6 @@ const providers = [
         name: "SePay",
         description: "Cổng ngân hàng dùng để thanh toán đơn mua vé bán lại.",
         logo: null,
-    },
-    {
-        key: "MOMO",
-        name: "MoMo",
-        description: "Thanh toán qua ví điện tử MoMo.",
-        logo: "/images/payment/momo.png",
-    },
-    {
-        key: "VNPAY",
-        name: "VNPay",
-        description: "Thanh toán qua cổng VNPay và thẻ ngân hàng.",
-        logo: "/images/payment/vnpay.png",
     },
     {
         key: "PAYOS",
@@ -442,11 +428,6 @@ function PaymentSetting({ onAlert }) {
                             <Wallet size={20} />
                             Ví điện tử (VTicket Wallet)
                         </h3>
-                        <p className="mt-1 text-sm text-gray-500">
-                            Cấu hình ví nội bộ: nạp tiền từ tài khoản liên kết
-                            (MoMo, VNPay, PayOS, ngân hàng) và thanh toán mua vé
-                            bán lại bằng số dư ví.
-                        </p>
                     </div>
 
                     <div className="divide-y divide-gray-100">

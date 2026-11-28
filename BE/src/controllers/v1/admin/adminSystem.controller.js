@@ -53,6 +53,12 @@ class AdminSystemController {
             value
         );
 
+        // Cấu hình thông báo vừa thay đổi -> xóa cache để áp dụng ngay
+        if (key === 'notification') {
+            const { invalidateConfigCache } = require('../../../services/notification/notification.service');
+            invalidateConfigCache();
+        }
+
         return sendResponse(res, 200, "Cập nhật cấu hình thành công", setting.value);
     });
 }

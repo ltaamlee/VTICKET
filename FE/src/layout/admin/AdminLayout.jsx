@@ -2,6 +2,7 @@ import { Outlet, useNavigate, Link } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import AdminSidebar from "./AdminSidebar";
+import NotificationBell from "../../modules/notification/components/NotificationBell";
 import { Home, LogOut, ChevronDown } from "lucide-react";
 
 function AdminLayout() {
@@ -69,8 +70,11 @@ function AdminLayout() {
                         </div>
                     </div>
 
-                    {/* Thông tin người dùng đăng nhập */}
-                    <div className="relative" ref={adminMenuRef}>
+                    {/* Chuông thông báo realtime + Thông tin người dùng đăng nhập */}
+                    <div className="flex items-center gap-3">
+                        <NotificationBell />
+
+                        <div className="relative" ref={adminMenuRef}>
                         <button
                             type="button"
                             onClick={() => setShowAdminMenu((prev) => !prev)}
@@ -138,6 +142,7 @@ function AdminLayout() {
                                 </div>
                             </div>
                         )}
+                        </div>
                     </div>
                 </header>
 

@@ -48,6 +48,39 @@ async function cancelResaleOrder({ userId, orderId, status = "CANCELLED" }) {
         });
 
         return { id: order.id, status };
+    }).then(async (result) => {
+        // Thông báo realtime cho người bán: đơn bán lại bị huỷ / hết hạn
+        if (result.status === "CANCELLED" || result.status === "EXPIRED") {
+            try {
+                const { notifyResaleCancelled } = require("./resaleOrder.notify");
+
+                const order = await prisma.resaleOrder.findUnique({
+                    where: { id: orderId },
+                    select: {
+                        orderCode: true,
+                        resale: { select: { sellerId: true } },
+                    },
+                });
+
+                if (order?.resale?.sellerId) {
+                    await notifyResaleCancelled({
+                        sellerId: order.resale.sellerId,
+                        orderCode: order.orderCode,
+                        reason:
+                            result.status === "EXPIRED"
+                                ? "hết thời gian thanh toán"
+                                : "người mua đã huỷ đơn",
+                    });
+                }
+            } catch (error) {
+                console.error(
+                    "[Notification] Gửi thông báo huỷ đơn bán lại lỗi:",
+                    error.code || error.name || error.message
+                );
+            }
+        }
+
+        return result;
     }).catch((error) => {
         if (error?.code === "P2034") {
             throw new ConflictException("Đơn hàng vừa được cập nhật, vui lòng thử lại");

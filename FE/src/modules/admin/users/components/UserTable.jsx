@@ -149,7 +149,7 @@ function UserTable({
 
                                         <td className="px-5 py-4">
                                             <div className="font-medium text-gray-900">
-                                                {user.username || "Chưa cập nhật"}
+                                                {user.profile?.fullName || "Chưa cập nhật"}
                                             </div>
                                             <div className="mt-1 text-xs text-gray-400">
                                                 ID: {user.id}

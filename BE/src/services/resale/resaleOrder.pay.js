@@ -187,7 +187,43 @@ async function finalizeResalePurchase(tx, { resaleOrderId }) {
         description: `Bán vé bán lại ${order.orderCode}`,
     });
 
+    // Thông báo realtime cho người bán và người mua (nếu cấu hình cho phép)
+    await notifyResaleParticipants(order, listing);
+
     return { ticketCode: newTicketCode, qrToken: newQrToken };
+}
+
+/**
+ * Gửi thông báo realtime cho cả người bán và người mua sau khi giao dịch
+ * bán lại hoàn tất. Lỗi thông báo không được làm fail giao dịch.
+ */
+async function notifyResaleParticipants(order, listing) {
+    try {
+        const { notifyResaleSold, notifyResalePaymentSuccess, getEventName } =
+            require("./resaleOrder.notify");
+
+        const eventName = await getEventName(listing.ticketId);
+
+        await notifyResaleSold({
+            sellerId: listing.sellerId,
+            buyerId: order.userId,
+            orderCode: order.orderCode,
+            amount: order.sellerAmount,
+            eventName,
+        });
+
+        await notifyResalePaymentSuccess({
+            buyerId: order.userId,
+            orderCode: order.orderCode,
+            amount: order.totalAmount,
+            eventName,
+        });
+    } catch (error) {
+        console.error(
+            "[Notification] Gửi thông báo giao dịch bán lại lỗi:",
+            error.code || error.name || error.message
+        );
+    }
 }
 
 module.exports = {

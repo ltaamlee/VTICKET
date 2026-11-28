@@ -1,5 +1,6 @@
 const prisma = require('../../config/prisma');
 const emailService = require('../../shared/email.service');
+const notificationService = require('../notification/notification.service');
 const {
     BadRequestException,
     NotFoundException,
@@ -220,6 +221,16 @@ class AdminOrganizerRequestService {
             .sendOrganizerApprovedEmail(recipientEmail, request.organizationName, recipientName)
             .catch((err) => console.error('[Approve Organizer] Send email error:', err.message));
 
+        // 5. Gửi thông báo realtime trong hệ thống (nếu cấu hình cho phép)
+        await this._notifyOrganizerDecision({
+            type: 'ORGANIZER_REQUEST_APPROVED',
+            userId: request.userId,
+            organizationName: request.organizationName,
+            title: 'Yêu cầu đăng ký Ban Tổ Chức đã được phê duyệt',
+            body: `Yêu cầu đăng ký "${request.organizationName}" của bạn đã được quản trị viên phê duyệt. Bạn có thể bắt đầu tạo sự kiện ngay.`,
+            link: '/profile',
+        });
+
         return OrganizerRequestMapper.toOrganizerRequestResponse(updatedRequest);
     }
 
@@ -290,7 +301,37 @@ class AdminOrganizerRequestService {
             )
             .catch((err) => console.error('[Reject Organizer] Send email error:', err.message));
 
+        // Gửi thông báo realtime trong hệ thống (nếu cấu hình cho phép)
+        await this._notifyOrganizerDecision({
+            type: 'ORGANIZER_REQUEST_REJECTED',
+            userId: request.userId,
+            organizationName: request.organizationName,
+            title: 'Yêu cầu đăng ký Ban Tổ Chức bị từ chối',
+            body: `Yêu cầu đăng ký "${request.organizationName}" của bạn đã bị từ chối. Lý do: ${rejectReason.trim()}`,
+            link: '/profile',
+        });
+
         return OrganizerRequestMapper.toOrganizerRequestResponse(updatedRequest);
+    }
+
+    /**
+     * Gửi thông báo realtime cho quyết định của yêu cầu đăng ký BTC.
+     * Lỗi thông báo không được làm fail luồng xử lý chính.
+     * @private
+     */
+    async _notifyOrganizerDecision({ type, userId, organizationName, title, body, link }) {
+        try {
+            await notificationService.notify({
+                type,
+                userId,
+                title,
+                body,
+                link,
+                metadata: { organizationName },
+            });
+        } catch (error) {
+            console.error('[Notification] Gửi thông báo đăng ký BTC lỗi:', error.code || error.name || error.message);
+        }
     }
 
     /**

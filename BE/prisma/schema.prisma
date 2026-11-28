@@ -45,6 +45,20 @@ enum ZoneType {
   STAGE
 }
 
+// ==================== THÔNG BÁO (NOTIFICATION) ====================
+
+// Kênh nhận thông báo
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+}
+
+// Trạng thái đọc
+enum NotificationStatus {
+  UNREAD
+  READ
+}
+
 // Hình dạng khu vực khi vẽ trên canvas.
 enum ZoneShape {
   RECTANGLE
@@ -212,6 +226,7 @@ model User {
   linkedAccounts     WalletAccount[]
   walletTransactions WalletTransaction[]
   resaleOrders       ResaleOrder[]
+  notifications     Notification[]
 
   @@map("users")
 }
@@ -233,11 +248,7 @@ model UserProfile {
 // ==================== VÍ ĐIỆN TỬ (E-WALLET) ====================
 
 enum WalletProvider {
-  MOMO
-  VNPAY
   PAYOS
-  ZALOPAY
-  BANK
   SEPAY
 }
 
@@ -281,7 +292,7 @@ model Wallet {
   @@map("wallets")
 }
 
-// Tài khoản thanh toán liên kết với ví (MoMo, VNPay, PayOS, ngân hàng)
+// Tài khoản thanh toán liên kết với ví
 model WalletAccount {
   id         String              @id @default(auto()) @map("_id") @db.ObjectId
   walletId   String              @db.ObjectId
@@ -289,9 +300,7 @@ model WalletAccount {
   userId     String              @db.ObjectId
   user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   provider   WalletProvider
-  // Số điện thoại / email đã đăng ký tại nhà cung cấp
   identifier String
-  // Mã định danh tài khoản phía nhà cung cấp (nếu có)
   providerRef String?
   nickname   String?
   isDefault Boolean             @default(false)
@@ -852,4 +861,35 @@ model OrganizerRequest {
   @@index([status])
   @@index([createdAt])
   @@map("organizerRequests")
+}
+
+// ==================== THÔNG BÁO (NOTIFICATION) ====================
+
+// Thông báo trong hệ thống (in-app realtime) và email
+model Notification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Loai thong bao - luu dong (string) de co the mo rong ma khong can migration enum.
+  // Xem danh muc cac loai thong bao trong BE/src/services/notification/notification.service.js
+  type      String   @default("SYSTEM")
+  channel   NotificationChannel @default(IN_APP)
+  title     String
+  body      String
+  // Link điều hướng khi bấm vào thông báo (frontend route)
+  link      String?
+  // Payload bổ sung (mã đơn hàng, id sự kiện, số tiền...)
+  metadata  Json?
+  status    NotificationStatus @default(UNREAD)
+  readAt    DateTime?
+  // Email đã gửi hay chưa (chỉ dùng cho channel EMAIL)
+  emailedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@index([type])
+  @@index([channel, emailedAt])
+  @@map("notifications")
 }

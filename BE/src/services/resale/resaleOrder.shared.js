@@ -1,5 +1,6 @@
 const crypto = require("node:crypto");
 const prisma = require("../../config/prisma");
+const notificationService = require("../notification/notification.service");
 const {
     BadRequestException,
     ConflictException,
@@ -149,6 +150,7 @@ module.exports = {
     generateOrderCode,
     paymentService,
     walletService,
+    notificationService,
     BadRequestException,
     ConflictException,
     NotFoundException,

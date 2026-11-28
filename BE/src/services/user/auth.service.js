@@ -165,10 +165,34 @@ class AuthService {
             },
         });
 
+        // Thông báo realtime chào mừng người dùng mới (nếu cấu hình cho phép)
+        await this._notifyAccountRegistered(user);
+
         return {
             email: normalizedEmail,
             isVerified: true,
         };
+    }
+
+    /**
+     * Gửi thông báo realtime cho tài khoản vừa được kích hoạt.
+     * Lỗi thông báo không được làm fail luồng xác thực OTP.
+     * @private
+     */
+    async _notifyAccountRegistered(user) {
+        try {
+            const notificationService = require('../notification/notification.service');
+
+            await notificationService.notify({
+                type: 'ACCOUNT_REGISTRATION',
+                userId: user.id,
+                title: 'Chào mừng bạn đến với VTicket',
+                body: 'Tài khoản của bạn đã được kích hoạt thành công. Khám phá các sự kiện hấp dẫn ngay hôm nay.',
+                link: '/events',
+            });
+        } catch (error) {
+            console.error('[Notification] Gửi thông báo đăng ký lỗi:', error.code || error.name || error.message);
+        }
     }
 
     /**

@@ -92,8 +92,7 @@ function parseVnd(value) {
     return Number.isSafeInteger(amount) ? amount : null;
 }
 
-function validatePaidIpn(payload, order) {
-    const notification = payload?.order;
+function validatePaidIpn(payload, order) {    const notification = payload?.order;
     const transaction = payload?.transaction;
     if (!order || typeof order.orderCode !== "string" ||
         !Number.isSafeInteger(order.totalAmount) || order.totalAmount <= 0 ||
@@ -111,6 +110,43 @@ function validatePaidIpn(payload, order) {
         throw new BadRequestException("Thông báo thanh toán SePay không khớp đơn hàng");
     }
     return { transactionId: transaction.transaction_id };
+}
+
+/**
+ * Gửi thông báo realtime "thanh toán thành công" cho khách hàng.
+ * Lỗi thông báo không được làm fail luồng thanh toán.
+ */
+async function notifyPaymentSuccess({ userId, orderCode, eventId, amount }) {
+    try {
+        const notificationService = require("../notification/notification.service");
+        const prisma = require("../../config/prisma");
+
+        let eventTitle = null;
+        if (eventId) {
+            const event = await prisma.event.findUnique({
+                where: { id: eventId },
+                select: { title: true },
+            });
+            eventTitle = event?.title || null;
+        }
+
+        const formattedAmount = Number.isFinite(Number(amount))
+            ? new Intl.NumberFormat("vi-VN").format(Number(amount))
+            : null;
+
+        await notificationService.notify({
+            type: "PAYMENT_SUCCESS",
+            userId,
+            title: "Thanh toán thành công",
+            body: eventTitle
+                ? `Thanh toán đơn hàng ${orderCode} cho sự kiện "${eventTitle}" đã thành công${formattedAmount ? ` với số tiền ${formattedAmount} đ` : ""}.`
+                : `Thanh toán đơn hàng ${orderCode} đã thành công${formattedAmount ? ` với số tiền ${formattedAmount} đ` : ""}.`,
+            link: orderCode ? `/orders/${orderCode}` : "/my-tickets",
+            metadata: { orderCode, eventId, amount },
+        });
+    } catch (error) {
+        console.error("[Notification] Gửi thông báo thanh toán lỗi:", error.code || error.name || error.message);
+    }
 }
 
 async function processOrderPaid(payload) {
@@ -186,7 +222,7 @@ async function processOrderPaid(payload) {
                     return tx.sePayNotification.create({ data: receipt });
                 }
                 const order = await finalizeBookingReservation(tx, reservation, now);
-                paidContext = { eventId: reservation.eventId, userId: reservation.userId };
+                paidContext = { eventId: reservation.eventId, userId: reservation.userId, amount: reservation.totalAmount, orderCode: order.orderCode };
                 await tx.payment.create({
                     data: { orderId: order.id, transactionCode: transactionId, amount: reservation.totalAmount, method: "SEPAY", status: "SUCCESS", paidAt: now },
                 });
@@ -223,6 +259,8 @@ async function processOrderPaid(payload) {
                 paidContext = {
                     eventId: order.orderItems?.[0]?.ticketType?.eventId || null,
                     userId: order.userId,
+                    amount: order.totalAmount,
+                    orderCode: order.orderCode,
                 };
             }
             if (!validReservations) {
@@ -257,6 +295,15 @@ async function processOrderPaid(payload) {
         }
         if (paidContext?.eventId && paidContext?.userId) {
             releaseWaitingRoomSlot(paidContext.eventId, paidContext.userId).catch(() => {});
+        }
+        // Gửi thông báo realtime thanh toán thành công (nếu cấu hình cho phép)
+        if (paidContext?.userId) {
+            await notifyPaymentSuccess({
+                userId: paidContext.userId,
+                orderCode: paidContext.orderCode || invoiceNumber,
+                eventId: paidContext.eventId,
+                amount: paidContext.amount,
+            });
         }
         return result;
     } catch (error) {

@@ -98,6 +98,25 @@ async function createResaleOrder({ userId, resaleId, method }) {
                 expiresAt,
             },
         });
+    }).then(async (order) => {
+        // Thông báo realtime cho người bán: có người đang mua vé của họ
+        try {
+            const { notifyResaleCreated } = require("./resaleOrder.notify");
+
+            await notifyResaleCreated({
+                sellerId: listing.sellerId,
+                orderCode: order.orderCode,
+                amount: totalAmount,
+                eventName: listing.ticket?.event?.name || null,
+            });
+        } catch (error) {
+            console.error(
+                "[Notification] Gửi thông báo tạo đơn bán lại lỗi:",
+                error.code || error.name || error.message
+            );
+        }
+
+        return order;
     }).catch((error) => {
         if (error?.code === "P2034") {
             throw new ConflictException("Vé vừa được người khác xử lý, vui lòng thử lại");

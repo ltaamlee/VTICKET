@@ -38,16 +38,13 @@ const DEFAULT_SETTINGS = {
         },
     },
 
+    // Thong bao: chi con phan CO BAN (kenh gui).
+    // Khong co danh muc loai thong bao co dinh - moi loai thong bao deu
+    // duoc gui ngay lap tuc, khong bieu kien gi.
     notification: {
         channels: {
             email: true,
             inApp: true,
-        },
-        events: {
-            accountRegistration: true,
-            paymentSuccess: true,
-            eventUpdate: true,
-            securityAlert: true,
         },
     },
 
@@ -101,6 +98,18 @@ class AdminSystemService {
                     continue;
                 }
 
+                // Thong bao: chi tra ve phan CO BAN (kenh gui).
+                // Bo qua "events" cu (khong con dung dau).
+                if (setting.key === "notification") {
+                    result.notification = {
+                        channels: {
+                            ...defaultValue.channels,
+                            ...(value.channels || {}),
+                        },
+                    };
+                    continue;
+                }
+
                 result[setting.key] = value;
             }
         }
@@ -133,6 +142,16 @@ class AdminSystemService {
                 wallet: {
                     ...DEFAULT_SETTINGS.payment.wallet,
                     ...(setting.value?.wallet || {}),
+                },
+            };
+        }
+
+        // Thong bao: chi phan CO BAN (kenh gui), bo qua "events" cu.
+        if (key === "notification") {
+            return {
+                channels: {
+                    ...DEFAULT_SETTINGS.notification.channels,
+                    ...(setting.value?.channels || {}),
                 },
             };
         }
@@ -213,17 +232,15 @@ class AdminSystemService {
             };
         }
 
-        // Merge cấu hình thông báo
+        // Merge cau hinh thong bao (chi co kenh gui)
         if (key === "notification") {
             mergedValue.channels = {
                 ...currentValue.channels,
                 ...(value.channels || {}),
             };
 
-            mergedValue.events = {
-                ...currentValue.events,
-                ...(value.events || {}),
-            };
+            // Xoa "events" cu (khong con dung dau).
+            delete mergedValue.events;
         }
 
         return prisma.systemSetting.upsert({
@@ -622,26 +639,34 @@ class AdminSystemService {
             }
         }
 
-        // NOTIFICATION
+        // NOTIFICATION - chi con phan CO BAN (kenh gui), khong co danh muc loai.
         if (key === "notification") {
-            for (const group of ["channels", "events"]) {
-                if (value[group] !== undefined) {
-                    if (
-                        !value[group] ||
-                        typeof value[group] !== "object" ||
-                        Array.isArray(value[group])
-                    ) {
+            if (value.channels !== undefined) {
+                if (
+                    !value.channels ||
+                    typeof value.channels !== "object" ||
+                    Array.isArray(value.channels)
+                ) {
+                    throw this.validationError(
+                        "Cấu hình thông báo không hợp lệ."
+                    );
+                }
+
+                for (const enabled of Object.values(value.channels)) {
+                    if (typeof enabled !== "boolean") {
                         throw this.validationError(
-                            "Cấu hình thông báo không hợp lệ."
+                            "Trạng thái thông báo phải là true hoặc false."
                         );
                     }
+                }
 
-                    for (const enabled of Object.values(value[group])) {
-                        if (typeof enabled !== "boolean") {
-                            throw this.validationError(
-                                "Trạng thái thông báo phải là true hoặc false."
-                            );
-                        }
+                // Chi chap nhan cac kenh da dinh nghia.
+                const validChannels = ["email", "inApp"];
+                for (const channel of Object.keys(value.channels)) {
+                    if (!validChannels.includes(channel)) {
+                        throw this.validationError(
+                            `Kênh thông báo "${channel}" không hợp lệ.`
+                        );
                     }
                 }
             }

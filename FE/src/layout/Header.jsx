@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useSystemSettings } from "../contexts/SystemSettingsContext";
+import NotificationBell from "../modules/notification/components/NotificationBell";
 import {
     User,
     LayoutDashboard,
@@ -118,7 +119,10 @@ function Header() {
                             </Link>
                         </>
                     ) : (
-                        <div className="relative" ref={dropdownRef}>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <NotificationBell />
+
+                            <div className="relative" ref={dropdownRef}>
                             <button
                                 type="button"
                                 onClick={() => setShowMenu((prev) => !prev)}
@@ -297,6 +301,7 @@ function Header() {
                                     </button>
                                 </div>
                             )}
+                            </div>
                         </div>
                     )}
                 </div>

@@ -1,4 +1,5 @@
 const prisma = require("../../config/prisma");
+const notificationService = require("../notification/notification.service");
 const {
     BadRequestException,
     ConflictException,
@@ -44,6 +45,32 @@ class WalletService {
     assertId(id, label = "ID") {
         if (typeof id !== "string" || !OBJECT_ID.test(id)) {
             throw new BadRequestException(`${label} không hợp lệ`);
+        }
+    }
+
+    /**
+     * Gửi thông báo realtime về giao dịch ví.
+     * Lỗi thông báo không được làm fail luồng giao dịch.
+     * @private
+     */
+    async _notifyWallet({ type, userId, amount, title, body, metadata }) {
+        try {
+            await notificationService.notify({
+                type,
+                userId,
+                title,
+                body,
+                link: "/wallet",
+                metadata: {
+                    ...(metadata || {}),
+                    amount,
+                    formattedAmount: new Intl.NumberFormat("vi-VN").format(
+                        Number(amount) || 0
+                    ),
+                },
+            });
+        } catch (error) {
+            console.error("[Notification] Gửi thông báo ví lỗi:", error.code || error.name || error.message);
         }
     }
 
@@ -369,7 +396,19 @@ class WalletService {
                     description: description || `Nạp tiền từ ${PROVIDER_META[account.provider]?.name || account.provider}`,
                 },
             });
-        }).then((tx) => this.mapTransaction(tx));
+        }).then((tx) => this.mapTransaction(tx)).then(async (mapped) => {
+            // Thông báo realtime nạp tiền thành công (nếu cấu hình cho phép)
+            await this._notifyWallet({
+                type: "WALLET_TOPUP",
+                userId,
+                amount: numericAmount,
+                title: "Nạp tiền vào ví thành công",
+                body: `Bạn đã nạp ${new Intl.NumberFormat("vi-VN").format(numericAmount)} đ vào ví điện tử. Số dư hiện tại: ${new Intl.NumberFormat("vi-VN").format(mapped.balanceAfter ?? 0)} đ.`,
+                metadata: { balanceAfter: mapped.balanceAfter },
+            });
+
+            return mapped;
+        });
     }
 
     /**
@@ -449,6 +488,18 @@ class WalletService {
             });
 
             return this.mapTransaction(transaction);
+        }).then(async (mapped) => {
+            // Thông báo realtime yêu cầu rút tiền (nếu cấu hình cho phép)
+            await this._notifyWallet({
+                type: "WALLET_WITHDRAW",
+                userId,
+                amount: numericAmount,
+                title: "Yêu cầu rút tiền đã được ghi nhận",
+                body: `Yêu cầu rút ${new Intl.NumberFormat("vi-VN").format(numericAmount)} đ về tài khoản ${providerName} đang được xử lý.`,
+                metadata: { provider: account.provider, identifier: account.identifier },
+            });
+
+            return mapped;
         });
     }
 

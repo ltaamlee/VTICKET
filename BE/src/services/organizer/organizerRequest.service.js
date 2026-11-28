@@ -1,4 +1,5 @@
 const prisma = require('../../config/prisma');
+const notificationService = require('../notification/notification.service');
 const {
     BadRequestException,
     NotFoundException,
@@ -120,7 +121,29 @@ class OrganizerRequestService {
             },
         });
 
+        await this._notifyAdminsNewRequest({ organizationName, userId });
+
         return OrganizerRequestMapper.toOrganizerRequestResponse(newRequest);
+    }
+
+    /**
+     * Thông báo cho quản trị viên có yêu cầu đăng ký BTC mới.
+     * Lỗi thông báo không được làm fail luồng đăng ký.
+     * @private
+     */
+    async _notifyAdminsNewRequest({ organizationName, userId }) {
+        try {
+            await notificationService.notify({
+                type: 'ORGANIZER_REQUEST_SUBMITTED',
+                target: 'ADMIN',
+                title: 'Có yêu cầu đăng ký Ban Tổ Chức mới',
+                body: `Yêu cầu đăng ký "${organizationName}" đang chờ bạn phê duyệt.`,
+                link: '/admin/organizer-requests',
+                metadata: { organizationName, userId },
+            });
+        } catch (error) {
+            console.error('[Notification] Gửi thông báo yêu cầu BTC lỗi:', error.code || error.name || error.message);
+        }
     }
 
     /**
