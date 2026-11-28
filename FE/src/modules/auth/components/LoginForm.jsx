@@ -36,10 +36,24 @@ function LoginForm() {
 
 			saveLogin({ token, user });
 
+<<<<<<< Updated upstream
 			if (user.role === "ADMIN") {
 				navigate("/admin/dashboard");
 			} else if (user.role === "ORGANIZER") {
 				navigate("/organizer/dashboard");
+=======
+			const from = location.state?.from;
+			const isSafeFrom =
+				from?.startsWith("/") &&
+				!from.startsWith("//") &&
+				(!from.startsWith("/admin") || user.role === "ADMIN") &&
+				(!from.startsWith("/organizer") || from === "/organizer/register" || user.role === "ORGANIZER");
+
+			if (isSafeFrom) {
+				navigate(from, { replace: true });
+			} else if (user.role === "ADMIN") {
+				navigate("/admin/dashboard", { replace: true });
+>>>>>>> Stashed changes
 			} else {
 				navigate("/", { replace: true });
 			}

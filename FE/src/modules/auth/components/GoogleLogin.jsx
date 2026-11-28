@@ -18,6 +18,7 @@ function GoogleLoginButton() {
         user: data.user,
       });
 
+<<<<<<< Updated upstream
       if (data.user.role === "ADMIN") {
         navigate("/admin/dashboard", { replace: true });
       } else if (data.user.role === "ORGANIZER") {
@@ -34,6 +35,33 @@ function GoogleLoginButton() {
       );
     }
   };
+=======
+                const from = location.state?.from;
+                const isSafeFrom =
+                    from?.startsWith("/") &&
+                    !from.startsWith("//") &&
+                    (!from.startsWith("/admin") || data.user.role === "ADMIN") &&
+                    (!from.startsWith("/organizer") || from === "/organizer/register" || data.user.role === "ORGANIZER");
+
+                if (isSafeFrom) {
+                    navigate(from, { replace: true });
+                } else if (data.user.role === "ADMIN") {
+                    navigate("/admin/dashboard", { replace: true });
+                } else {
+                    navigate("/", { replace: true });
+                }
+            } catch (error) {
+                console.error("Google login error:", error);
+                alert(
+                    error.message ||
+                    error.response?.data?.message ||
+                    "Đăng nhập bằng Google thất bại."
+                );
+            }
+        },
+        [saveLogin, navigate, location.state]
+    );
+>>>>>>> Stashed changes
 
   return (
     <div className="flex justify-center">
