@@ -25,22 +25,22 @@ const authenticate = (req, res, next) => {
  * (ví dụ: chi tiết tin bán vé - chủ vé được thấy mã vé của mình,
  * người lạ không thấy).
  */
+
 const optionalAuthenticate = (req, res, next) => {
-    const authHeader = req.headers.authorization;
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    req.user = null;
+    return next();
+  }
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return next();
-    }
-
-    const token = authHeader.split(' ')[1];
-    try {
-        req.user = JwtUtils.verifyToken(token);
-    } catch (error) {
-        // Token không hợp lệ -> coi như khách vãng la, vẫn cho qua
-        req.user = undefined;
-    }
-
-    next();
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = JwtUtils.verifyToken(token);
+    req.user = decoded;
+  } catch (error) {
+    req.user = null;
+  }
+  return next();
 };
 
 const authorize = (...allowedRoles) => {

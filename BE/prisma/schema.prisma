@@ -748,12 +748,14 @@ model ResaleOrder {
 
 model Post {
   id        String     @id @default(auto()) @map("_id") @db.ObjectId
-  eventId   String     @db.ObjectId
-  event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId   String?    @db.ObjectId
+  event     Event?     @relation(fields: [eventId], references: [id], onDelete: SetNull)
   authorId  String     @db.ObjectId
   author    User       @relation(fields: [authorId], references: [id])
   title     String
   content   String
+  mediaUrls String[]   @default([])
+  gifUrl    String?
   status    PostStatus @default(VISIBLE)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
@@ -774,12 +776,18 @@ model Comment {
   post      Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
   authorId  String        @db.ObjectId
   author    User          @relation(fields: [authorId], references: [id])
+  parentId  String?       @db.ObjectId
+  parent    Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies   Comment[]     @relation("CommentReplies")
   content   String
+  mediaUrls String[]      @default([])
+  gifUrl    String?
   status    CommentStatus @default(VISIBLE)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
   @@index([postId])
+  @@index([parentId])
   @@index([authorId])
   @@index([status])
   @@map("comments")

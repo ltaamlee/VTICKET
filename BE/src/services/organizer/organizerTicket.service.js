@@ -78,11 +78,20 @@ class OrganizerTicketService extends BaseService {
     async getEventTicketStats({ eventId, organizerId }) {
         await this.findOwnedEvent({ eventId, organizerId });
 
-        const [capacity, issued, checkedIn, legacyReserved, reservations, cancelled] = await Promise.all([
-            prisma.ticketType.aggregate({
+        const [
+            ticketTypes,
+            sessionCount,
+            issued,
+            checkedIn,
+            legacyReserved,
+            reservations,
+            cancelled,
+        ] = await Promise.all([
+            prisma.ticketType.findMany({
                 where: { eventId },
-                _sum: { capacity: true },
+                select: { id: true, zoneId: true, sessionId: true, capacity: true },
             }),
+            prisma.eventSession.count({ where: { eventId } }),
             prisma.ticket.count({ where: { eventId, status: "ISSUED" } }),
             prisma.ticket.count({ where: { eventId, status: "CHECKED_IN" } }),
             prisma.ticket.count({ where: { eventId, status: "RESERVED" } }),
@@ -93,7 +102,16 @@ class OrganizerTicketService extends BaseService {
             prisma.ticket.count({ where: { eventId, status: "CANCELLED" } }),
         ]);
 
-        const total = capacity._sum.capacity || 0;
+        // Sức chứa thực tế: mỗi loại vé gốc (không gắn suất diễn) được nhân
+        // bản cho từng suất diễn của sự kiện. Nếu cộng trực tiếp mọi ticketType
+        // thì sức chứa sẽ bị nhân đôi/nhân số lần khi sự kiện có nhiều suất diễn.
+        const baseTypes = ticketTypes.filter((type) => !type.sessionId);
+        const capacityTypes = baseTypes.length ? baseTypes : ticketTypes;
+        const capacityPerSession = capacityTypes.reduce(
+            (sum, type) => sum + (Number(type.capacity) || 0),
+            0
+        );
+        const total = capacityPerSession * Math.max(1, sessionCount);
         const reserved = legacyReserved + reservations.reduce(
             (sum, reservation) => sum + reservation.items.reduce((count, item) => count + item.quantity, 0), 0
         );

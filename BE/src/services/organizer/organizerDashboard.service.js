@@ -73,10 +73,27 @@ class OrganizerDashboardService {
                     startAt: true,
                     location: true,
                     category: { select: { name: true } },
-                    _count: { select: { tickets: true } },
                 },
             }),
         ]);
+
+        // Số vé đã bán theo từng sự kiện.
+        // _count.tickets trước đây đếm MỌI vé (kể cả CANCELLED/EXPIRED/RESERVED)
+        // nên số vé hiển thị theo sự kiện bị sai -> chỉ tính vé đã phát hành.
+        const eventIds = recentEvents.map((event) => event.id);
+        const soldTicketsByEvent = eventIds.length
+            ? await prisma.ticket.groupBy({
+                  by: ["eventId"],
+                  where: {
+                      eventId: { in: eventIds },
+                      status: { in: ["ISSUED", "CHECKED_IN"] },
+                  },
+                  _count: { _all: true },
+              })
+            : [];
+        const soldCountMap = new Map(
+            soldTicketsByEvent.map((entry) => [entry.eventId, entry._count._all])
+        );
 
         const revenueByDay = range.days.map((date) => ({
             date,
@@ -112,7 +129,10 @@ class OrganizerDashboardService {
                 endDate: range.endDate,
             },
             revenueByDay,
-            recentEvents,
+            recentEvents: recentEvents.map((event) => ({
+                ...event,
+                soldTickets: soldCountMap.get(event.id) || 0,
+            })),
         };
     }
 }

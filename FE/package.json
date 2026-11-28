@@ -22,6 +22,7 @@
     "@tiptap/starter-kit": "^3.33.0",
     "bullmq": "^6.7.10",
     "dompurify": "^3.4.17",
+    "emoji-picker-react": "^5.1.4",
     "ioredis": "^6.1.0",
     "jsqr": "^1.4.0",
     "konva": "^10.9.1",

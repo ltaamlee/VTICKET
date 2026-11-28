@@ -116,7 +116,7 @@ function validatePaidIpn(payload, order) {    const notification = payload?.orde
  * Gửi thông báo realtime "thanh toán thành công" cho khách hàng.
  * Lỗi thông báo không được làm fail luồng thanh toán.
  */
-async function notifyPaymentSuccess({ userId, orderCode, eventId, amount }) {
+async function notifyPaymentSuccess({ userId, orderCode, orderId, eventId, amount }) {
     try {
         const notificationService = require("../notification/notification.service");
         const prisma = require("../../config/prisma");
@@ -125,9 +125,9 @@ async function notifyPaymentSuccess({ userId, orderCode, eventId, amount }) {
         if (eventId) {
             const event = await prisma.event.findUnique({
                 where: { id: eventId },
-                select: { title: true },
+                select: { name: true },
             });
-            eventTitle = event?.title || null;
+            eventTitle = event?.name || null;
         }
 
         const formattedAmount = Number.isFinite(Number(amount))
@@ -141,8 +141,10 @@ async function notifyPaymentSuccess({ userId, orderCode, eventId, amount }) {
             body: eventTitle
                 ? `Thanh toán đơn hàng ${orderCode} cho sự kiện "${eventTitle}" đã thành công${formattedAmount ? ` với số tiền ${formattedAmount} đ` : ""}.`
                 : `Thanh toán đơn hàng ${orderCode} đã thành công${formattedAmount ? ` với số tiền ${formattedAmount} đ` : ""}.`,
-            link: orderCode ? `/orders/${orderCode}` : "/my-tickets",
-            metadata: { orderCode, eventId, amount },
+            // Link tới trang chi tiết đơn hàng: route FE dùng ObjectId của order
+            // (không phải mã đơn "VTK-..."), nên ưu tiên orderId.
+            link: orderId ? `/orders/${orderId}` : "/my-tickets",
+            metadata: { orderCode, orderId, eventId, amount },
         });
     } catch (error) {
         console.error("[Notification] Gửi thông báo thanh toán lỗi:", error.code || error.name || error.message);
@@ -222,7 +224,7 @@ async function processOrderPaid(payload) {
                     return tx.sePayNotification.create({ data: receipt });
                 }
                 const order = await finalizeBookingReservation(tx, reservation, now);
-                paidContext = { eventId: reservation.eventId, userId: reservation.userId, amount: reservation.totalAmount, orderCode: order.orderCode };
+                paidContext = { eventId: reservation.eventId, userId: reservation.userId, amount: reservation.totalAmount, orderCode: order.orderCode, orderId: order.id };
                 await tx.payment.create({
                     data: { orderId: order.id, transactionCode: transactionId, amount: reservation.totalAmount, method: "SEPAY", status: "SUCCESS", paidAt: now },
                 });
@@ -261,6 +263,7 @@ async function processOrderPaid(payload) {
                     userId: order.userId,
                     amount: order.totalAmount,
                     orderCode: order.orderCode,
+                    orderId: order.id,
                 };
             }
             if (!validReservations) {
@@ -301,6 +304,7 @@ async function processOrderPaid(payload) {
             await notifyPaymentSuccess({
                 userId: paidContext.userId,
                 orderCode: paidContext.orderCode || invoiceNumber,
+                orderId: paidContext.orderId,
                 eventId: paidContext.eventId,
                 amount: paidContext.amount,
             });

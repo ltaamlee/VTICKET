@@ -175,6 +175,43 @@ async function resolveRecipients({ userId, target }) {
 }
 
 /**
+ * Gửi email thông báo tới danh sách người nhận.
+ * Lỗi email không được làm fail luồng thông báo in-app.
+ */
+async function sendEmailForRecipients(recipientIds, { title, body, link }) {
+    try {
+        const emailService = require("../../shared/email.service");
+
+        const users = await prisma.user.findMany({
+            where: { id: { in: recipientIds } },
+            select: { id: true, email: true },
+        });
+
+        for (const user of users) {
+            if (!user.email) continue;
+            try {
+                await emailService.sendNotificationEmail({
+                    to: user.email,
+                    title,
+                    body,
+                    link,
+                });
+            } catch (error) {
+                console.error(
+                    "[Notification] Gửi email thông báo lỗi:",
+                    error.code || error.name || error.message
+                );
+            }
+        }
+    } catch (error) {
+        console.error(
+            "[Notification] Không gửi được email thông báo:",
+            error.code || error.name || error.message
+        );
+    }
+}
+
+/**
  * Tạo + gửi thông báo.
  *
  * Thông báo KHÔNG bị chặn bởi bất kỳ danh mục loại nào: cứ có yêu cầu là gửi.
@@ -200,38 +237,90 @@ async function notify({
 }) {
     const channels = await resolveChannels();
 
-    // Kênh in-app tắt -> hệ thống không hiển thị thông báo nào.
-    if (!channels.inApp) {
-        return { sent: false, reason: "IN_APP_DISABLED", count: 0 };
-    }
-
     const recipientIds = await resolveRecipients({ userId, target });
     if (!recipientIds.length) {
         return { sent: false, reason: "NO_RECIPIENT", count: 0 };
     }
 
+    // Kênh in-app tắt -> không tạo bản ghi trong hệ thống, không đẩy realtime.
+    // Kênh email (nếu đang bật) vẫn được gửi.
+    if (!channels.inApp) {
+        if (channels.email) {
+            sendEmailForRecipients(recipientIds, { title, body, link }).catch((error) => {
+                console.error(
+                    "[Notification] Không gửi được email thông báo:",
+                    error.code || error.name || error.message
+                );
+            });
+        }
+        return { sent: false, reason: "IN_APP_DISABLED", count: 0 };
+    }
+
     // Chỉ tạo bản ghi DB cho kênh inApp (người dùng đọc lại trong hệ thống).
-    // Kênh email sẽ được xử lý bởi lớp gửi mail riêng.
-    const created = await prisma.$transaction(
-        recipientIds.map((id) =>
-            prisma.notification.create({
-                data: {
-                    userId: id,
-                    type: type || "SYSTEM",
-                    channel: "IN_APP",
-                    title,
-                    body,
-                    link,
-                    metadata: metadata || undefined,
-                    status: "UNREAD",
-                },
-            })
-        )
-    );
+    // Kênh email sẽ được gửi riêng ở bước sau.
+    // Lưu ý: MongoDB giới hạn số thao tác ghi trong 1 transaction. Với nhóm
+    // nhận lớn (target=ALL có thể hàng nghìn user) thì transaction sẽ bị abort
+    // -> dùng createMany theo lô thay vì transaction từng bản ghi.
+    const created = [];
+    const createdAtStart = new Date(Date.now() - 1000);
+    const BATCH_SIZE = 200;
+    for (let i = 0; i < recipientIds.length; i += BATCH_SIZE) {
+        const batch = recipientIds.slice(i, i + BATCH_SIZE);
+        const result = await prisma.notification.createMany({
+            data: batch.map((id) => ({
+                userId: id,
+                type: type || "SYSTEM",
+                channel: "IN_APP",
+                title,
+                body,
+                link,
+                ...(metadata ? { metadata } : {}),
+                status: "UNREAD",
+            })),
+        });
+        created.push({ userId: batch, count: result.count });
+    }
+
+    // Lấy lại id + createdAt để đẩy realtime (chỉ khi cần).
+    const createdRows = created.length
+        ? await prisma.notification.findMany({
+              where: {
+                  userId: { in: recipientIds },
+                  type: type || "SYSTEM",
+                  title,
+                  body,
+                  createdAt: { gte: createdAtStart },
+              },
+              orderBy: { createdAt: "desc" },
+              take: recipientIds.length,
+              select: {
+                  id: true,
+                  userId: true,
+                  type: true,
+                  title: true,
+                  body: true,
+                  link: true,
+                  metadata: true,
+                  status: true,
+                  createdAt: true,
+              },
+          })
+        : [];
+
+    // Kênh email: gửi bản email cho từng người nhận (nếu bật).
+    // Không await để không làm chậm luồng chính (gửi chạy nền, lỗi đã catch).
+    if (channels.email) {
+        sendEmailForRecipients(recipientIds, { title, body, link }).catch((error) => {
+            console.error(
+                "[Notification] Không gửi được email thông báo:",
+                error.code || error.name || error.message
+            );
+        });
+    }
 
     // Đẩy realtime qua Socket.IO ngay lập tức.
     const realtime = require("./notification.realtime");
-    for (const row of created) {
+    for (const row of createdRows) {
         realtime.emitToUser(row.userId, "notification:new", {
             id: row.id,
             type: row.type,
@@ -246,7 +335,7 @@ async function notify({
 
     return {
         sent: true,
-        count: created.length,
+        count: recipientIds.length,
         channels,
     };
 }

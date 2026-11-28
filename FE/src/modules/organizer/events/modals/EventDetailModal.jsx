@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import DOMPurify from "dompurify";
+import RichText from "../../../../components/common/editor/RichText";
 import {
     X,
     CalendarDays,
@@ -664,18 +664,11 @@ function EventDetailModal({
                         </SectionTitle>
 
                         <div className="rounded-xl bg-gray-50/80 p-5">
-                            {event.description && /<[a-z][\s\S]*>/i.test(event.description) ? (
-                                <div
-                                    className="text-sm leading-relaxed text-gray-700 [&_a]:text-blue-600 [&_a]:underline hover:[&_a]:text-blue-700 [&_blockquote]:my-2 [&_blockquote]:border-l-4 [&_blockquote]:border-blue-400 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-gray-600 [&_h1]:my-2.5 [&_h1]:text-xl [&_h1]:font-bold [&_h1]:text-gray-900 [&_h2]:my-2 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-gray-800 [&_h3]:my-1.5 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-gray-800 [&_hr]:my-3 [&_hr]:border-gray-200 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-1.5 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-6"
-                                    dangerouslySetInnerHTML={{
-                                        __html: DOMPurify.sanitize(event.description),
-                                    }}
-                                />
-                            ) : (
-                                <p className="whitespace-pre-line text-sm leading-7 text-gray-600">
-                                    {event.description || "Chưa có mô tả."}
-                                </p>
-                            )}
+                            <RichText
+                                html={event.description}
+                                className="text-sm leading-relaxed text-gray-700"
+                                emptyText="Chưa có mô tả."
+                            />
                         </div>
                     </div>
 

@@ -55,7 +55,6 @@ export default function AccountLayout({ children, embedded = false }) {
         navigate("/login", { replace: true });
     };
 
-    // Menu khu vực tài khoản (đã bỏ "Đơn hàng của tôi" theo yêu cầu)
     const navItems = [
         {
             id: "tickets",

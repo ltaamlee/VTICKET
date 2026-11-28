@@ -14,6 +14,7 @@ import AdminLayout from "../layout/admin/AdminLayout";
 import UserPage from "../modules/admin/pages/UserManagementPage";
 import CategoryPage from "../modules/admin/pages/CategoryManagementPage";
 import AdminEventPage from "../modules/admin/pages/EventManagementPage";
+import ForumManagement from "../modules/admin/pages/ForumManagement";
 import SystemPage from "../modules/admin/pages/SystemManagementPage";
 
 import OrganizerRequestsPage from "../modules/admin/pages/OrganizerRequestsPage";
@@ -30,6 +31,8 @@ import ResaleOrderPage from "../modules/resale/pages/ResaleOrderPage";
 import ResaleDetailPage from "../modules/resale/pages/ResaleDetailPage";
 import MyResalePage from "../modules/resale/pages/MyResalePage";
 import WalletPage from "../modules/wallet/pages/WalletPage";
+import ForumListPage from "../modules/forum/pages/ForumListPage";
+import PostDetailPage from "../modules/forum/pages/PostDetailPage";
 
 import OrganizerLayout from "../layout/organizer/OrganizerLayout";
 import AccountLayout from "../layout/AccountLayout";
@@ -45,6 +48,9 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/events" element={<EventListPage />} />
+        <Route path="/events/:idOrSlug" element={<EventDetailPage />} />
+        <Route path="/forum" element={<ForumListPage />} />
+        <Route path="/forum/:id" element={<PostDetailPage />} />
         <Route path="/events/:idOrSlug" element={<EventDetailPage key="event-detail" />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -82,11 +88,12 @@ function AppRoutes() {
             <Route index element={<AdminDashboardPage />} />
             <Route path="dashboard" element={<AdminDashboardPage />} />
             <Route path="users" element={<UserPage />} />
-            <Route path="categories" element={<CategoryPage/>} />
-            <Route path="system" element={<SystemPage/>} />
+            <Route path="categories" element={<CategoryPage />} />
+            <Route path="system" element={<SystemPage />} />
             <Route path="organizer-requests" element={<OrganizerRequestsPage />} />
             <Route path="events" element={<AdminEventPage />} />
             <Route path="wallet" element={<WalletPage />} />
+            <Route path="forum" element={<ForumManagement />} />
             <Route path="profile" element={<ProfilePage embedded />} />
           </Route>
         </Route>

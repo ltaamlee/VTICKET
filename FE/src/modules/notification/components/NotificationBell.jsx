@@ -5,8 +5,6 @@ import {
     CheckCheck,
     Inbox,
     Trash2,
-    Wifi,
-    WifiOff,
 } from "lucide-react";
 import { useNotifications } from "../../../contexts/NotificationContext";
 import {
@@ -28,7 +26,6 @@ function NotificationBell() {
         notifications,
         unreadCount,
         loading,
-        connected,
         handleMarkAsRead,
         handleMarkAllAsRead,
         handleDelete,

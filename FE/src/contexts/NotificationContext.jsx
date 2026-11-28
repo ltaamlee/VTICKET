@@ -33,6 +33,16 @@ const NotificationContext = createContext({
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+// Origin của BE để kết nối Socket.IO (bỏ hậu tố /api/v1).
+const SOCKET_URL = (() => {
+    if (!API_URL) return null;
+    try {
+        return new URL(API_URL).origin;
+    } catch {
+        return API_URL.replace(/\/api\/v1\/?$/, "");
+    }
+})();
+
 export function NotificationProvider({ children }) {
     const { token, isAuthenticated } = useAuth();
     const [notifications, setNotifications] = useState([]);
@@ -177,12 +187,17 @@ export function NotificationProvider({ children }) {
      * Kết nối Socket.IO để nhận thông báo realtime.
      */
     useEffect(() => {
-        if (!isAuthenticated || !token || !API_URL) {
+        if (!isAuthenticated || !token || !SOCKET_URL) {
             setConnected(false);
             return undefined;
         }
 
-        const socket = io(API_URL, {
+        // Socket.IO phải kết nối tới ORIGIN của BE (http://host:port),
+        // KHÔNG phải URL API kèm hậu tố "/api/v1".
+        // Nếu dùng luôn VITE_API_URL, socket.io-client sẽ coi "/api/v1" là
+        // namespace và gửi CONNECT packet tới namespace không tồn tại
+        // -> server trả lỗi "Invalid namespace" -> realtime không hoạt động.
+        const socket = io(SOCKET_URL, {
             auth: { token },
             transports: ["websocket", "polling"],
             reconnection: true,

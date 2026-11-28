@@ -142,15 +142,13 @@ function ProfilePage() {
                 setLoading(true);
                 setError("");
 
-                setUsername(data.username || "");
-                setFullName(data.fullName || "");
-                setPhone(data.phone || "");
-                setDob(data.dob ? data.dob.split("T")[0] : "");
-                setAvatar(data.avatar || "");
+                const response = await getProfile();
+                const data = response.data;
 
                 if (cancelled) return;
 
                 setProfile(data);
+                setUsername(data.username || "");
                 setFullName(data.fullName || "");
                 setPhone(data.phone || "");
                 setDob(data.dob ? data.dob.split("T")[0] : "");
