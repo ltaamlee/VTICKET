@@ -1,9 +1,20 @@
+
+import {
+    AtSign,
+    Phone,
+    Calendar,
+    Save,
+    RotateCcw,
+} from "lucide-react";
+
 const inputClass =
     "w-full rounded-lg border border-gray-300 px-4 py-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-gray-50";
 
 export default function PersonalInfoTab({
     loading,
     profile,
+    username,
+    setUsername,
     fullName,
     setFullName,
     phone,
@@ -31,15 +42,18 @@ export default function PersonalInfoTab({
 
     return (
         <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+            {/* Header */}
             <div className="border-b border-gray-100 px-6 py-4">
                 <h3 className="text-base font-semibold text-gray-800">
                     Thông tin cá nhân
                 </h3>
+
                 <p className="mt-0.5 text-sm text-gray-500">
                     Cập nhật thông tin dùng để nhận diện và liên hệ với bạn.
                 </p>
             </div>
 
+            {/* Form */}
             <form onSubmit={handleSubmit} className="p-6">
                 <div className="grid gap-5 md:grid-cols-2">
                     {/* Họ và tên */}
@@ -50,6 +64,7 @@ export default function PersonalInfoTab({
                         >
                             Họ và tên <span className="text-red-500">*</span>
                         </label>
+
                         <input
                             id="profile-fullName"
                             type="text"
@@ -57,11 +72,42 @@ export default function PersonalInfoTab({
                             onChange={(e) => setFullName(e.target.value)}
                             placeholder="Nhập họ và tên đầy đủ"
                             required
+                            disabled={saving}
                             className={inputClass}
                         />
                     </div>
 
-                    {/* Email (Readonly) */}
+                    {/* Username */}
+                    <div>
+                        <label
+                            htmlFor="profile-username"
+                            className="mb-2 block text-sm font-medium text-gray-700"
+                        >
+                            Tên tài khoản (Username)
+                        </label>
+
+                        <div className="relative">
+                            <AtSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+
+                            <input
+                                id="profile-username"
+                                type="text"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                placeholder="VD: nguyenvana"
+                                disabled={saving}
+                                minLength={3}
+                                maxLength={30}
+                                className={`${inputClass} pl-10`}
+                            />
+                        </div>
+
+                        <p className="mt-1.5 text-xs text-gray-400">
+                            3–30 ký tự (chữ cái, số, dấu chấm, gạch dưới, gạch ngang).
+                        </p>
+                    </div>
+
+                    {/* Email */}
                     <div>
                         <label
                             htmlFor="profile-email"
@@ -69,6 +115,7 @@ export default function PersonalInfoTab({
                         >
                             Địa chỉ Email
                         </label>
+
                         <input
                             id="profile-email"
                             type="email"
@@ -76,6 +123,7 @@ export default function PersonalInfoTab({
                             disabled
                             className={`${inputClass} text-gray-500`}
                         />
+
                         <p className="mt-1.5 text-xs text-gray-400">
                             Email được dùng để đăng nhập và không thể thay đổi.
                         </p>
@@ -89,14 +137,20 @@ export default function PersonalInfoTab({
                         >
                             Số điện thoại
                         </label>
-                        <input
-                            id="profile-phone"
-                            type="tel"
-                            value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
-                            placeholder="Ví dụ: 0912345678"
-                            className={inputClass}
-                        />
+
+                        <div className="relative">
+                            <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+
+                            <input
+                                id="profile-phone"
+                                type="tel"
+                                value={phone}
+                                onChange={(e) => setPhone(e.target.value)}
+                                placeholder="Ví dụ: 0912345678"
+                                disabled={saving}
+                                className={`${inputClass} pl-10`}
+                            />
+                        </div>
                     </div>
 
                     {/* Ngày sinh */}
@@ -107,32 +161,40 @@ export default function PersonalInfoTab({
                         >
                             Ngày sinh
                         </label>
-                        <input
-                            id="profile-dob"
-                            type="date"
-                            value={dob}
-                            onChange={(e) => setDob(e.target.value)}
-                            className={inputClass}
-                        />
+
+                        <div className="relative">
+                            <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+
+                            <input
+                                id="profile-dob"
+                                type="date"
+                                value={dob}
+                                onChange={(e) => setDob(e.target.value)}
+                                disabled={saving}
+                                className={`${inputClass} pl-10`}
+                            />
+                        </div>
                     </div>
                 </div>
 
-                {/* Nút thao tác */}
+                {/* Actions */}
                 <div className="mt-6 flex justify-end gap-3 border-t border-gray-100 pt-5">
                     <button
                         type="button"
                         onClick={handleResetForm}
                         disabled={saving}
-                        className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
+                        <RotateCcw className="h-4 w-4 text-gray-500" />
                         Khôi phục
                     </button>
 
                     <button
                         type="submit"
                         disabled={saving}
-                        className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
+                        <Save className="h-4 w-4" />
                         {saving ? "Đang lưu..." : "Lưu thay đổi"}
                     </button>
                 </div>

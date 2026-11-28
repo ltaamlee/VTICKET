@@ -30,6 +30,7 @@ function ProfilePage() {
     const [success, setSuccess] = useState("");
 
     // Form states
+    const [username, setUsername] = useState("");
     const [fullName, setFullName] = useState("");
     const [phone, setPhone] = useState("");
     const [dob, setDob] = useState("");
@@ -125,7 +126,7 @@ function ProfilePage() {
         } catch (err) {
             setPwdError(
                 err.message ||
-                    "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu hiện tại"
+                "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu hiện tại"
             );
         } finally {
             setPwdLoading(false);
@@ -141,8 +142,11 @@ function ProfilePage() {
                 setLoading(true);
                 setError("");
 
-                const response = await getProfile();
-                const data = response.data;
+                setUsername(data.username || "");
+                setFullName(data.fullName || "");
+                setPhone(data.phone || "");
+                setDob(data.dob ? data.dob.split("T")[0] : "");
+                setAvatar(data.avatar || "");
 
                 if (cancelled) return;
 
@@ -174,6 +178,7 @@ function ProfilePage() {
 
     const handleResetForm = () => {
         if (!profile) return;
+        setUsername(profile.username || "");
         setFullName(profile.fullName || "");
         setPhone(profile.phone || "");
         setDob(profile.dob ? profile.dob.split("T")[0] : "");
@@ -185,6 +190,18 @@ function ProfilePage() {
         e.preventDefault();
         setError("");
         setSuccess("");
+
+        if (username.trim()) {
+            const trimmedUsername = username.trim();
+            if (trimmedUsername.length < 3 || trimmedUsername.length > 30) {
+                setError("Tên tài khoản phải có từ 3 đến 30 ký tự");
+                return;
+            }
+            if (!/^[a-zA-Z0-9._-]+$/.test(trimmedUsername)) {
+                setError("Tên tài khoản chỉ được chứa chữ cái, số, dấu chấm (.), gạch dưới (_) và gạch ngang (-)");
+                return;
+            }
+        }
 
         if (!fullName.trim() || fullName.trim().length < 2) {
             setError("Họ và tên phải có tối thiểu 2 ký tự");
@@ -202,6 +219,7 @@ function ProfilePage() {
         setSaving(true);
         try {
             const response = await updateProfile({
+                username: username.trim() || null,
                 fullName: fullName.trim(),
                 phone: phone.trim() || null,
                 dob: dob || null,
@@ -213,6 +231,7 @@ function ProfilePage() {
 
             // Đồng bộ vào AuthContext để cập nhật Header ngay lập tức
             updateUser({
+                username: updated.username,
                 fullName: updated.fullName,
                 avatar: updated.avatar,
                 phone: updated.phone,
@@ -268,6 +287,8 @@ function ProfilePage() {
                 <PersonalInfoTab
                     loading={loading}
                     profile={profile}
+                    username={username}
+                    setUsername={setUsername}
                     fullName={fullName}
                     setFullName={setFullName}
                     phone={phone}
