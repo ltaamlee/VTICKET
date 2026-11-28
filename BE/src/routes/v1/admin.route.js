@@ -12,6 +12,7 @@ const adminCategoryController = require("../../controllers/v1/admin/adminCategor
 const adminEventController = require("../../controllers/v1/admin/adminEvent.controller");
 const adminSystemController = require("../../controllers/v1/admin/adminSystem.controller")
 const adminOrganizerRequestController = require("../../controllers/v1/admin/adminOrganizerRequest.controller");
+const adminForumController = require("../../controllers/v1/admin/adminForum.controller");
 
 router.use(authenticate);
 router.use(authorize("ADMIN"));
@@ -57,5 +58,13 @@ router.get("/organizer-requests", adminOrganizerRequestController.getRequests);
 router.get("/organizer-requests/:id", adminOrganizerRequestController.getRequestDetail);
 router.put("/organizer-requests/:id/approve", adminOrganizerRequestController.approveRequest);
 router.put("/organizer-requests/:id/reject", adminOrganizerRequestController.rejectRequest);
+
+// Quản lý diễn đàn (Forum Moderation)
+router.get("/forum/stats", adminForumController.getForumStats);
+router.get("/forum/posts", adminForumController.getPosts);
+router.get("/forum/posts/:id", adminForumController.getPostDetail);
+router.patch("/forum/posts/:id/status", adminForumController.updatePostStatus);
+router.get("/forum/comments", adminForumController.getComments);
+router.patch("/forum/comments/:id/status", adminForumController.updateCommentStatus);
 
 module.exports = router;

@@ -26,3 +26,6 @@ Thumbs.db
 # Build / Output
 dist/
 build/
+
+# Local Docker Compose
+compose.yaml
