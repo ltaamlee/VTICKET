@@ -1,7 +1,9 @@
 const app = require('./app');
 const { expireDueOrders } = require('./services/user/order.service');
+const { expireDueResaleOrders } = require('./services/resale/resaleOrder.cancel');
 const ensurePaymentIndexes = require('./services/payment/paymentIndexes');
 const { syncCompletedEvents } = require('./shared/eventStatus');
+const notificationRealtime = require('./services/notification/notification.realtime');
 const PORT = process.env.PORT || 5000;
 
 ensurePaymentIndexes().catch((error) => {
@@ -12,12 +14,17 @@ const server = app.listen(PORT, () => {
   console.log(`🚀 VTicket Server running on port ${PORT}`);
 });
 
+// Khởi tạo Socket.IO realtime notification trên cùng HTTP server
+notificationRealtime.attach(server);
+console.log('🔔 VTicket Realtime Notification (Socket.IO) đã sẵn sàng');
+
 let expiringOrders = false;
 async function releaseExpiredOrders() {
   if (expiringOrders) return;
   expiringOrders = true;
   try {
     await expireDueOrders();
+    await expireDueResaleOrders();
     await syncCompletedEvents();
   } catch (error) {
     console.error("Không thể giải phóng đơn hàng hết hạn:", error.code || error.name);
@@ -52,6 +59,11 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
       if (emailWorker) await emailWorker.shutdown();
     } catch (error) {
       console.error('[TicketEmail] Lỗi khi dừng worker:', error.code || error.name);
+    }
+    try {
+      await notificationRealtime.close();
+    } catch (error) {
+      console.error('[Notification] Lỗi khi đóng Socket.IO:', error.code || error.name);
     }
     server.close(() => process.exit(0));
   });

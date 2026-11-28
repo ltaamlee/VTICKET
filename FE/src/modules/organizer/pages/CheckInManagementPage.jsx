@@ -456,7 +456,7 @@ function CheckInManagementPage() {
                 <>
                     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         <StatCard
-                            label="Tổng vé đã bán"
+                            label="Tổng vé"
                             value={totalCount}
                             icon={Ticket}
                             bg="bg-sky-50"

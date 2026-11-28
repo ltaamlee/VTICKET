@@ -32,7 +32,7 @@ function getConfig() {
     };
 }
 
-function checkoutFields(order) {
+function checkoutFields(order, options = {}) {
     const config = getConfig();
     if (!order || typeof order.id !== "string" ||
         typeof order.orderCode !== "string" || !order.orderCode ||
@@ -46,7 +46,17 @@ function checkoutFields(order) {
         merchant_id: config.merchantId,
         secret_key: config.secretKey,
     });
-    const returnUrl = `${config.frontendUrl}/orders/${encodeURIComponent(order.id)}`;
+
+    // returnPath cho phép mỗi loại đơn có URL quay về riêng
+    // (đơn vé thường -> /orders/:id, đơn bán lại -> /resales/orders/:id)
+    const returnPath = typeof options.returnPath === "string" && options.returnPath
+        ? options.returnPath
+        : `/orders/${encodeURIComponent(order.id)}`;
+    const returnUrl = `${config.frontendUrl}${returnPath}`;
+    const description = typeof options.description === "string" && options.description
+        ? options.description
+        : `Thanh toan don hang ${order.orderCode}`;
+
     return {
         url: client.checkout.initCheckoutUrl(),
         fields: client.checkout.initOneTimePaymentFields({
@@ -55,7 +65,7 @@ function checkoutFields(order) {
             order_invoice_number: order.orderCode,
             order_amount: order.totalAmount,
             currency: "VND",
-            order_description: `Thanh toan don hang ${order.orderCode}`,
+            order_description: description,
             customer_id: order.userId,
             success_url: `${returnUrl}?payment=success`,
             error_url: `${returnUrl}?payment=error`,
@@ -82,8 +92,7 @@ function parseVnd(value) {
     return Number.isSafeInteger(amount) ? amount : null;
 }
 
-function validatePaidIpn(payload, order) {
-    const notification = payload?.order;
+function validatePaidIpn(payload, order) {    const notification = payload?.order;
     const transaction = payload?.transaction;
     if (!order || typeof order.orderCode !== "string" ||
         !Number.isSafeInteger(order.totalAmount) || order.totalAmount <= 0 ||
@@ -101,6 +110,45 @@ function validatePaidIpn(payload, order) {
         throw new BadRequestException("Thông báo thanh toán SePay không khớp đơn hàng");
     }
     return { transactionId: transaction.transaction_id };
+}
+
+/**
+ * Gửi thông báo realtime "thanh toán thành công" cho khách hàng.
+ * Lỗi thông báo không được làm fail luồng thanh toán.
+ */
+async function notifyPaymentSuccess({ userId, orderCode, orderId, eventId, amount }) {
+    try {
+        const notificationService = require("../notification/notification.service");
+        const prisma = require("../../config/prisma");
+
+        let eventTitle = null;
+        if (eventId) {
+            const event = await prisma.event.findUnique({
+                where: { id: eventId },
+                select: { name: true },
+            });
+            eventTitle = event?.name || null;
+        }
+
+        const formattedAmount = Number.isFinite(Number(amount))
+            ? new Intl.NumberFormat("vi-VN").format(Number(amount))
+            : null;
+
+        await notificationService.notify({
+            type: "PAYMENT_SUCCESS",
+            userId,
+            title: "Thanh toán thành công",
+            body: eventTitle
+                ? `Thanh toán đơn hàng ${orderCode} cho sự kiện "${eventTitle}" đã thành công${formattedAmount ? ` với số tiền ${formattedAmount} đ` : ""}.`
+                : `Thanh toán đơn hàng ${orderCode} đã thành công${formattedAmount ? ` với số tiền ${formattedAmount} đ` : ""}.`,
+            // Link tới trang chi tiết đơn hàng: route FE dùng ObjectId của order
+            // (không phải mã đơn "VTK-..."), nên ưu tiên orderId.
+            link: orderId ? `/orders/${orderId}` : "/my-tickets",
+            metadata: { orderCode, orderId, eventId, amount },
+        });
+    } catch (error) {
+        console.error("[Notification] Gửi thông báo thanh toán lỗi:", error.code || error.name || error.message);
+    }
 }
 
 async function processOrderPaid(payload) {
@@ -138,6 +186,14 @@ async function processOrderPaid(payload) {
                 outcome: "REVIEW_REQUIRED",
                 reason: "UNKNOWN_ORDER",
             };
+            // Đơn mua vé BÁN LẠI (ResaleOrder) - thanh toán qua cổng SePay
+            const resaleOrder = await tx.resaleOrder.findUnique({
+                where: { orderCode: invoiceNumber },
+            });
+            if (resaleOrder) {
+                const { processResaleOrderPaid } = require("../resale/resaleOrder.ipn");
+                return processResaleOrderPaid(tx, { payload, receipt, transactionId, invoiceNumber, resaleOrder });
+            }
             const reservation = await tx.bookingReservation.findUnique({ where: { reference: invoiceNumber } });
             if (reservation) {
                 try {
@@ -168,7 +224,7 @@ async function processOrderPaid(payload) {
                     return tx.sePayNotification.create({ data: receipt });
                 }
                 const order = await finalizeBookingReservation(tx, reservation, now);
-                paidContext = { eventId: reservation.eventId, userId: reservation.userId };
+                paidContext = { eventId: reservation.eventId, userId: reservation.userId, amount: reservation.totalAmount, orderCode: order.orderCode, orderId: order.id };
                 await tx.payment.create({
                     data: { orderId: order.id, transactionCode: transactionId, amount: reservation.totalAmount, method: "SEPAY", status: "SUCCESS", paidAt: now },
                 });
@@ -205,6 +261,9 @@ async function processOrderPaid(payload) {
                 paidContext = {
                     eventId: order.orderItems?.[0]?.ticketType?.eventId || null,
                     userId: order.userId,
+                    amount: order.totalAmount,
+                    orderCode: order.orderCode,
+                    orderId: order.id,
                 };
             }
             if (!validReservations) {
@@ -239,6 +298,16 @@ async function processOrderPaid(payload) {
         }
         if (paidContext?.eventId && paidContext?.userId) {
             releaseWaitingRoomSlot(paidContext.eventId, paidContext.userId).catch(() => {});
+        }
+        // Gửi thông báo realtime thanh toán thành công (nếu cấu hình cho phép)
+        if (paidContext?.userId) {
+            await notifyPaymentSuccess({
+                userId: paidContext.userId,
+                orderCode: paidContext.orderCode || invoiceNumber,
+                orderId: paidContext.orderId,
+                eventId: paidContext.eventId,
+                amount: paidContext.amount,
+            });
         }
         return result;
     } catch (error) {

@@ -1,27 +1,19 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Camera, LogOut, Repeat2, Ticket, UserRound, Wallet } from "lucide-react";
+
+import { useAuth } from "../contexts/AuthContext";
 import Header from "./Header";
 import Footer from "./Footer";
-import { useAuth } from "../contexts/AuthContext";
 import { getProfile, uploadAvatar } from "../modules/profile/services/profileService";
 import AvatarUploadModal from "../modules/profile/components/AvatarUploadModal";
-import {
-    User,
-    ShieldCheck,
-    Camera,
-    CheckCircle2,
-    Lock,
-    Ticket,
-    Gem,
-    Calendar,
-    ClipboardList,
-} from "lucide-react";
 
 export default function AccountLayout({ children, embedded = false }) {
-    const { user, updateUser } = useAuth();
+    const { user, updateUser, logout } = useAuth();
     const location = useLocation();
-    const [searchParams] = useSearchParams();
-    const currentTabParam = searchParams.get("tab");
+    const navigate = useNavigate();
+
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     // Đảm bảo dữ liệu người dùng luôn mới nhất
     useEffect(() => {
@@ -33,7 +25,6 @@ export default function AccountLayout({ children, embedded = false }) {
                 }
             })
             .catch((err) => {
-                // Bỏ qua lỗi nhẹ nếu mạng lag
                 console.warn("Could not sync user profile header:", err);
             });
         return () => {
@@ -51,47 +42,56 @@ export default function AccountLayout({ children, embedded = false }) {
     const [avatarSuccess, setAvatarSuccess] = useState("");
     const [isDragging, setIsDragging] = useState(false);
 
-    // Xác định tab đang active
-    const getActiveTab = () => {
-        if (location.pathname === "/my-tickets") return "tickets";
-        if (location.pathname === "/my-orders") return "orders";
-        if (location.pathname.endsWith("/profile")) {
-            return currentTabParam === "security" ? "security" : "info";
-        }
-        return "info";
+    const displayName =
+        user?.fullName ||
+        user?.username ||
+        user?.name ||
+        user?.email ||
+        "Khách hàng";
+    const avatarText = displayName.charAt(0).toUpperCase();
+
+    const handleLogout = () => {
+        logout();
+        navigate("/login", { replace: true });
     };
 
-    const activeTab = getActiveTab();
-
-    // Danh sách các tab nằm ngang
-    const allNavTabs = [
-        {
-            id: "info",
-            label: "Thông tin cá nhân",
-            path: location.pathname.endsWith("/profile") ? location.pathname : "/profile",
-            icon: User,
-        },
-        {
-            id: "security",
-            label: "Tài khoản & Bảo mật",
-            path: `${location.pathname.endsWith("/profile") ? location.pathname : "/profile"}?tab=security`,
-            icon: Lock,
-        },
+    const navItems = [
         {
             id: "tickets",
-            label: "Vé đã mua",
+            label: "Vé của tôi",
             path: "/my-tickets",
             icon: Ticket,
-            hideForAdmin: true,
+        },
+        {
+            id: "resales",
+            label: "Bán vé của tôi",
+            path: "/my-resales",
+            icon: Repeat2,
+        },
+        {
+            id: "wallet",
+            label: "Ví điện tử",
+            path: "/wallet",
+            icon: Wallet,
+        },
+        {
+            id: "info",
+            label: "Thông tin tài khoản",
+            path: "/profile",
+            icon: UserRound,
         },
     ];
 
-    const navTabs = allNavTabs.filter((tab) => {
-        if (user?.role !== "USER" && tab.hideForAdmin) {
-            return false;
-        }
-        return true;
-    });
+    // Xác định mục đang active
+    const getActiveItem = () => {
+        if (location.pathname === "/my-tickets") return "tickets";
+        if (location.pathname === "/my-resales") return "resales";
+        if (location.pathname === "/wallet") return "wallet";
+        if (location.pathname.endsWith("/profile")) return "info";
+        return "";
+    };
+
+    const activeItem = getActiveItem();
 
     const handleFileSelect = (e) => {
         const file = e.target.files?.[0];
@@ -101,18 +101,21 @@ export default function AccountLayout({ children, embedded = false }) {
         setAvatarSuccess("");
 
         if (!file.type.startsWith("image/")) {
-            setAvatarError("Vui lòng chọn một tệp hình ảnh hợp lệ (JPG, PNG, WEBP, GIF)");
+            setAvatarError(
+                "Vui lòng chọn một tệp hình ảnh hợp lệ (JPG, PNG, WEBP, GIF)"
+            );
             return;
         }
 
         if (file.size > 5 * 1024 * 1024) {
-            setAvatarError("Dung lượng ảnh tối đa là 5MB. Vui lòng chọn ảnh nhỏ hơn");
+            setAvatarError(
+                "Dung lượng ảnh tối đa là 5MB. Vui lòng chọn ảnh nhỏ hơn"
+            );
             return;
         }
 
         setSelectedFile(file);
-        const objectUrl = URL.createObjectURL(file);
-        setFilePreview(objectUrl);
+        setFilePreview(URL.createObjectURL(file));
     };
 
     const handleCancelFileSelect = () => {
@@ -140,13 +143,8 @@ export default function AccountLayout({ children, embedded = false }) {
         try {
             const response = await uploadAvatar(selectedFile);
             const updatedUser = response.data;
-            const newAvatarUrl = updatedUser.avatar;
 
-            // Đồng bộ AuthContext
-            updateUser({
-                avatar: newAvatarUrl,
-            });
-
+            updateUser({ avatar: updatedUser.avatar });
             setAvatarSuccess("Tải ảnh đại diện lên Cloudinary thành công!");
             handleCancelFileSelect();
 
@@ -155,8 +153,9 @@ export default function AccountLayout({ children, embedded = false }) {
                 setAvatarSuccess("");
             }, 1500);
         } catch (err) {
-            console.error("Upload avatar error:", err);
-            setAvatarError(err.message || "Tải ảnh đại diện thất bại. Vui lòng thử lại");
+            setAvatarError(
+                err.message || "Tải ảnh đại diện thất bại. Vui lòng thử lại"
+            );
         } finally {
             setUploadingAvatar(false);
         }
@@ -182,18 +181,21 @@ export default function AccountLayout({ children, embedded = false }) {
         setAvatarSuccess("");
 
         if (!file.type.startsWith("image/")) {
-            setAvatarError("Vui lòng chọn một tệp hình ảnh hợp lệ (JPG, PNG, WEBP, GIF)");
+            setAvatarError(
+                "Vui lòng chọn một tệp hình ảnh hợp lệ (JPG, PNG, WEBP, GIF)"
+            );
             return;
         }
 
         if (file.size > 5 * 1024 * 1024) {
-            setAvatarError("Dung lượng ảnh tối đa là 5MB. Vui lòng chọn ảnh nhỏ hơn");
+            setAvatarError(
+                "Dung lượng ảnh tối đa là 5MB. Vui lòng chọn ảnh nhỏ hơn"
+            );
             return;
         }
 
         setSelectedFile(file);
-        const objectUrl = URL.createObjectURL(file);
-        setFilePreview(objectUrl);
+        setFilePreview(URL.createObjectURL(file));
     };
 
     const handleCloseAvatarModal = () => {
@@ -204,107 +206,167 @@ export default function AccountLayout({ children, embedded = false }) {
         setAvatarSuccess("");
     };
 
-    return (
-        <div className={embedded ? "" : "min-h-screen bg-slate-50 flex flex-col justify-between"}>
-            {!embedded && <Header />}
-
-            <main className={embedded ? "" : "flex-1 py-8"}>
-                <div className="mx-auto max-w-5xl px-4 sm:px-6">
-                
-                    {/* Card thông tin người dùng đầu trang */}
-                    <div className={`${embedded ? "hidden" : "rounded-2xl border border-gray-200/80 bg-white p-6 shadow-sm sm:p-8"}`}>
-                        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
-                                {/* Avatar lớn với nút đổi ảnh */}
-                                <div className="relative group">
-                                    <div className="h-24 w-24 sm:h-28 sm:w-28 overflow-hidden rounded-full ring-2 ring-gray-100 shadow-md bg-gray-100">
-                                        {user?.avatar ? (
-                                            <img
-                                                src={user.avatar}
-                                                alt="Avatar"
-                                                className="h-full w-full object-cover"
-                                            />
-                                        ) : (
-                                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-tr from-blue-600 to-indigo-600 text-3xl font-extrabold text-white">
-                                                {(user?.fullName || user?.email || "U").charAt(0).toUpperCase()}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowAvatarModal(true)}
-                                        className="absolute bottom-1 right-1 rounded-full bg-blue-600 p-2 text-white shadow-md hover:bg-blue-700 transition"
-                                        title="Đổi ảnh đại diện"
-                                    >
-                                        <Camera className="h-4 w-4" />
-                                    </button>
-                                </div>
-
-                                {/* Tên & Tag vai trò */}
-                                <div>
-                                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                                        <h1 className="text-2xl font-bold text-gray-900">
-                                            {user?.fullName || "Người dùng VTicket"}
-                                        </h1>
-                                        <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
-                                            <ShieldCheck className="h-3.5 w-3.5" />
-                                            {user?.role || "USER"}
-                                        </span>
-                                        {user?.isVerified && (
-                                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
-                                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                                Đã xác thực
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    <p className="mt-1 text-sm text-gray-500">
-                                        {user?.email}
-                                    </p>
-
-                                    <p className="mt-2 text-xs text-gray-400">
-                                        Thành viên từ:{" "}
-                                        {user?.createdAt
-                                            ? new Date(user.createdAt).toLocaleDateString("vi-VN")
-                                            : "Gần đây"}
-                                    </p>
-                                </div>
-                            </div>
+    // Cột điều hướng tài khoản (dùng chung desktop + mobile)
+    const renderAccountNav = () => (
+        <div className="flex h-full flex-col">
+            {/* Avatar + tên + email */}
+            <div className="flex items-center gap-3 px-5 py-6">
+                <div className="relative shrink-0">
+                    {user?.avatar ? (
+                        <img
+                            src={user.avatar}
+                            alt="Avatar"
+                            className="h-14 w-14 rounded-full object-cover"
+                        />
+                    ) : (
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-xl font-bold text-white">
+                            {avatarText}
                         </div>
+                    )}
 
-                        {/* Thanh điều hướng Tabs nằm ngang đồng bộ */}
-                        <div className="mt-8 flex border-b border-gray-200 overflow-x-auto no-scrollbar">
-                            {navTabs.map((tab) => {
-                                const Icon = tab.icon;
-                                const isActive = activeTab === tab.id;
-                                return (
-                                    <Link
-                                        key={tab.id}
-                                        to={tab.path}
-                                        className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition whitespace-nowrap ${isActive
-                                                ? "border-blue-600 text-blue-600"
-                                                : "border-transparent text-gray-500 hover:text-gray-700"
-                                            }`}
-                                    >
-                                        <Icon className="h-4 w-4" />
-                                        {tab.label}
-                                    </Link>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Khu vực hiển thị nội dung từng trang riêng */}
-                    <div className={embedded ? `role-profile-content role-profile-${user?.role?.toLowerCase()} rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6` : "mt-6"}>
-                        {children}
-                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setShowAvatarModal(true)}
+                        className="absolute -bottom-0.5 -right-0.5 rounded-full bg-white p-1.5 text-gray-500 shadow-sm ring-1 ring-gray-200 transition hover:text-blue-600"
+                        title="Đổi ảnh đại diện"
+                    >
+                        <Camera className="h-3.5 w-3.5" />
+                    </button>
                 </div>
-            </main>
 
-            {!embedded && <Footer />}
+                <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-gray-900">
+                        {displayName}
+                    </p>
+                    <p className="truncate text-xs text-gray-500">
+                        {user?.email}
+                    </p>
+                </div>
+            </div>
 
-            {/* Modal Upload Avatar dùng chung cho toàn bộ Account */}
+            {/* Menu */}
+            <nav className="flex-1 overflow-y-auto border-t border-gray-100 px-3 py-4">
+                <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                    Tài khoản của tôi
+                </p>
+
+                <ul className="space-y-0.5">
+                    {navItems.map((item) => {
+                        const isActive = activeItem === item.id;
+                        const Icon = item.icon;
+
+                        return (
+                            <li key={item.id}>
+                                <Link
+                                    to={item.path}
+                                    onClick={() => setSidebarOpen(false)}
+                                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                                        isActive
+                                            ? "bg-blue-50 text-blue-700"
+                                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                                    }`}
+                                >
+                                    <Icon
+                                        className={`h-4 w-4 shrink-0 ${
+                                            isActive
+                                                ? "text-blue-600"
+                                                : "text-gray-400"
+                                        }`}
+                                    />
+                                    {item.label}
+                                </Link>
+                            </li>
+                        );
+                    })}
+                </ul>
+            </nav>
+
+            {/* Đăng xuất */}
+            <div className="border-t border-gray-100 px-3 py-3">
+                <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-red-50 hover:text-red-600"
+                >
+                    <LogOut className="h-4 w-4 shrink-0 text-gray-400" />
+                    Đăng xuất
+                </button>
+            </div>
+        </div>
+    );
+
+    // Khi nhúng vào trang quản trị (profile của admin/organizer)
+    if (embedded) {
+        return (
+            <div
+                className={`role-profile-content role-profile-${user?.role?.toLowerCase()} space-y-6`}
+            >
+                {children}
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-gray-50">
+            {/* Header website (giữ nguyên như các trang công khai) */}
+            <Header />
+
+            <div className="mx-auto flex w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:px-8">
+                {/* Cột điều hướng tài khoản - desktop */}
+                <aside className="hidden w-60 shrink-0 lg:block">
+                    <div className="sticky top-24 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                        {renderAccountNav()}
+                    </div>
+                </aside>
+
+                {/* Cột nội dung */}
+                <main className="min-w-0 flex-1">
+                    {children === undefined ? <Outlet /> : children}
+                </main>
+            </div>
+
+            {/* Cột điều hướng tài khoản - mobile */}
+            <div className="lg:hidden">
+                {sidebarOpen && (
+                    <div
+                        className="fixed inset-0 z-40 bg-black/50"
+                        onClick={() => setSidebarOpen(false)}
+                    />
+                )}
+
+                <button
+                    type="button"
+                    onClick={() => setSidebarOpen(true)}
+                    aria-label="Mở menu tài khoản"
+                    aria-expanded={sidebarOpen}
+                    className="fixed bottom-4 right-4 z-30 flex items-center gap-2 rounded-full bg-blue-600 px-4 py-3 text-sm font-medium text-white shadow-lg transition hover:bg-blue-700"
+                >
+                    <svg
+                        className="h-5 w-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        aria-hidden="true"
+                    >
+                        <path strokeLinecap="round" d="M5 7h14M5 12h14M5 17h10" />
+                    </svg>
+                    Tài khoản
+                </button>
+
+                <aside
+                    aria-label="Menu tài khoản khách hàng"
+                    className={`fixed left-0 top-0 z-50 h-screen w-72 border-r border-gray-200 bg-white transition-transform duration-300 ${
+                        sidebarOpen ? "translate-x-0" : "-translate-x-full"
+                    }`}
+                >
+                    {renderAccountNav()}
+                </aside>
+            </div>
+
+            <Footer />
+
+            {/* Modal upload avatar */}
             <AvatarUploadModal
                 show={showAvatarModal}
                 onClose={handleCloseAvatarModal}

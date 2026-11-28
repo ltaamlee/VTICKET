@@ -1,17 +1,12 @@
-
 import { useEffect, useState } from "react";
 import {
     Bell,
     Mail,
-    Smartphone,
     RefreshCw,
     Save,
     LoaderCircle,
     CheckCircle,
-    CreditCard,
-    CalendarDays,
-    UserPlus,
-    ShieldAlert,
+    Info,
 } from "lucide-react";
 
 import Button from "../../../components/common/button/Button";
@@ -21,63 +16,20 @@ import {
     updateSettings,
 } from "../services/systemService";
 
-const initialForm = {
-    channels: {
-        email: true,
-        inApp: true,
-    },
-    events: {
-        accountRegistration: true,
-        paymentSuccess: true,
-        eventUpdate: true,
-        securityAlert: true,
-    },
-};
+import {
+    DEFAULT_NOTIFICATION_FORM,
+    NOTIFICATION_CHANNELS,
+} from "../../notification/constants/notificationConstants";
 
-const channels = [
-    {
-        key: "email",
-        name: "Email",
-        description: "Gửi thông báo đến địa chỉ email của người dùng.",
-        icon: Mail,
-    },
-    {
-        key: "inApp",
-        name: "Thông báo trong hệ thống",
-        description: "Hiển thị thông báo trực tiếp trên website VTICKET.",
-        icon: Bell,
-    },
-];
-
-const notificationEvents = [
-    {
-        key: "accountRegistration",
-        name: "Đăng ký tài khoản",
-        description: "Thông báo khi người dùng tạo tài khoản mới.",
-        icon: UserPlus,
-    },
-    {
-        key: "paymentSuccess",
-        name: "Thanh toán thành công",
-        description: "Thông báo khi giao dịch thanh toán hoàn tất.",
-        icon: CreditCard,
-    },
-    {
-        key: "eventUpdate",
-        name: "Cập nhật sự kiện",
-        description: "Thông báo khi sự kiện có thay đổi thông tin.",
-        icon: CalendarDays,
-    },
-    {
-        key: "securityAlert",
-        name: "Cảnh báo bảo mật",
-        description: "Thông báo khi phát hiện hoạt động bất thường.",
-        icon: ShieldAlert,
-    },
-];
-
+/**
+ * Admin > Quản lý hệ thống > Thông báo.
+ *
+ * CHỈ quản lý phần CƠ BẢN: các kênh gửi thông báo.
+ * Không có danh mục bật/tắt theo loại thông báo - mọi thông báo đều được
+ * tạo và đẩy realtime ngay lập tức khi phát sinh.
+ */
 function Notification({ onAlert }) {
-    const [form, setForm] = useState(initialForm);
+    const [form, setForm] = useState(DEFAULT_NOTIFICATION_FORM);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
@@ -94,18 +46,12 @@ function Notification({ onAlert }) {
 
             setForm({
                 channels: {
-                    ...initialForm.channels,
+                    ...DEFAULT_NOTIFICATION_FORM.channels,
                     ...notification.channels,
-                },
-                events: {
-                    ...initialForm.events,
-                    ...notification.events,
                 },
             });
         } catch (err) {
-            setError(
-                err.message || "Không thể tải cấu hình thông báo."
-            );
+            setError(err.message || "Không thể tải cấu hình thông báo.");
         } finally {
             setLoading(false);
         }
@@ -115,7 +61,7 @@ function Notification({ onAlert }) {
         loadSettings();
     }, []);
 
-    // Bật hoặc tắt cấu hình
+    // Bật hoặc tắt kênh
     const handleChange = (group, key) => {
         setForm((prev) => ({
             ...prev,
@@ -146,59 +92,15 @@ function Notification({ onAlert }) {
             onAlert?.({
                 variant: "success",
                 title: "Thành công",
-                message: "Cập nhật cấu hình thông báo thành công.",
+                message:
+                    "Cập nhật cấu hình thông báo thành công. Thay đổi đã có hiệu lực ngay.",
                 icon: CheckCircle,
             });
         } catch (err) {
-            setError(
-                err.message || "Không thể lưu cấu hình thông báo."
-            );
+            setError(err.message || "Không thể lưu cấu hình thông báo.");
         } finally {
             setSaving(false);
         }
-    };
-
-    // Component hiển thị công tắc
-    const renderToggle = (item, group) => {
-        const Icon = item.icon;
-        const enabled = form[group][item.key];
-
-        return (
-            <div
-                key={item.key}
-                className="flex items-center justify-between gap-4 py-5"
-            >
-                <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                        <Icon size={21} />
-                    </div>
-
-                    <div>
-                        <p className="font-semibold text-gray-800">
-                            {item.name}
-                        </p>
-
-                        <p className="mt-1 text-sm text-gray-500">
-                            {item.description}
-                        </p>
-                    </div>
-                </div>
-
-                <button
-                    type="button"
-                    role="switch"
-                    aria-checked={enabled}
-                    onClick={() => handleChange(group, item.key)}
-                    className={`relative h-6 w-11 shrink-0 rounded-full transition ${enabled ? "bg-blue-600" : "bg-gray-300"
-                        }`}
-                >
-                    <span
-                        className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${enabled ? "left-6" : "left-1"
-                            }`}
-                    />
-                </button>
-            </div>
-        );
     };
 
     if (loading) {
@@ -217,9 +119,7 @@ function Notification({ onAlert }) {
                     {error}
                 </div>
             )}
-
             <form onSubmit={handleSave} className="space-y-6">
-
                 {/* Kênh thông báo */}
                 <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
                     <div className="mb-5 border-b border-gray-100 pb-4">
@@ -234,29 +134,52 @@ function Notification({ onAlert }) {
                     </div>
 
                     <div className="divide-y divide-gray-100">
-                        {channels.map((item) =>
-                            renderToggle(item, "channels")
-                        )}
-                    </div>
-                </section>
+                        {NOTIFICATION_CHANNELS.map((item) => {
+                            const Icon = item.icon === "Mail" ? Mail : Bell;
 
-                {/* Loại thông báo */}
-                <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <div className="mb-5 border-b border-gray-100 pb-4">
-                        <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800">
-                            <Smartphone size={20} />
-                            Loại thông báo
-                        </h3>
+                            return (
+                                <div
+                                    key={item.key}
+                                    className="flex items-center justify-between gap-4 py-5"
+                                >
+                                    <div className="flex min-w-0 items-center gap-3">
+                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                                            <Icon size={21} />
+                                        </div>
 
-                        <p className="mt-1 text-sm text-gray-500">
-                            Chọn các sự kiện hệ thống sẽ gửi thông báo tự động.
-                        </p>
-                    </div>
+                                        <div>
+                                            <p className="font-semibold text-gray-800">
+                                                {item.name}
+                                            </p>
 
-                    <div className="divide-y divide-gray-100">
-                        {notificationEvents.map((item) =>
-                            renderToggle(item, "events")
-                        )}
+                                            <p className="mt-1 text-sm text-gray-500">
+                                                {item.description}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        role="switch"
+                                        aria-checked={form.channels[item.key]}
+                                        onClick={() =>
+                                            handleChange("channels", item.key)
+                                        }
+                                        className={`relative h-6 w-11 shrink-0 rounded-full transition ${form.channels[item.key]
+                                            ? "bg-blue-600"
+                                            : "bg-gray-300"
+                                            }`}
+                                    >
+                                        <span
+                                            className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${form.channels[item.key]
+                                                ? "left-6"
+                                                : "left-1"
+                                                }`}
+                                        />
+                                    </button>
+                                </div>
+                            );
+                        })}
                     </div>
                 </section>
 

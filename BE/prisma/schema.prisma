@@ -45,6 +45,20 @@ enum ZoneType {
   STAGE
 }
 
+// ==================== THÔNG BÁO (NOTIFICATION) ====================
+
+// Kênh nhận thông báo
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+}
+
+// Trạng thái đọc
+enum NotificationStatus {
+  UNREAD
+  READ
+}
+
 // Hình dạng khu vực khi vẽ trên canvas.
 enum ZoneShape {
   RECTANGLE
@@ -117,6 +131,7 @@ enum PaymentMethod {
   ZALOPAY
   CASH
   SEPAY
+  WALLET
 }
 
 enum PaymentStatus {
@@ -204,9 +219,14 @@ model User {
   posts             Post[]
   comments          Comment[]
   reactions         Reaction[]
-  soldResales       ReSale[] @relation("SellerResales")
-  boughtResales     ReSale[] @relation("BuyerResales")
-  seatMaps          SeatMap[] @relation("OrganizerSeatMaps")
+  soldResales        ReSale[] @relation("SellerResales")
+  boughtResales      ReSale[] @relation("BuyerResales")
+  seatMaps           SeatMap[] @relation("OrganizerSeatMaps")
+  wallet             Wallet?
+  linkedAccounts     WalletAccount[]
+  walletTransactions WalletTransaction[]
+  resaleOrders       ResaleOrder[]
+  notifications     Notification[]
 
   @@map("users")
 }
@@ -223,6 +243,103 @@ model UserProfile {
   updatedAt DateTime  @updatedAt
 
   @@map("userProfiles")
+}
+
+// ==================== VÍ ĐIỆN TỬ (E-WALLET) ====================
+
+enum WalletProvider {
+  PAYOS
+  SEPAY
+}
+
+enum WalletAccountStatus {
+  PENDING
+  ACTIVE
+  DISABLED
+}
+
+enum WalletTransactionType {
+  TOPUP
+  PAYMENT
+  REFUND
+  WITHDRAW
+  TRANSFER
+}
+
+enum WalletTransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REVERSED
+}
+
+// Ví điện tử nội bộ của người dùng (số dư, hạn mức)
+model Wallet {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String   @unique @db.ObjectId
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance      Float    @default(0)
+  frozenAmount Float    @default(0)
+  currency     String   @default("VND")
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  accounts    WalletAccount[]
+  transactions WalletTransaction[]
+
+  @@index([status])
+  @@map("wallets")
+}
+
+// Tài khoản thanh toán liên kết với ví
+model WalletAccount {
+  id         String              @id @default(auto()) @map("_id") @db.ObjectId
+  walletId   String              @db.ObjectId
+  wallet     Wallet              @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  userId     String              @db.ObjectId
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider   WalletProvider
+  identifier String
+  providerRef String?
+  nickname   String?
+  isDefault Boolean             @default(false)
+  status    WalletAccountStatus @default(PENDING)
+  verifiedAt DateTime?
+  metadata  Json?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@unique([userId, provider, identifier])
+  @@index([walletId])
+  @@index([provider, status])
+  @@map("walletAccounts")
+}
+
+// Lịch sử giao dịch của ví
+model WalletTransaction {
+  id             String                  @id @default(auto()) @map("_id") @db.ObjectId
+  walletId       String                  @db.ObjectId
+  wallet         Wallet                  @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  userId         String                  @db.ObjectId
+  user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type           WalletTransactionType
+  status         WalletTransactionStatus @default(PENDING)
+  amount         Float
+  balanceBefore  Float
+  balanceAfter   Float
+  // Mã giao dịch của nhà cung cấp (nếu có)
+  transactionRef String?
+  description    String?
+  // Liên kết tới đơn bán lại (nếu là giao dịch mua vé bán lại)
+  resaleOrderId  String?                 @db.ObjectId
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@index([walletId, createdAt])
+  @@index([userId, createdAt])
+  @@index([type, status])
+  @@map("walletTransactions")
 }
 
 model Category {
@@ -593,6 +710,7 @@ model ReSale {
   price     Float
   status    ResaleStatus @default(AVAILABLE)
   qrCode    String?
+  order     ResaleOrder?
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
@@ -600,6 +718,32 @@ model ReSale {
   @@index([buyerId])
   @@index([status])
   @@map("resales")
+}
+
+// Đơn mua vé bán lại (thanh toán qua cổng thanh toán / ví điện tử)
+model ResaleOrder {
+  id             String      @id @default(auto()) @map("_id") @db.ObjectId
+  orderCode      String      @unique
+  userId         String      @db.ObjectId
+  user           User        @relation(fields: [userId], references: [id])
+  resaleId       String      @unique @db.ObjectId
+  resale         ReSale      @relation(fields: [resaleId], references: [id])
+  totalAmount    Float
+  platformFee    Float       @default(0)
+  sellerAmount   Float       @default(0)
+  // Phương thức thanh toán: SEPAY (cổng ngân hàng) hoặc WALLET (ví nội bộ)
+  method         String      @default("SEPAY")
+  // Mã giao dịch của cổng thanh toán
+  transactionRef String?
+  status         String      @default("PENDING_PAYMENT")
+  expiresAt      DateTime?
+  paidAt         DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status, expiresAt])
+  @@map("resaleOrders")
 }
 
 model Post {
@@ -725,4 +869,35 @@ model OrganizerRequest {
   @@index([status])
   @@index([createdAt])
   @@map("organizerRequests")
+}
+
+// ==================== THÔNG BÁO (NOTIFICATION) ====================
+
+// Thông báo trong hệ thống (in-app realtime) và email
+model Notification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Loai thong bao - luu dong (string) de co the mo rong ma khong can migration enum.
+  // Xem danh muc cac loai thong bao trong BE/src/services/notification/notification.service.js
+  type      String   @default("SYSTEM")
+  channel   NotificationChannel @default(IN_APP)
+  title     String
+  body      String
+  // Link điều hướng khi bấm vào thông báo (frontend route)
+  link      String?
+  // Payload bổ sung (mã đơn hàng, id sự kiện, số tiền...)
+  metadata  Json?
+  status    NotificationStatus @default(UNREAD)
+  readAt    DateTime?
+  // Email đã gửi hay chưa (chỉ dùng cho channel EMAIL)
+  emailedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@index([type])
+  @@index([channel, emailedAt])
+  @@map("notifications")
 }

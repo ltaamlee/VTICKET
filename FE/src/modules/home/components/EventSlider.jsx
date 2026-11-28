@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Calendar, MapPin, ChevronLeft, ChevronRight, Ticket } from "lucide-react";
 import { getFeaturedEvents } from "../../event/services/eventService";
+import { truncateText } from "../../../utils/richText";
 
 const defaultSlides = [
     {
@@ -44,7 +45,7 @@ function EventSlider() {
                     const formatted = list.map((ev) => ({
                         id: ev.slug || ev.id,
                         title: ev.name,
-                        description: ev.description ? ev.description.slice(0, 140) + "..." : "Sự kiện đặc sắc đang mở bán vé trên VTICKET.",
+                        description: truncateText(ev.description, 140) || "Sự kiện đặc sắc đang mở bán vé trên VTICKET.",
                         date: ev.startAt ? new Date(ev.startAt).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }) : "",
                         location: ev.location,
                         image: ev.bannerUrl || ev.thumbnailUrl || defaultSlides[0].image,

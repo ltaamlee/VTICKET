@@ -147,12 +147,6 @@ export default function OrderSuccessPage() {
                                 >
                                     Chi tiết đơn hàng
                                 </Link>
-                                <Link
-                                    to="/my-orders"
-                                    className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                                >
-                                    Đơn hàng của tôi
-                                </Link>
                             </div>
                         </div>
                     </div>

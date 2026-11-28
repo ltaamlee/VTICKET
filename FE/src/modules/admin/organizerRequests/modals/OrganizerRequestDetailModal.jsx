@@ -10,6 +10,8 @@ import {
   Loader2,
 } from "lucide-react";
 
+import DetailPanel from "../../../../components/common/form/DetailPanel";
+
 export default function OrganizerRequestDetailModal({
   show,
   onClose,
@@ -60,33 +62,50 @@ export default function OrganizerRequestDetailModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
-      <div className="w-full max-w-3xl rounded-3xl bg-white shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
-        {/* Header Modal */}
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-gray-50/60">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
-              <Building2 className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-gray-900">
-                Chi tiết hồ sơ đăng ký Ban Tổ Chức
-              </h3>
-              <p className="text-xs text-gray-500">Mã đơn: {request?.id || "..."}</p>
-            </div>
-          </div>
-
+    <DetailPanel
+      icon={Building2}
+      title="Chi tiết hồ sơ đăng ký Ban Tổ Chức"
+      subtitle={`Mã đơn: ${request?.id || "..."}`}
+      onClose={onClose}
+      size="lg"
+      overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in"
+      panelClassName="shadow-2xl"
+      headerClassName="border-b border-gray-100 bg-gray-50/60 px-6 py-4"
+      bodyClassName="space-y-6 p-6"
+      footerClassName="justify-between border-t border-gray-100 bg-gray-50/60 px-6 py-4"
+      footer={
+        <>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition"
+            className="rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
           >
-            <X className="h-5 w-5" />
+            Đóng
           </button>
-        </div>
 
-        {/* Nội dung Modal */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {request?.status === "PENDING" && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onOpenReject(request)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-red-300 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+              >
+                <X className="h-4 w-4" />
+                Từ chối đơn
+              </button>
+              <button
+                type="button"
+                onClick={() => onOpenApprove(request)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-700"
+              >
+                <Check className="h-4 w-4" />
+                Phê duyệt BTC
+              </button>
+            </div>
+          )}
+        </>
+      }
+    >
           {loading || !request ? (
             <div className="py-16 text-center text-gray-400">
               <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600 mb-2" />
@@ -301,40 +320,6 @@ export default function OrganizerRequestDetailModal({
               </div>
             </>
           )}
-        </div>
-
-        {/* Footer Modal: Nút Duyệt / Từ chối nếu PENDING */}
-        <div className="flex items-center justify-between border-t border-gray-100 px-6 py-4 bg-gray-50/60">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 transition"
-          >
-            Đóng
-          </button>
-
-          {request?.status === "PENDING" && (
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => onOpenReject(request)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-red-300 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-100 transition"
-              >
-                <X className="h-4 w-4" />
-                Từ chối đơn
-              </button>
-              <button
-                type="button"
-                onClick={() => onOpenApprove(request)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 shadow-md transition"
-              >
-                <Check className="h-4 w-4" />
-                Phê duyệt BTC
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+    </DetailPanel>
   );
 }

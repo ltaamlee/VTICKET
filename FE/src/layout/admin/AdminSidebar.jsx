@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
-import { UserRound } from "lucide-react";
+import { UserRound, Wallet } from "lucide-react";
+import { useSystemSettings } from "../../contexts/SystemSettingsContext";
 
 const menuItems = [
     {
@@ -173,8 +174,7 @@ const menuItems = [
                 height="24"
                 fill="none"
                 viewBox="0 0 24 24"
-            >
-                <path
+            >                <path
                     stroke="currentColor"
                     strokeWidth="2"
                     strokeLinecap="round"
@@ -192,6 +192,11 @@ const menuItems = [
         ),
     },
     {
+        label: "Ví điện tử",
+        path: "/admin/wallet",
+        icon: <Wallet className="h-5 w-5" aria-hidden="true" />,
+    },
+    {
         label: "Hồ sơ cá nhân",
         path: "/admin/profile",
         icon: <UserRound className="h-5 w-5" aria-hidden="true" />,
@@ -199,6 +204,7 @@ const menuItems = [
 ];
 
 function AdminSidebar({ sidebarOpen, setSidebarOpen, onLogout }) {
+    const { settings } = useSystemSettings();
     return (
         <div>
             {/* Overlay mobile */}
@@ -243,13 +249,24 @@ function AdminSidebar({ sidebarOpen, setSidebarOpen, onLogout }) {
                 <div className="flex h-full flex-col overflow-y-auto px-3 py-4">
                     {/* Logo */}
                     <div className="mb-8 flex items-center gap-3 px-2 py-2">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-xl font-bold text-white">
-                            V
-                        </div>
+                        {settings?.logoUrl ? (
+                            <img
+                                src={settings.logoUrl}
+                                alt={settings.title || "Logo"}
+                                className="h-10 w-10 rounded-xl object-contain bg-white border border-gray-200 p-0.5"
+                            />
+                        ) : (
+                            <div
+                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-xl font-bold text-white"
+                                style={{ backgroundColor: settings?.primaryColor || undefined }}
+                            >
+                                {(settings?.title || "V").charAt(0).toUpperCase()}
+                            </div>
+                        )}
 
                         <div>
                             <h1 className="text-lg font-bold text-gray-900">
-                                VTICKET
+                                {settings?.title || "VTICKET"}
                             </h1>
                             <p className="text-xs text-gray-500">Admin Panel</p>
                         </div>

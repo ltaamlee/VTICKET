@@ -1,5 +1,6 @@
 const prisma = require("../../config/prisma");
 const { EventStatus, isValidEventStatus, getEventStatus, syncCompletedEvents } = require("../../shared/eventStatus");
+const notificationService = require("../notification/notification.service");
 const BaseService = require("../public/base.service");
 
 const notDraft = {
@@ -355,6 +356,35 @@ class AdminEventService extends BaseService {
         return event;
     }
 
+    /**
+     * Gửi thông báo realtime về thay đổi trạng thái sự kiện tới ban tổ chức.
+     * Lỗi thông báo không được làm fail luồng quản lý sự kiện.
+     * @private
+     */
+    async _notifyEventStatus({ type, event, title, body, link }) {
+        try {
+            if (!event?.organizerId) return;
+
+            await notificationService.notify({
+                type,
+                userId: event.organizerId,
+                title,
+                body,
+                link,
+                metadata: {
+                    eventId: event.id,
+                    eventName: event.name,
+                    status: event.status,
+                },
+            });
+        } catch (error) {
+            console.error(
+                "[Notification] Gửi thông báo trạng thái sự kiện lỗi:",
+                error.code || error.name || error.message
+            );
+        }
+    }
+
     async syncSeatMapStatus({ seatMapId, status }) {
         if (!seatMapId) return;
 
@@ -409,6 +439,14 @@ class AdminEventService extends BaseService {
             status: "APPROVED",
         });
 
+        await this._notifyEventStatus({
+            type: "EVENT_APPROVED",
+            event,
+            title: "Sự kiện của bạn đã được duyệt",
+            body: `Sự kiện "${event.name}" đã được quản trị viên phê duyệt. Khách hàng đã có thể đặt vé.`,
+            link: "/organizer/events",
+        });
+
         return updated;
     }
 
@@ -441,6 +479,14 @@ class AdminEventService extends BaseService {
             status: "REJECTED",
         });
 
+        await this._notifyEventStatus({
+            type: "EVENT_REJECTED",
+            event,
+            title: "Sự kiện của bạn đã bị từ chối",
+            body: `Sự kiện "${event.name}" đã bị từ chối. Lý do: ${reason.trim()}`,
+            link: "/organizer/events",
+        });
+
         return updated;
     }
 
@@ -466,6 +512,14 @@ class AdminEventService extends BaseService {
         await this.syncSeatMapStatus({
             seatMapId: event.seatMapId,
             status: "SUSPENDED",
+        });
+
+        await this._notifyEventStatus({
+            type: "EVENT_UPDATE",
+            event,
+            title: "Sự kiện của bạn đã bị khóa",
+            body: `Sự kiện "${event.name}" đã bị tạm khóa và không còn nhận bán vé.`,
+            link: "/organizer/events",
         });
 
         return updated;

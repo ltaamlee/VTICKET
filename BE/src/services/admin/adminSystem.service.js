@@ -11,16 +11,6 @@ const DEFAULT_SETTINGS = {
         defaultPageSize: 10,
     },
 
-    payment: {
-        platformFeeRate: 2,
-        environment: "SANDBOX",
-        providers: {
-            momo: { enabled: true },
-            vnpay: { enabled: true },
-            payos: { enabled: false },
-        },
-    },
-
     localization: {
         defaultLanguage: "vi",
         supportedLanguages: ["vi", "en"],
@@ -48,16 +38,34 @@ const DEFAULT_SETTINGS = {
         },
     },
 
+    // Thong bao: chi con phan CO BAN (kenh gui).
+    // Khong co danh muc loai thong bao co dinh - moi loai thong bao deu
+    // duoc gui ngay lap tuc, khong bieu kien gi.
     notification: {
         channels: {
             email: true,
             inApp: true,
         },
-        events: {
-            accountRegistration: true,
-            paymentSuccess: true,
-            eventUpdate: true,
-            securityAlert: true,
+    },
+
+    payment: {
+        environment: "SANDBOX",
+        platformFeeRate: 2,
+        providers: {
+            SEPAY: { enabled: true, displayName: "SePay", logo: null },
+            MOMO: { enabled: false, displayName: "MoMo", logo: "/images/payment/momo.png" },
+            VNPAY: { enabled: false, displayName: "VNPay", logo: "/images/payment/vnpay.png" },
+            PAYOS: { enabled: false, displayName: "PayOS", logo: "/images/payment/payos.png" },
+        },
+        wallet: {
+            enabled: true,
+            minTopUp: 10_000,
+            maxTopUp: 100_000_000,
+            allowWalletPayment: true,
+            allowWithdraw: true,
+            minWithdraw: 10_000,
+            maxWithdraw: 100_000_000,
+            allowedRoles: ["USER", "ORGANIZER", "ADMIN"],
         },
     },
 };
@@ -71,7 +79,38 @@ class AdminSystemService {
 
         for (const setting of settings) {
             if (Object.hasOwn(DEFAULT_SETTINGS, setting.key)) {
-                result[setting.key] = setting.value;
+                const defaultValue = DEFAULT_SETTINGS[setting.key];
+                const value = setting.value || {};
+
+                if (setting.key === "payment") {
+                    result.payment = {
+                        ...defaultValue,
+                        ...value,
+                        providers: {
+                            ...defaultValue.providers,
+                            ...(value.providers || {}),
+                        },
+                        wallet: {
+                            ...defaultValue.wallet,
+                            ...(value.wallet || {}),
+                        },
+                    };
+                    continue;
+                }
+
+                // Thong bao: chi tra ve phan CO BAN (kenh gui).
+                // Bo qua "events" cu (khong con dung dau).
+                if (setting.key === "notification") {
+                    result.notification = {
+                        channels: {
+                            ...defaultValue.channels,
+                            ...(value.channels || {}),
+                        },
+                    };
+                    continue;
+                }
+
+                result[setting.key] = value;
             }
         }
 
@@ -90,9 +129,34 @@ class AdminSystemService {
             where: { key },
         });
 
-        return setting
-            ? setting.value
-            : DEFAULT_SETTINGS[key];
+        if (!setting) return DEFAULT_SETTINGS[key];
+
+        if (key === "payment") {
+            return {
+                ...DEFAULT_SETTINGS.payment,
+                ...setting.value,
+                providers: {
+                    ...DEFAULT_SETTINGS.payment.providers,
+                    ...(setting.value?.providers || {}),
+                },
+                wallet: {
+                    ...DEFAULT_SETTINGS.payment.wallet,
+                    ...(setting.value?.wallet || {}),
+                },
+            };
+        }
+
+        // Thong bao: chi phan CO BAN (kenh gui), bo qua "events" cu.
+        if (key === "notification") {
+            return {
+                channels: {
+                    ...DEFAULT_SETTINGS.notification.channels,
+                    ...(setting.value?.channels || {}),
+                },
+            };
+        }
+
+        return setting.value;
     }
 
     // Cập nhật cấu hình
@@ -129,9 +193,24 @@ class AdminSystemService {
 
         // Merge cấu hình thanh toán
         if (key === "payment") {
-            mergedValue.providers = {
-                ...currentValue.providers,
-                ...(value.providers || {}),
+            const currentProviders = currentValue.providers || {};
+            const nextProviders = {};
+
+            for (const providerKey of new Set([
+                ...Object.keys(currentProviders),
+                ...Object.keys(value.providers || {}),
+            ])) {
+                nextProviders[providerKey] = {
+                    ...(currentProviders[providerKey] || {}),
+                    ...((value.providers || {})[providerKey] || {}),
+                };
+            }
+
+            mergedValue.providers = nextProviders;
+
+            mergedValue.wallet = {
+                ...(currentValue.wallet || {}),
+                ...(value.wallet || {}),
             };
         }
 
@@ -153,17 +232,15 @@ class AdminSystemService {
             };
         }
 
-        // Merge cấu hình thông báo
+        // Merge cau hinh thong bao (chi co kenh gui)
         if (key === "notification") {
             mergedValue.channels = {
                 ...currentValue.channels,
                 ...(value.channels || {}),
             };
 
-            mergedValue.events = {
-                ...currentValue.events,
-                ...(value.events || {}),
-            };
+            // Xoa "events" cu (khong con dung dau).
+            delete mergedValue.events;
         }
 
         return prisma.systemSetting.upsert({
@@ -303,6 +380,88 @@ class AdminSystemService {
                 ) {
                     throw this.validationError(
                         "Trạng thái cổng thanh toán phải là true hoặc false."
+                    );
+                }
+            }
+
+            if (
+                value.wallet !== undefined &&
+                (
+                    !value.wallet ||
+                    typeof value.wallet !== "object" ||
+                    Array.isArray(value.wallet)
+                )
+            ) {
+                throw this.validationError(
+                    "Cấu hình ví điện tử không hợp lệ."
+                );
+            }
+
+            if (value.wallet?.minTopUp !== undefined &&
+                (typeof value.wallet.minTopUp !== "number" || value.wallet.minTopUp < 0)) {
+                throw this.validationError(
+                    "Số tiền nạp tối thiểu không hợp lệ."
+                );
+            }
+
+            if (value.wallet?.maxTopUp !== undefined &&
+                (typeof value.wallet.maxTopUp !== "number" || value.wallet.maxTopUp <= 0)) {
+                throw this.validationError(
+                    "Số tiền nạp tối đa không hợp lệ."
+                );
+            }
+
+            if (value.wallet?.minTopUp !== undefined &&
+                value.wallet?.maxTopUp !== undefined &&
+                value.wallet.minTopUp > value.wallet.maxTopUp) {
+                throw this.validationError(
+                    "Số tiền nạp tối thiểu không được lớn hơn số tiền nạp tối đa."
+                );
+            }
+
+            for (const flag of ["enabled", "allowWalletPayment", "allowWithdraw"]) {
+                if (
+                    value.wallet?.[flag] !== undefined &&
+                    typeof value.wallet[flag] !== "boolean"
+                ) {
+                    throw this.validationError(
+                        "Cấu hình ví điện tử không hợp lệ."
+                    );
+                }
+            }
+
+            if (value.wallet?.minWithdraw !== undefined &&
+                (typeof value.wallet.minWithdraw !== "number" || value.wallet.minWithdraw < 0)) {
+                throw this.validationError(
+                    "Số tiền rút tối thiểu không hợp lệ."
+                );
+            }
+
+            if (value.wallet?.maxWithdraw !== undefined &&
+                (typeof value.wallet.maxWithdraw !== "number" || value.wallet.maxWithdraw <= 0)) {
+                throw this.validationError(
+                    "Số tiền rút tối đa không hợp lệ."
+                );
+            }
+
+            if (value.wallet?.minWithdraw !== undefined &&
+                value.wallet?.maxWithdraw !== undefined &&
+                value.wallet.minWithdraw > value.wallet.maxWithdraw) {
+                throw this.validationError(
+                    "Số tiền rút tối thiểu không được lớn hơn số tiền rút tối đa."
+                );
+            }
+
+            if (value.wallet?.allowedRoles !== undefined) {
+                const roles = value.wallet.allowedRoles;
+                const validRoles = ["USER", "ORGANIZER", "ADMIN"];
+
+                if (
+                    !Array.isArray(roles) ||
+                    roles.some((role) => !validRoles.includes(role))
+                ) {
+                    throw this.validationError(
+                        "Danh sách vai trò được phép dùng ví điện tử không hợp lệ."
                     );
                 }
             }
@@ -480,26 +639,34 @@ class AdminSystemService {
             }
         }
 
-        // NOTIFICATION
+        // NOTIFICATION - chi con phan CO BAN (kenh gui), khong co danh muc loai.
         if (key === "notification") {
-            for (const group of ["channels", "events"]) {
-                if (value[group] !== undefined) {
-                    if (
-                        !value[group] ||
-                        typeof value[group] !== "object" ||
-                        Array.isArray(value[group])
-                    ) {
+            if (value.channels !== undefined) {
+                if (
+                    !value.channels ||
+                    typeof value.channels !== "object" ||
+                    Array.isArray(value.channels)
+                ) {
+                    throw this.validationError(
+                        "Cấu hình thông báo không hợp lệ."
+                    );
+                }
+
+                for (const enabled of Object.values(value.channels)) {
+                    if (typeof enabled !== "boolean") {
                         throw this.validationError(
-                            "Cấu hình thông báo không hợp lệ."
+                            "Trạng thái thông báo phải là true hoặc false."
                         );
                     }
+                }
 
-                    for (const enabled of Object.values(value[group])) {
-                        if (typeof enabled !== "boolean") {
-                            throw this.validationError(
-                                "Trạng thái thông báo phải là true hoặc false."
-                            );
-                        }
+                // Chi chap nhan cac kenh da dinh nghia.
+                const validChannels = ["email", "inApp"];
+                for (const channel of Object.keys(value.channels)) {
+                    if (!validChannels.includes(channel)) {
+                        throw this.validationError(
+                            `Kênh thông báo "${channel}" không hợp lệ.`
+                        );
                     }
                 }
             }

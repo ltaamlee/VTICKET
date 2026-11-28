@@ -22,6 +22,8 @@ import {
     getSettings,
     updateSettings,
 } from "../services/systemService";
+import { useSystemSettings } from "../../../contexts/SystemSettingsContext";
+import { apiRequest } from "../../../services/api";
 
 const initialForm = {
     title: "VTicket",
@@ -57,6 +59,7 @@ const themes = [
 ];
 
 function General({ onAlert }) {
+    const { updateLocalSettings } = useSystemSettings();
     const [form, setForm] = useState(initialForm);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -99,8 +102,8 @@ function General({ onAlert }) {
         loadSettings();
     }, []);
 
-    // Tải logo từ máy tính
-    const handleLogoUpload = (e) => {
+    // Tải logo từ máy tính lên Cloudinary qua route dùng chung
+    const handleLogoUpload = async (e) => {
         const file = e.target.files?.[0];
 
         if (!file) return;
@@ -124,22 +127,31 @@ function General({ onAlert }) {
             return;
         }
 
-        const reader = new FileReader();
+        try {
+            setError("");
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("folder", "vticket/system");
 
-        reader.onload = () => {
+            const response = await apiRequest("/upload/image", {
+                method: "POST",
+                body: formData,
+            });
+
+            const uploadedUrl = response?.data?.url || response?.url;
+            if (!uploadedUrl) {
+                throw new Error("Không nhận được đường dẫn ảnh từ máy chủ.");
+            }
+
             setForm((prev) => ({
                 ...prev,
-                logoUrl: String(reader.result || ""),
+                logoUrl: uploadedUrl,
             }));
-
-            setError("");
-        };
-
-        reader.onerror = () => {
-            setError("Không thể đọc tệp ảnh đã chọn.");
-        };
-
-        reader.readAsDataURL(file);
+        } catch (err) {
+            setError(err.message || "Không thể tải logo lên máy chủ.");
+        } finally {
+            e.target.value = "";
+        }
     };
 
     // Đặt lại logo
@@ -233,6 +245,15 @@ function General({ onAlert }) {
                 defaultPageSize,
             });
 
+            updateLocalSettings({
+                title,
+                logoUrl,
+                supportEmail,
+                theme: form.theme,
+                primaryColor,
+                defaultPageSize,
+            });
+
             onAlert?.({
                 variant: "success",
                 title: "Thành công",
@@ -279,44 +300,43 @@ function General({ onAlert }) {
 
                     <div className="grid gap-8 md:grid-cols-2">
 
-                        {/* Tên website */}
-                        <div>
-                            <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
-                                <Type size={16} />
-                                Tên website
-                            </label>
+                        {/* Cột trái: Tên website + Upload Logo */}
+                        <div className="space-y-6">
+                            <div>
+                                <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+                                    <Type size={16} />
+                                    Tên website
+                                </label>
 
-                            <input
-                                type="text"
-                                name="title"
-                                value={form.title}
-                                onChange={handleChange}
-                                placeholder="Nhập tên website"
-                                maxLength={100}
-                                required
-                                className={inputClass}
-                            />
-                        </div>
+                                <input
+                                    type="text"
+                                    name="title"
+                                    value={form.title}
+                                    onChange={handleChange}
+                                    placeholder="Nhập tên website"
+                                    maxLength={100}
+                                    required
+                                    className={inputClass}
+                                />
+                            </div>
 
-                        {/* Logo */}
-                        <div>
-                            <label className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-700">
-                                <Image size={16} />
-                                Logo website
-                            </label>
+                            <div>
+                                <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+                                    <Image size={16} />
+                                    Logo website
+                                </label>
 
-                            <div className="flex flex-col items-center rounded-lg border border-gray-200 px-4 py-6">
-                                <div className="flex h-36 w-36 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-blue-50">
+                                <div className="flex h-32 w-full items-center justify-center overflow-hidden rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3">
                                     {form.logoUrl ? (
                                         <img
                                             src={form.logoUrl}
                                             alt="Logo website"
-                                            className="h-full w-full rounded-full object-cover"
+                                            className="h-full w-full object-contain"
                                         />
                                     ) : (
-                                        <UserRound
-                                            size={64}
-                                            className="text-blue-300"
+                                        <Image
+                                            size={44}
+                                            className="text-gray-300"
                                         />
                                     )}
                                 </div>
@@ -329,13 +349,13 @@ function General({ onAlert }) {
                                     className="hidden"
                                 />
 
-                                <div className="mt-5 flex flex-wrap justify-center gap-3">
+                                <div className="mt-4 flex flex-wrap justify-center gap-3">
                                     <button
                                         type="button"
                                         onClick={() =>
                                             logoInputRef.current?.click()
                                         }
-                                        className="inline-flex items-center gap-2 rounded-full bg-sky-500 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-sky-600"
+                                        className="inline-flex items-center gap-2 rounded-full bg-sky-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-600"
                                     >
                                         <Upload size={16} />
                                         Tải ảnh lên
@@ -344,16 +364,106 @@ function General({ onAlert }) {
                                     <button
                                         type="button"
                                         onClick={handleResetLogo}
-                                        className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
+                                        className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
                                     >
                                         <RotateCcw size={16} />
                                         Đặt lại
                                     </button>
                                 </div>
 
-                                <p className="mt-4 text-center text-xs text-gray-500">
+                                <p className="mt-3 text-center text-xs text-gray-500">
                                     JPG, PNG, GIF hoặc WEBP. Tối đa 5 MB.
                                 </p>
+                            </div>
+                        </div>
+
+                        {/* Xem trước hiển thị */}
+                        <div>
+                            <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+                                <Monitor size={16} />
+                                Xem trước hiển thị
+                            </label>
+
+                            <div className="flex flex-col justify-center rounded-xl border border-gray-200 px-5 py-6">
+                                {/* Khung giả lập trình duyệt / Header website */}
+                                <div className="w-full max-w-lg overflow-hidden rounded-xl border border-gray-200 shadow-sm">
+                                    {/* Thanh trình duyệt giả lập */}
+                                    <div className="flex items-center gap-2 border-b border-gray-200 bg-gray-100 px-3 py-2">
+                                        <span className="h-2.5 w-2.5 rounded-full bg-rose-400" />
+                                        <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+                                        <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                                        <div className="ml-2 flex-1 truncate rounded-md bg-white px-2.5 py-0.5 text-[11px] text-gray-400">
+                                            https://vticket.vn
+                                        </div>
+                                    </div>
+
+                                    {/* Header giả lập */}
+                                    <div
+                                        className={`flex items-center justify-between px-4 py-3 border-b ${form.theme === "dark"
+                                                ? "border-slate-700 bg-slate-900 text-white"
+                                                : "border-blue-100 bg-blue-50/90 text-gray-900"
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            {form.logoUrl ? (
+                                                <img
+                                                    src={form.logoUrl}
+                                                    alt="Logo website"
+                                                    className="h-8 w-auto max-w-[120px] object-contain"
+                                                />
+                                            ) : (
+                                                <div
+                                                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white"
+                                                    style={{
+                                                        backgroundColor:
+                                                            form.primaryColor || "#2563EB",
+                                                    }}
+                                                >
+                                                    {(form.title || "V")
+                                                        .charAt(0)
+                                                        .toUpperCase()}
+                                                </div>
+                                            )}
+                                            <span
+                                                className="truncate text-base font-black tracking-tight"
+                                                style={{
+                                                    color:
+                                                        form.primaryColor || "#2563EB",
+                                                }}
+                                            >
+                                                {form.title || "VTICKET"}
+                                            </span>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            <span className="hidden sm:inline-block h-2.5 w-16 rounded-full bg-gray-300/60" />
+                                            <span
+                                                className="rounded-md px-2.5 py-1 text-[10px] font-semibold text-white"
+                                                style={{
+                                                    backgroundColor:
+                                                        form.primaryColor || "#2563EB",
+                                                }}
+                                            >
+                                                Đăng nhập
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Nội dung trang giả lập */}
+                                    <div
+                                        className={`space-y-2.5 px-4 py-4 ${form.theme === "dark"
+                                                ? "bg-slate-950"
+                                                : "bg-white"
+                                            }`}
+                                    >
+                                        <div className="h-3 w-1/3 rounded bg-gray-300/50" />
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <div className="h-10 rounded-lg bg-gray-200/60" />
+                                            <div className="h-10 rounded-lg bg-gray-200/60" />
+                                            <div className="h-10 rounded-lg bg-gray-200/60" />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -423,8 +533,8 @@ function General({ onAlert }) {
                                             }))
                                         }
                                         className={`flex items-start gap-3 rounded-lg border p-4 text-left transition ${selected
-                                                ? "border-blue-500 bg-blue-50"
-                                                : "border-gray-200 hover:border-gray-300"
+                                            ? "border-blue-500 bg-blue-50"
+                                            : "border-gray-200 hover:border-gray-300"
                                             }`}
                                     >
                                         <Icon

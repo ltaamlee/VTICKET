@@ -23,13 +23,19 @@ import OrganizerRegisterPage from "../modules/organizer/pages/OrganizerRegisterP
 import MyTicketsPage from "../modules/ticket/pages/MyTicketsPage";
 import OrderPage from "../modules/ticket/pages/OrderPage";
 import OrderSuccessPage from "../modules/ticket/pages/OrderSuccessPage";
-import MyOrdersPage from "../modules/ticket/pages/MyOrdersPage";
 import EventListPage from "../modules/event/pages/EventListPage";
 import EventDetailPage from "../modules/event/pages/EventDetailPage";
+import ResalePage from "../modules/resale/pages/ResalePage";
+import ResaleEventTicketsPage from "../modules/resale/pages/ResaleEventTicketsPage";
+import ResaleOrderPage from "../modules/resale/pages/ResaleOrderPage";
+import ResaleDetailPage from "../modules/resale/pages/ResaleDetailPage";
+import MyResalePage from "../modules/resale/pages/MyResalePage";
+import WalletPage from "../modules/wallet/pages/WalletPage";
 import ForumListPage from "../modules/forum/pages/ForumListPage";
 import PostDetailPage from "../modules/forum/pages/PostDetailPage";
 
 import OrganizerLayout from "../layout/organizer/OrganizerLayout";
+import AccountLayout from "../layout/AccountLayout";
 import OrganizerEventPage from "../modules/organizer/pages/EventManagementPage";
 import OrganizerDashboardPage from "../modules/organizer/pages/DashboardPage";
 import OrganizerTicketPage from "../modules/organizer/pages/TicketManagementPage";
@@ -54,15 +60,27 @@ function AppRoutes() {
         <Route path="/403" element={<Page403 />} />
         <Route path="/404" element={<Page404 />} />
 
+        {/* Resale (bán lại vé) */}
+        <Route path="/resales" element={<ResalePage />} />
+        {/* Phải đặt trước "/resales/:id" để không bị route động nuốt mất */}
+        <Route path="/resales/events/:eventId" element={<ResaleEventTicketsPage />} />
+        <Route path="/resales/orders/:orderId" element={<ResaleOrderPage />} />
+        <Route path="/resales/:id" element={<ResaleDetailPage />} />
+
         {/* Customer account and ticket routes */}
         <Route element={<ProtectedRoute allowedRoles={["USER"]} />}>
-          <Route path="/my-tickets" element={<MyTicketsPage />} />
           <Route path="/orders/:id" element={<OrderPage />} />
           <Route path="/orders/:id/success" element={<OrderSuccessPage />} />
-          <Route path="/my-orders" element={<MyOrdersPage />} />
           <Route path="/organizer/register" element={<OrganizerRegisterPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/events/:idOrSlug/booking" element={<EventDetailPage key="event-booking" booking />} />
+
+          {/* Khu vực tài khoản khách hàng (layout Ticketbox-style) */}
+          <Route element={<AccountLayout />}>
+            <Route path="/my-tickets" element={<MyTicketsPage />} />
+            <Route path="/my-resales" element={<MyResalePage />} />
+            <Route path="/wallet" element={<WalletPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+          </Route>
         </Route>
 
         <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
@@ -74,6 +92,7 @@ function AppRoutes() {
             <Route path="system" element={<SystemPage />} />
             <Route path="organizer-requests" element={<OrganizerRequestsPage />} />
             <Route path="events" element={<AdminEventPage />} />
+            <Route path="wallet" element={<WalletPage />} />
             <Route path="forum" element={<ForumManagement />} />
             <Route path="profile" element={<ProfilePage embedded />} />
           </Route>
@@ -86,6 +105,7 @@ function AppRoutes() {
             <Route path="events" element={<OrganizerEventPage />} />
             <Route path="tickets" element={<OrganizerTicketPage />} />
             <Route path="check-in" element={<OrganizerCheckInPage />} />
+            <Route path="wallet" element={<WalletPage />} />
             <Route path="profile" element={<ProfilePage embedded />} />
           </Route>
           <Route path="/organizer/seat-maps/new" element={<SeatMapEditorPage />} />

@@ -11,7 +11,12 @@ const categoryRoutes = require('./category.route');
 const forumRoutes = require('./forum.route');
 const orderRoutes = require('./order.route');
 const paymentRoutes = require('./payment.route');
+const settingRoutes = require('./setting.route');
+const resaleRoutes = require('./resale.route');
+const walletRoutes = require('./wallet.route');
+const notificationRoutes = require('./notification.route');
 
+router.use('/settings', settingRoutes);
 router.use('/auth', authRoutes);
 router.use('/admin', adminRoutes);
 router.use('/users', userRoutes);
@@ -22,6 +27,9 @@ router.use('/categories', categoryRoutes);
 router.use('/forum', forumRoutes);
 router.use('/orders', orderRoutes);
 router.use('/payments', paymentRoutes);
+router.use('/resales', resaleRoutes);
+router.use('/wallet', walletRoutes);
+router.use('/notifications', notificationRoutes);
 
 // router.use('/event', eventRoutes);
 // router.use('/category', categoryRoutes);

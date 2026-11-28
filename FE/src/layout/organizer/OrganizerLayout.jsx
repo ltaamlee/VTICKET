@@ -2,6 +2,7 @@ import { Outlet, useNavigate, Link } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import OrganizerSidebar from "./OrganizerSidebar";
+import NotificationBell from "../../modules/notification/components/NotificationBell";
 import { Home, LogOut, ChevronDown } from "lucide-react";
 
 function OrganizerLayout() {
@@ -76,8 +77,11 @@ function OrganizerLayout() {
                         </div>
                     </div>
 
-                    {/* Thông tin Organizer */}
-                    <div className="relative" ref={organizerMenuRef}>
+                    {/* Chuông thông báo realtime + Thông tin Organizer */}
+                    <div className="flex items-center gap-3">
+                        <NotificationBell />
+
+                        <div className="relative" ref={organizerMenuRef}>
                         <button
                             type="button"
                             onClick={() =>
@@ -150,6 +154,7 @@ function OrganizerLayout() {
                                 </div>
                             </div>
                         )}
+                        </div>
                     </div>
                 </header>
 

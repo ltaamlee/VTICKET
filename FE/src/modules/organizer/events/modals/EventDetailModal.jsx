@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import DOMPurify from "dompurify";
+import RichText from "../../../../components/common/editor/RichText";
 import {
     X,
     CalendarDays,
@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import Button from "../../../../components/common/button/Button";
+import DetailPanel from "../../../../components/common/form/DetailPanel";
 import Tabs from "../../../../components/common/Tabs";
 import {
     getEventDetail as getOrganizerEventDetail,
@@ -309,31 +310,18 @@ function EventDetailModal({
     );
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-5">
-            <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-
-                {/* HEADER */}
-                <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-6 py-4">
-                    <div>
-                        <h2 className="text-lg font-semibold text-gray-900">
-                            Chi tiết sự kiện
-                        </h2>
-                        <p className="mt-0.5 text-xs text-gray-400">
-                            Thông tin chi tiết và trạng thái sự kiện
-                        </p>
-                    </div>
-
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        disabled={loading}
-                        className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed"
-                    >
-                        <X size={21} />
-                    </button>
-                </div>
-
-                {/* TABS */}
+        <DetailPanel
+            title="Chi tiết sự kiện"
+            subtitle="Thông tin chi tiết và trạng thái sự kiện"
+            onClose={onClose}
+            size="xl"
+            overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-5"
+            panelClassName="shadow-2xl"
+            headerClassName="shrink-0 border-b border-gray-100 px-6 py-4"
+            bodyClassName="p-0"
+            footerClassName="shrink-0 border-t border-gray-100 bg-white px-6 py-4"
+            closeButtonClassName="shrink-0 rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+            headerExtra={
                 <div className="shrink-0 border-b border-gray-100 px-6">
                     <Tabs
                         tabs={[
@@ -352,13 +340,84 @@ function EventDetailModal({
                         onChange={setActiveTab}
                     />
                 </div>
+            }
+            footer={
+                <div className="flex w-full flex-wrap items-center justify-between gap-3">
+                    <div className="text-xs text-gray-500">
+                        {showSubmit &&
+                            (isPending
+                                ? "Sự kiện đã gửi và đang chờ Admin xét duyệt."
+                                : canSubmit
+                                ? "Sự kiện chưa được gửi phê duyệt."
+                                : "")}
+                    </div>
 
-                {/* CONTENT - TAB THÔNG TIN */}
-                <div
-                    className={`min-h-0 flex-1 space-y-7 overflow-y-auto p-6 ${
-                        activeTab === TAB_SEAT_MAP ? "hidden" : ""
-                    }`}
-                >
+                    <div className="flex items-center gap-3">
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={onClose}
+                            disabled={loading}
+                        >
+                            Đóng
+                        </Button>
+
+                        {canSubmit && (
+                            <Button
+                                type="button"
+                                variant="primary"
+                                onClick={handleSubmit}
+                                disabled={loading}
+                            >
+                                <Send size={16} />
+                                {loading ? "Đang gửi..." : "Gửi phê duyệt"}
+                            </Button>
+                        )}
+
+                        {showSubmit && isPending && (
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                disabled
+                            >
+                                <ClipboardCheck size={16} />
+                                Đã gửi phê duyệt
+                            </Button>
+                        )}
+
+                        {/* ADMIN: duyệt / từ chối ngay trong modal */}
+                        {isAdmin && isPending && (
+                            <>
+                                <Button
+                                    type="button"
+                                    variant="danger"
+                                    onClick={onReject}
+                                    disabled={loading}
+                                >
+                                    <X size={16} />
+                                    Từ chối
+                                </Button>
+
+                                <Button
+                                    type="button"
+                                    variant="success"
+                                    onClick={onApprove}
+                                    disabled={loading}
+                                >
+                                    <ClipboardCheck size={16} />
+                                    Duyệt sự kiện
+                                </Button>
+                            </>
+                        )}
+                    </div>
+                </div>
+            }
+        >
+            <div
+                className={`space-y-7 p-6 ${
+                    activeTab === TAB_SEAT_MAP ? "hidden" : ""
+                }`}
+            >
 
                     {/* EVENT OVERVIEW */}
                     <div className="flex flex-col gap-5 sm:flex-row">
@@ -605,18 +664,11 @@ function EventDetailModal({
                         </SectionTitle>
 
                         <div className="rounded-xl bg-gray-50/80 p-5">
-                            {event.description && /<[a-z][\s\S]*>/i.test(event.description) ? (
-                                <div
-                                    className="text-sm leading-relaxed text-gray-700 [&_a]:text-blue-600 [&_a]:underline hover:[&_a]:text-blue-700 [&_blockquote]:my-2 [&_blockquote]:border-l-4 [&_blockquote]:border-blue-400 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-gray-600 [&_h1]:my-2.5 [&_h1]:text-xl [&_h1]:font-bold [&_h1]:text-gray-900 [&_h2]:my-2 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-gray-800 [&_h3]:my-1.5 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-gray-800 [&_hr]:my-3 [&_hr]:border-gray-200 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-1.5 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-6"
-                                    dangerouslySetInnerHTML={{
-                                        __html: DOMPurify.sanitize(event.description),
-                                    }}
-                                />
-                            ) : (
-                                <p className="whitespace-pre-line text-sm leading-7 text-gray-600">
-                                    {event.description || "Chưa có mô tả."}
-                                </p>
-                            )}
+                            <RichText
+                                html={event.description}
+                                className="text-sm leading-relaxed text-gray-700"
+                                emptyText="Chưa có mô tả."
+                            />
                         </div>
                     </div>
 
@@ -644,84 +696,12 @@ function EventDetailModal({
 
                 {/* TAB: SƠ ĐỒ GHẾ */}
                 {activeTab === TAB_SEAT_MAP && (
-                    <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6">
+                    <div className="space-y-5 p-6">
                         <EventSeatMapTab seatMap={seatMap} />
                     </div>
                 )}
 
-                {/* FOOTER */}
-                <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-white px-6 py-4">
-                    <div className="text-xs text-gray-500">
-                        {showSubmit && (
-                            isPending
-                                ? "Sự kiện đã gửi và đang chờ Admin xét duyệt."
-                                : canSubmit
-                                    ? "Sự kiện chưa được gửi phê duyệt."
-                                    : ""
-                        )}
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={onClose}
-                            disabled={loading}
-                        >
-                            Đóng
-                        </Button>
-
-                        {canSubmit && (
-                            <Button
-                                type="button"
-                                variant="primary"
-                                onClick={handleSubmit}
-                                disabled={loading}
-                            >
-                                <Send size={16} />
-                                {loading ? "Đang gửi..." : "Gửi phê duyệt"}
-                            </Button>
-                        )}
-
-                        {showSubmit && isPending && (
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                disabled
-                            >
-                                <ClipboardCheck size={16} />
-                                Đã gửi phê duyệt
-                            </Button>
-                        )}
-
-                        {/* ADMIN: duyệt / từ chối ngay trong modal */}
-                        {isAdmin && isPending && (
-                            <>
-                                <Button
-                                    type="button"
-                                    variant="danger"
-                                    onClick={onReject}
-                                    disabled={loading}
-                                >
-                                    <X size={16} />
-                                    Từ chối
-                                </Button>
-
-                                <Button
-                                    type="button"
-                                    variant="success"
-                                    onClick={onApprove}
-                                    disabled={loading}
-                                >
-                                    <ClipboardCheck size={16} />
-                                    Duyệt sự kiện
-                                </Button>
-                            </>
-                        )}
-                    </div>
-                </div>
-            </div>
-        </div>
+        </DetailPanel>
     );
 }
 

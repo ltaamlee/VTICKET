@@ -119,6 +119,45 @@ class EmailService {
     }
 
     /**
+     * Gửi thông báo chung qua email (kênh EMAIL của hệ thống thông báo).
+     * @param {Object} params
+     * @param {string} params.to - Email người nhận
+     * @param {string} params.title - Tiêu đề thông báo
+     * @param {string} params.body - Nội dung thông báo
+     * @param {string} [params.link] - Link điều hướng
+     * @returns {Promise<Object>} Kết quả gửi mail
+     */
+    async sendNotificationEmail({ to, title, body, link }) {
+        if (!this.transporter) {
+            const error = new Error("Chưa cấu hình SMTP để gửi thông báo");
+            error.code = "SMTP_NOT_CONFIGURED";
+            throw error;
+        }
+
+        const appUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+        const linkHtml = link
+            ? `<p style="margin: 24px 0;"><a href="${appUrl}${link.startsWith("/") ? link : `/${link}`}" style="display: inline-block; background: #4F46E5; color: #ffffff; text-decoration: none; padding: 12px 22px; border-radius: 8px; font-weight: 600;">Xem chi tiết</a></p>`
+            : "";
+
+        const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 8px;">
+        <h2 style="color: #4F46E5; margin-top: 0;">${title}</h2>
+        <p style="color: #4B5563; font-size: 14px; line-height: 1.6;">${body}</p>
+        ${linkHtml}
+        <hr style="border: none; border-top: 1px solid #eaeaea; margin: 20px 0;" />
+        <p style="font-size: 12px; color: #9CA3AF; text-align: center;">Đội ngũ hỗ trợ VTicket</p>
+      </div>
+    `;
+
+        return this.transporter.sendMail({
+            from: `"VTicket" <${process.env.EMAIL_USER}>`,
+            to,
+            subject: `[VTicket] ${title}`,
+            html: htmlContent,
+        });
+    }
+
+    /**
      * Send notification email when organizer request is approved
      * @param {string} toEmail 
      * @param {string} organizationName 

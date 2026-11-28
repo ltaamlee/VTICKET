@@ -37,6 +37,7 @@ const apiLimiter = rateLimit({
         message: 'Quá nhiều yêu cầu từ IP này. Vui lòng thử lại sau 60 phút.',
         data: null,
     },
+
 });
 
 const bookingSessionLimiter = rateLimit({

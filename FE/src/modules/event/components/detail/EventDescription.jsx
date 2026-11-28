@@ -1,5 +1,7 @@
 import { Mail, Phone, Info } from "lucide-react";
 
+import RichText from "../../../../components/common/editor/RichText";
+
 /**
  * EventDescription - Hiển thị nội dung mô tả chi tiết sự kiện
  */
@@ -13,9 +15,10 @@ export default function EventDescription({ description, contactEmail, contactPho
                 </h2>
 
                 {description ? (
-                    <div className="text-slate-700 leading-relaxed text-sm sm:text-base whitespace-pre-line">
-                        {description}
-                    </div>
+                    <RichText
+                        html={description}
+                        className="text-slate-700 text-sm sm:text-base"
+                    />
                 ) : (
                     <p className="text-slate-400 italic text-sm">
                         Chưa có mô tả chi tiết cho sự kiện này.

@@ -270,7 +270,7 @@ function OrganizerDashboardPage() {
                                             <p className="mt-1 text-xs text-slate-500">
                                                 {event.category?.name || "Chưa phân loại"}
                                                 {" · "}
-                                                {event._count?.tickets ?? 0} vé
+                                                {event.soldTickets ?? 0} vé
                                             </p>
                                             <p className="mt-1 text-xs text-slate-500">
                                                 {event.startAt
