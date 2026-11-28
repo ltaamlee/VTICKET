@@ -78,7 +78,7 @@ class OrganizerTicketService extends BaseService {
     async getEventTicketStats({ eventId, organizerId }) {
         await this.findOwnedEvent({ eventId, organizerId });
 
-        const [capacity, issued, checkedIn, reserved, cancelled] = await Promise.all([
+        const [capacity, issued, checkedIn, legacyReserved, reservations, cancelled] = await Promise.all([
             prisma.ticketType.aggregate({
                 where: { eventId },
                 _sum: { capacity: true },
@@ -86,10 +86,17 @@ class OrganizerTicketService extends BaseService {
             prisma.ticket.count({ where: { eventId, status: "ISSUED" } }),
             prisma.ticket.count({ where: { eventId, status: "CHECKED_IN" } }),
             prisma.ticket.count({ where: { eventId, status: "RESERVED" } }),
+            prisma.bookingReservation.findMany({
+                where: { eventId, status: "PENDING_PAYMENT" },
+                select: { items: true },
+            }),
             prisma.ticket.count({ where: { eventId, status: "CANCELLED" } }),
         ]);
 
         const total = capacity._sum.capacity || 0;
+        const reserved = legacyReserved + reservations.reduce(
+            (sum, reservation) => sum + reservation.items.reduce((count, item) => count + item.quantity, 0), 0
+        );
         const sold = issued + checkedIn;
 
         return {
@@ -110,6 +117,7 @@ class OrganizerTicketService extends BaseService {
         pageSize = 20,
         keyword = "",
         status = "",
+        sessionId = "",
     }) {
         await this.findOwnedEvent({ eventId, organizerId });
 
@@ -130,6 +138,11 @@ class OrganizerTicketService extends BaseService {
             where.status = status;
         }
 
+        if (sessionId) {
+            this.validateId(sessionId, "ID suất diễn không hợp lệ");
+            where.ticketType = { sessionId };
+        }
+
         if (searchKeyword) {
             where.ticketCode = {
                 contains: searchKeyword,
@@ -137,7 +150,7 @@ class OrganizerTicketService extends BaseService {
             };
         }
 
-        const [tickets, totalTickets] = await Promise.all([
+        const [rawTickets, totalTickets] = await Promise.all([
             prisma.ticket.findMany({
                 where,
                 skip: (currentPage - 1) * currentPageSize,
@@ -150,23 +163,13 @@ class OrganizerTicketService extends BaseService {
                     issuedAt: true,
                     checkInAt: true,
                     createdAt: true,
-                    user: {
-                        select: {
-                            id: true,
-                            email: true,
-                            profile: {
-                                select: {
-                                    fullName: true,
-                                    phone: true,
-                                },
-                            },
-                        },
-                    },
+                    userId: true,
                     ticketType: {
                         select: {
                             id: true,
                             name: true,
                             price: true,
+                            sessionId: true,
                         },
                     },
                     seat: {
@@ -183,6 +186,28 @@ class OrganizerTicketService extends BaseService {
             prisma.ticket.count({ where }),
         ]);
 
+        const userIds = [...new Set(rawTickets.map((ticket) => ticket.userId).filter(Boolean))];
+        const users = userIds.length
+            ? await prisma.user.findMany({
+                where: { id: { in: userIds } },
+                select: {
+                    id: true,
+                    email: true,
+                    profile: {
+                        select: {
+                            fullName: true,
+                            phone: true,
+                        },
+                    },
+                },
+            })
+            : [];
+        const usersById = new Map(users.map((user) => [user.id, user]));
+        const tickets = rawTickets.map(({ userId, ...ticket }) => ({
+            ...ticket,
+            user: usersById.get(userId) || null,
+        }));
+
         return {
             tickets,
             pagination: {
@@ -198,7 +223,7 @@ class OrganizerTicketService extends BaseService {
         this.validateOrganizer(organizerId);
         this.validateId(ticketId, "ID vé không hợp lệ");
 
-        const ticket = await prisma.ticket.findFirst({
+        const rawTicket = await prisma.ticket.findFirst({
             where: {
                 id: ticketId,
                 event: { organizerId },
@@ -210,18 +235,7 @@ class OrganizerTicketService extends BaseService {
                 issuedAt: true,
                 checkInAt: true,
                 createdAt: true,
-                user: {
-                    select: {
-                        id: true,
-                        email: true,
-                        profile: {
-                            select: {
-                                fullName: true,
-                                phone: true,
-                            },
-                        },
-                    },
-                },
+                userId: true,
                 event: {
                     select: {
                         id: true,
@@ -236,6 +250,7 @@ class OrganizerTicketService extends BaseService {
                         id: true,
                         name: true,
                         price: true,
+                        sessionId: true,
                     },
                 },
                 seat: {
@@ -250,27 +265,65 @@ class OrganizerTicketService extends BaseService {
             },
         });
 
-        if (!ticket) {
+        if (!rawTicket) {
             this.throwError("Không tìm thấy vé", 404);
         }
 
-        return ticket;
+        const user = rawTicket.userId
+            ? await prisma.user.findUnique({
+                where: { id: rawTicket.userId },
+                select: {
+                    id: true,
+                    email: true,
+                    profile: {
+                        select: {
+                            fullName: true,
+                            phone: true,
+                        },
+                    },
+                },
+            })
+            : null;
+        const { userId, ...ticket } = rawTicket;
+
+        return {
+            ...ticket,
+            user,
+        };
     }
 
-    async checkInTicket({ ticketId, organizerId }) {
+    async checkInTicket({ ticketId, organizerId, eventId, sessionId, qrToken }) {
         this.validateOrganizer(organizerId);
-        this.validateId(ticketId, "ID vé không hợp lệ");
+        if (ticketId) {
+            this.validateId(ticketId, "ID vé không hợp lệ");
+        } else {
+            this.validateId(eventId, "ID sự kiện không hợp lệ");
+            if (typeof qrToken !== "string" || !/^[a-f\d]{64}$/.test(qrToken)) {
+                this.throwError("Mã QR không hợp lệ");
+            }
+        }
+        if (sessionId === undefined) this.throwError("Vui lòng cung cấp suất diễn");
+        if (sessionId !== null) this.validateId(sessionId, "ID suất diễn không hợp lệ");
 
         const ticket = await prisma.ticket.findFirst({
             where: {
-                id: ticketId,
+                ...(ticketId ? { id: ticketId } : { qrToken, eventId }),
                 event: { organizerId },
             },
-            select: { id: true, eventId: true, status: true },
+            select: {
+                id: true, eventId: true, ticketTypeId: true, status: true,
+                ticketType: { select: { eventId: true, sessionId: true, session: { select: { eventId: true } } } },
+            },
         });
 
         if (!ticket) {
             this.throwError("Không tìm thấy vé", 404);
+        }
+
+        if (!ticket.ticketType || ticket.ticketType.eventId !== ticket.eventId ||
+            (ticket.ticketType.sessionId && ticket.ticketType.session?.eventId !== ticket.eventId) ||
+            (ticket.ticketType.sessionId || null) !== sessionId) {
+            this.throwError("Vé không thuộc suất diễn đã chọn", 409);
         }
 
         if (ticket.status !== "ISSUED") {
@@ -287,6 +340,7 @@ class OrganizerTicketService extends BaseService {
             where: {
                 id: ticket.id,
                 eventId: ticket.eventId,
+                ticketTypeId: ticket.ticketTypeId,
                 status: "ISSUED",
             },
             data: {

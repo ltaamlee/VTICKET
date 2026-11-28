@@ -11,6 +11,13 @@ export default function EventBadge({ status, size = "md" }) {
     };
 
     switch (status) {
+        case "UNANNOUNCED":
+            return (
+                <span className={`inline-flex items-center rounded-full bg-gray-100 text-gray-600 ring-1 ring-gray-400/20 ${sizeClasses[size]}`}>
+                    <Clock className="h-3 w-3" />
+                    Chưa công bố mở bán
+                </span>
+            );
         case "SELLING":
             return (
                 <span

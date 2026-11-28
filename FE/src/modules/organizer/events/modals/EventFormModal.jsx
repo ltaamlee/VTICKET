@@ -57,6 +57,8 @@ function createInitialFormData(event, isEdit, categories) {
             endAt: "",
             saleStartAt: "",
             saleEndAt: "",
+            maxTicketsPerOrder: "",
+            seatSelectionMode: "AUTO",
             bannerUrl: "",
             thumbnailUrl: "",
             seatMapId: "",
@@ -82,6 +84,8 @@ function createInitialFormData(event, isEdit, categories) {
         endAt: toLocalDateTime(event.endAt),
         saleStartAt: toLocalDateTime(event.saleStartAt),
         saleEndAt: toLocalDateTime(event.saleEndAt),
+        maxTicketsPerOrder: event.maxTicketsPerOrder ?? "",
+        seatSelectionMode: event.seatSelectionMode || "AUTO",
         bannerUrl: event.bannerUrl || "",
         thumbnailUrl: event.thumbnailUrl || "",
         seatMapId: event.seatMapId || event.seatMap?.id || "",
@@ -203,6 +207,15 @@ function EventFormModal({
         }
 
         if (
+            formData.maxTicketsPerOrder !== "" &&
+            (!Number.isInteger(Number(formData.maxTicketsPerOrder)) ||
+                Number(formData.maxTicketsPerOrder) < 1 ||
+                Number(formData.maxTicketsPerOrder) > 10)
+        ) {
+            return showStepError(1, "Số vé tối đa mỗi lượt mua phải từ 1 đến 10.");
+        }
+
+        if (
             formData.saleStartAt &&
             formData.saleEndAt &&
             new Date(formData.saleStartAt) >= new Date(formData.saleEndAt)
@@ -297,6 +310,11 @@ function EventFormModal({
                 saleEndAt: formData.saleEndAt
                     ? new Date(formData.saleEndAt).toISOString()
                     : null,
+
+                maxTicketsPerOrder: formData.maxTicketsPerOrder === ""
+                    ? null
+                    : Number(formData.maxTicketsPerOrder),
+                seatSelectionMode: formData.seatSelectionMode,
 
                 bannerUrl,
                 thumbnailUrl,

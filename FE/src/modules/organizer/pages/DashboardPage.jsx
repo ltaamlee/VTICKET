@@ -18,6 +18,7 @@ import {
 } from "recharts";
 
 import StatCard from "../../../components/common/stats/StatCard";
+import DateRangeFilter, { getDefaultDateRange } from "../../../components/common/DateRangeFilter";
 import { getDashboardData } from "../services/dashboardService";
 
 const currency = new Intl.NumberFormat("vi-VN", {
@@ -45,16 +46,21 @@ const eventStatusLabels = {
 };
 
 function OrganizerDashboardPage() {
+    const [dateRange, setDateRange] = useState(() => getDefaultDateRange(7));
     const [dashboard, setDashboard] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
     useEffect(() => {
         let cancelled = false;
+        setLoading(true);
 
-        getDashboardData()
+        getDashboardData(dateRange)
             .then((response) => {
-                if (!cancelled) setDashboard(response.data);
+                if (!cancelled) {
+                    setDashboard(response.data);
+                    setError("");
+                }
             })
             .catch((requestError) => {
                 if (!cancelled) {
@@ -70,9 +76,9 @@ function OrganizerDashboardPage() {
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [dateRange]);
 
-    if (loading) {
+    if (loading && !dashboard) {
         return (
             <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
                 Đang tải tổng quan...
@@ -80,7 +86,7 @@ function OrganizerDashboardPage() {
         );
     }
 
-    if (error) {
+    if (error && !dashboard) {
         return (
             <div
                 role="alert"
@@ -101,11 +107,14 @@ function OrganizerDashboardPage() {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold text-slate-900">Tổng quan</h1>
-                <p className="mt-1 text-sm text-slate-500">
-                    Theo dõi doanh thu, vé và các sự kiện của bạn.
-                </p>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-900">Tổng quan</h1>
+                    <p className="mt-1 text-sm text-slate-500">
+                        Theo dõi doanh thu, vé và các sự kiện của bạn.
+                    </p>
+                </div>
+                <DateRangeFilter value={dateRange} onChange={setDateRange} />
             </div>
 
             <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -119,9 +128,9 @@ function OrganizerDashboardPage() {
                     loading={loading}
                 />
                 <StatCard
-                    label="Doanh thu 7 ngày"
-                    value={stats.revenue7Days ?? 0}
-                    detail="Từ các đơn hàng đã thanh toán"
+                    label="Doanh thu theo kỳ"
+                    value={stats.revenue ?? stats.revenue7Days ?? 0}
+                    detail={`${dateRange.startDate} → ${dateRange.endDate}`}
                     icon={Wallet}
                     bg="bg-emerald-50"
                     iconBg="bg-emerald-600"
@@ -152,7 +161,7 @@ function OrganizerDashboardPage() {
                 <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                     <div className="mb-5">
                         <h2 className="font-semibold text-slate-900">
-                            Doanh thu 7 ngày gần nhất
+                            Biểu đồ doanh thu ({dateRange.startDate} → {dateRange.endDate})
                         </h2>
                         <p className="mt-1 text-sm text-slate-500">
                             Chỉ tính các đơn hàng đã thanh toán.
@@ -225,6 +234,7 @@ function OrganizerDashboardPage() {
                                         stroke="#4f46e5"
                                         strokeWidth={2.5}
                                         fill="url(#organizerRevenue)"
+                                        isAnimationActive={false}
                                     />
                                 </AreaChart>
                             </ResponsiveContainer>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { login } from "../services/authService";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../contexts/AuthContext";
 import GoogleLoginButton from "./GoogleLogin";
 
@@ -11,6 +11,7 @@ function LoginForm() {
 	const [loading, setLoading] = useState(false);
 
 	const navigate = useNavigate();
+	const location = useLocation();
 	const {login: saveLogin} = useAuth();
 
 	const handleSubmit = async (e) => {
@@ -36,7 +37,9 @@ function LoginForm() {
 
 			saveLogin({ token, user });
 
-			if (user.role === "ADMIN") {
+			if (location.state?.from?.startsWith("/") && !location.state.from.startsWith("//")) {
+				navigate(location.state.from, { replace: true });
+			} else if (user.role === "ADMIN") {
 				navigate("/admin/dashboard");
 			} else {
 				navigate("/", { replace: true });

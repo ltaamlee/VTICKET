@@ -1,12 +1,13 @@
 import { memo, useCallback } from "react";
 import { GoogleLogin } from "@react-oauth/google";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../contexts/AuthContext";
 import { googleLogin } from "../services/authService";
 
 function GoogleLoginButton() {
     const { login: saveLogin } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
 
     const handleSuccess = useCallback(
         async (credentialResponse) => {
@@ -19,7 +20,9 @@ function GoogleLoginButton() {
                     user: data.user,
                 });
 
-                if (data.user.role === "ADMIN") {
+                if (location.state?.from?.startsWith("/") && !location.state.from.startsWith("//")) {
+                    navigate(location.state.from, { replace: true });
+                } else if (data.user.role === "ADMIN") {
                     navigate("/admin/dashboard", { replace: true });
                 } else {
                     navigate("/", { replace: true });
@@ -33,7 +36,7 @@ function GoogleLoginButton() {
                 );
             }
         },
-        [saveLogin, navigate]
+        [saveLogin, navigate, location.state]
     );
 
     const handleError = useCallback(() => {

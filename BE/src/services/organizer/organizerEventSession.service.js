@@ -37,16 +37,19 @@ class EventSessionService extends BaseService {
     }
 
     async assertNoSoldTickets(eventId, sessionId, message) {
-        const soldTicket = await prisma.ticket.findFirst({
+        const [soldTicket, heldType] = await Promise.all([prisma.ticket.findFirst({
             where: {
                 eventId,
                 ticketType: { sessionId },
-                status: { in: ["ISSUED", "CHECKED_IN"] },
+                status: { in: ["RESERVED", "ISSUED", "CHECKED_IN"] },
             },
             select: { id: true },
-        });
+        }), prisma.ticketType.findFirst({
+            where: { eventId, sessionId, soldQuantity: { gt: 0 } },
+            select: { id: true },
+        })]);
 
-        if (soldTicket) {
+        if (soldTicket || heldType) {
             this.throwError(message, 400);
         }
     }
@@ -256,7 +259,7 @@ class EventSessionService extends BaseService {
             await this.assertNoSoldTickets(
                 eventId,
                 sessionId,
-                "Không thể chỉnh sửa suất diễn khi sự kiện đã có vé được bán"
+                "Không thể chỉnh sửa suất diễn khi có vé đang giữ hoặc đã bán"
             );
 
             const updateData = {};

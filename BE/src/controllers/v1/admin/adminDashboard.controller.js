@@ -6,6 +6,8 @@ class AdminDashboardController {
             const dashboardData = await adminDashboardService.getDashboardData({
                 page: req.query.page,
                 pageSize: req.query.pageSize,
+                startDate: req.query.startDate,
+                endDate: req.query.endDate,
             });
             res.status(200).json({
                 success: true,

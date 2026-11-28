@@ -7,7 +7,7 @@ function ProtectedRoute({ allowedRoles }) {
   const location = useLocation();
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />;
   }
 
   if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {

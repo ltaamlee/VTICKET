@@ -10,10 +10,6 @@ import EventPagination from "../components/list/EventPagination";
 import EventSkeleton from "../components/common/EventSkeleton";
 import { getEvents, getCategories } from "../services/eventService";
 
-/**
- * EventListPage - Trang danh sách, tìm kiếm và lọc sự kiện công khai (/events)
- * Áp dụng Component-Driven: tách rời toàn bộ các khối chức năng thành từng component nhỏ.
- */
 export default function EventListPage() {
     const [searchParams, setSearchParams] = useSearchParams();
 
