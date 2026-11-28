@@ -11,8 +11,7 @@ function LoginForm() {
 	const [loading, setLoading] = useState(false);
 
 	const navigate = useNavigate();
-	const location = useLocation();
-	const {login: saveLogin} = useAuth();
+	const { login: saveLogin } = useAuth();
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
@@ -37,10 +36,17 @@ function LoginForm() {
 
 			saveLogin({ token, user });
 
-			if (location.state?.from?.startsWith("/") && !location.state.from.startsWith("//")) {
-				navigate(location.state.from, { replace: true });
+			const from = location.state?.from;
+			const isSafeFrom =
+				from?.startsWith("/") &&
+				!from.startsWith("//") &&
+				(!from.startsWith("/admin") || user.role === "ADMIN") &&
+				(!from.startsWith("/organizer") || from === "/organizer/register" || user.role === "ORGANIZER");
+
+			if (isSafeFrom) {
+				navigate(from, { replace: true });
 			} else if (user.role === "ADMIN") {
-				navigate("/admin/dashboard");
+				navigate("/admin/dashboard", { replace: true });
 			} else {
 				navigate("/", { replace: true });
 			}

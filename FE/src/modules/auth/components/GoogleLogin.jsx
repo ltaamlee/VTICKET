@@ -20,10 +20,19 @@ function GoogleLoginButton() {
                     user: data.user,
                 });
 
-                if (location.state?.from?.startsWith("/") && !location.state.from.startsWith("//")) {
-                    navigate(location.state.from, { replace: true });
+                const from = location.state?.from;
+                const isSafeFrom =
+                    from?.startsWith("/") &&
+                    !from.startsWith("//") &&
+                    (!from.startsWith("/admin") || data.user.role === "ADMIN") &&
+                    (!from.startsWith("/organizer") || from === "/organizer/register" || data.user.role === "ORGANIZER");
+
+                if (isSafeFrom) {
+                    navigate(from, { replace: true });
                 } else if (data.user.role === "ADMIN") {
                     navigate("/admin/dashboard", { replace: true });
+                } else if (data.user.role === "ORGANIZER") {
+                    navigate("/organizer/dashboard", { replace: true });
                 } else {
                     navigate("/", { replace: true });
                 }
