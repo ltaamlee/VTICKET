@@ -33,7 +33,7 @@ class UserService {
      * @returns {Promise<Object>} Updated User Profile DTO
      */
     async updateProfile(userId, updateData) {
-        const { fullName, phone, dob, avatar } = updateData;
+        const { username, fullName, phone, dob, avatar } = updateData;
 
         const user = await prisma.user.findUnique({
             where: { id: userId },
@@ -45,6 +45,33 @@ class UserService {
         }
 
         const profileData = {};
+        const userData = {};
+
+        // Validate and set username
+        if (username !== undefined) {
+            if (username !== null && username !== '') {
+                const trimmedUsername = typeof username === 'string' ? username.trim() : '';
+                if (trimmedUsername.length < 3 || trimmedUsername.length > 30) {
+                    throw new BadRequestException('Tên tài khoản phải có từ 3 đến 30 ký tự');
+                }
+                if (!/^[a-zA-Z0-9._-]+$/.test(trimmedUsername)) {
+                    throw new BadRequestException('Tên tài khoản chỉ được chứa chữ cái, số, dấu chấm (.), gạch dưới (_) và gạch ngang (-)');
+                }
+                const existingUser = await prisma.user.findFirst({
+                    where: {
+                        username: trimmedUsername,
+                        id: { not: userId },
+                    },
+                    select: { id: true },
+                });
+                if (existingUser) {
+                    throw new BadRequestException('Tên tài khoản đã được sử dụng');
+                }
+                userData.username = trimmedUsername;
+            } else {
+                userData.username = null;
+            }
+        }
 
         // Validate and set fullName
         if (fullName !== undefined) {
@@ -89,6 +116,13 @@ class UserService {
                 throw new BadRequestException('Đường dẫn ảnh đại diện không hợp lệ');
             }
             profileData.avatar = avatar ? avatar.trim() : null;
+        }
+
+        if (Object.keys(userData).length > 0) {
+            await prisma.user.update({
+                where: { id: userId },
+                data: userData,
+            });
         }
 
         // Upsert UserProfile
@@ -195,6 +229,13 @@ class UserService {
 
         if (!user) {
             throw new NotFoundException('Không tìm thấy người dùng');
+        }
+
+        if (Object.keys(userData).length > 0) {
+            await prisma.user.update({
+                where: { id: userId },
+                data: userData,
+            });
         }
 
         // Upsert UserProfile với avatar mới

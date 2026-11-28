@@ -129,9 +129,8 @@ function Header() {
                                 </div>
 
                                 <ChevronDown
-                                    className={`h-4 w-4 text-gray-600 transition-transform duration-200 ${
-                                        showMenu ? "rotate-180" : ""
-                                    }`}
+                                    className={`h-4 w-4 text-gray-600 transition-transform duration-200 ${showMenu ? "rotate-180" : ""
+                                        }`}
                                 />
                             </button>
 
@@ -178,16 +177,6 @@ function Header() {
                                                     <LayoutDashboard className="h-4 w-4 text-purple-500" />
                                                     <span>Trang quản trị</span>
                                                 </Link>
-
-                                                {/* Trang cá nhân */}
-                                                <Link
-                                                    to="/profile"
-                                                    onClick={() => setShowMenu(false)}
-                                                    className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-gray-100 hover:text-gray-900"
-                                                >
-                                                    <User className="h-4 w-4 text-gray-500" />
-                                                    <span>Trang cá nhân</span>
-                                                </Link>
                                             </>
                                         ) : (
                                             <>
@@ -197,23 +186,13 @@ function Header() {
                                                         <Link
                                                             to="/organizer/events"
                                                             onClick={() => setShowMenu(false)}
-                                                            className="flex w-full items-center justify-center gap-2 rounded-full bg-black py-2.5 px-4 text-sm font-bold text-white shadow-md transition hover:bg-gray-800"
+                                                            className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-gray-100 hover:text-gray-900"
                                                         >
-                                                            <Plus className="h-4 w-4" />
+                                                            <LayoutDashboard className="h-4 w-4 text-purple-500" />
                                                             <span>Quản lý sự kiện</span>
                                                         </Link>
                                                     </div>
                                                 )}
-
-                                                {/* Trang cá nhân */}
-                                                <Link
-                                                    to="/profile"
-                                                    onClick={() => setShowMenu(false)}
-                                                    className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-gray-100 hover:text-gray-900"
-                                                >
-                                                    <User className="h-4 w-4 text-gray-500" />
-                                                    <span>Trang cá nhân</span>
-                                                </Link>
 
                                                 {/* Đăng ký làm Ban Tổ Chức (Chỉ hiện khi role là USER) */}
                                                 {user?.role === "USER" && (

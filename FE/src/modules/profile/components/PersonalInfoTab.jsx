@@ -1,9 +1,11 @@
-import { User, Mail, Phone, Calendar, Save, RotateCcw } from "lucide-react";
+import { User, AtSign, Mail, Phone, Calendar, Save, RotateCcw } from "lucide-react";
 
 export default function PersonalInfoTab({
     loading,
     profile,
-    fullName,
+    username,
+  setUsername,
+  fullName,
     setFullName,
     phone,
     setPhone,
@@ -72,7 +74,29 @@ export default function PersonalInfoTab({
                             </p>
                         </div>
 
-                        {/* Số điện thoại */}
+                        {/* Tên tài khoản (Username) */}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Tên tài khoản (Username)
+              </label>
+              <div className="relative">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                  <AtSign className="h-4 w-4 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="VD: nguyenvana"
+                  className="w-full rounded-xl border border-gray-300 py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                />
+              </div>
+              <p className="mt-1 text-xs text-gray-400">
+                3–30 ký tự (chữ cái, số, dấu chấm, gạch dưới, gạch ngang).
+              </p>
+            </div>
+
+            {/* Số điện thoại */}
                         <div>
                             <label className="mb-1.5 block text-sm font-medium text-gray-700">
                                 Số điện thoại
